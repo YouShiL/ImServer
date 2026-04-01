@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理 - 嗨聊后台</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="header">
+        <div>
+            <a href="index.html" class="back-btn">← 返回</a>
+            <h1>用户管理</h1>
+        </div>
+        <button class="btn btn-primary" onclick="logout()">退出登录</button>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <a href="index.html" class="menu-item">📊 仪表盘</a>
+            <a href="users.html" class="menu-item active">👥 用户管理</a>
+            <a href="groups.html" class="menu-item">💬 群组管理</a>
+            <a href="orders.html" class="menu-item">💰 订单管理</a>
+            <a href="reports.html" class="menu-item">🚨 举报管理</a>
+            <a href="audits.html" class="menu-item">🔍 内容审核</a>
+            <a href="vip.html" class="menu-item">👑 VIP管理</a>
+            <a href="pretty-numbers.html" class="menu-item">🔢 靓号管理</a>
+            <a href="admins.html" class="menu-item">🔐 管理员管理</a>
+            <a href="settings.html" class="menu-item">⚙️ 系统设置</a>
+        </div>
+        <div class="main-content">
+            <h2 class="page-title">用户管理</h2>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="搜索用户ID、昵称、手机号...">
+                <select id="statusFilter">
+                    <option value="">全部状态</option>
+                    <option value="1">正常</option>
+                    <option value="2">封禁</option>
+                    <option value="0">未激活</option>
+                </select>
+                <button class="btn btn-primary" onclick="search()">搜索</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>用户ID</th>
+                            <th>头像</th>
+                            <th>昵称</th>
+                            <th>手机号</th>
+                            <th>性别</th>
+                            <th>状态</th>
+                            <th>注册时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button onclick="pagination.prev()">上一页</button>
+                <span id="pageInfo">第 1 页</span>
+                <button onclick="pagination.next()">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <h3 class="modal-title">用户详情</h3>
+            <div id="detailContent"></div>
+            <div class="modal-btns">
+                <button class="btn" onclick="closeModal('detailModal')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+    <script>
+        const pagination = new Pagination('pageInfo', loadData);
+        const statusMap = {
+            1: { text: '正常', class: 'normal' },
+            2: { text: '封禁', class: 'banned' },
+            0: { text: '未激活', class: 'inactive' }
+        };
+
+        function loadData(page = 0) {
+            get(`/admin/user/list?page=${page}&size=20`)
+                .then(data => {
+                    renderTable('tableBody', data.content, [
+                        { field: 'id' },
+                        { field: 'avatar', formatter: v => `<img src="${v || '/default-avatar.png'}" class="avatar">` },
+                        { field: 'nickname', formatter: (v, row) => v || row.username },
+                        { field: 'phone', formatter: v => v || '-' },
+                        { field: 'gender', formatter: v => v === 1 ? '男' : v === 2 ? '女' : '未知' },
+                        { field: 'status', formatter: v => getStatusBadge(v, statusMap) },
+                        { field: 'createdAt', formatter: v => formatDate(v) }
+                    ], row => `
+                        <button class="action-btn btn-primary" onclick="viewDetail(${row.id})">查看</button>
+                        ${row.status !== 2 
+                            ? `<button class="action-btn btn-danger" onclick="banUser(${row.id})">封禁</button>`
+                            : `<button class="action-btn btn-success" onclick="unbanUser(${row.id})">解封</button>`
+                        }
+                    `);
+                    pagination.update(data.totalPages);
+                });
+        }
+
+        function viewDetail(id) {
+            get(`/admin/user/${id}`)
+                .then(u => {
+                    document.getElementById('detailContent').innerHTML = `
+                        <p><strong>用户ID:</strong> ${u.id}</p>
+                        <p><strong>用户名:</strong> ${u.username}</p>
+                        <p><strong>昵称:</strong> ${u.nickname || '-'}</p>
+                        <p><strong>手机号:</strong> ${u.phone || '-'}</p>
+                        <p><strong>邮箱:</strong> ${u.email || '-'}</p>
+                        <p><strong>性别:</strong> ${u.gender === 1 ? '男' : u.gender === 2 ? '女' : '未知'}</p>
+                        <p><strong>个性签名:</strong> ${u.signature || '-'}</p>
+                        <p><strong>注册时间:</strong> ${formatDate(u.createdAt)}</p>
+                        <p><strong>最后登录:</strong> ${formatDate(u.lastLoginAt)}</p>
+                    `;
+                    showModal('detailModal');
+                });
+        }
+
+        function banUser(id) {
+            if (!confirmAction('确定要封禁该用户吗？')) return;
+            post(`/admin/user/${id}/ban`, { reason: '违规操作' })
+                .then(() => { showSuccess('封禁成功'); loadData(pagination.currentPage); });
+        }
+
+        function unbanUser(id) {
+            if (!confirmAction('确定要解封该用户吗？')) return;
+            post(`/admin/user/${id}/unban`)
+                .then(() => { showSuccess('解封成功'); loadData(pagination.currentPage); });
+        }
+
+        function search() {
+            pagination.currentPage = 0;
+            loadData(0);
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

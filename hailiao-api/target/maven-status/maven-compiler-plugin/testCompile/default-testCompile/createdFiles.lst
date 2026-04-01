@@ -1,0 +1,17 @@
+com\hailiao\api\controller\FileUploadControllerTest.class
+com\hailiao\api\controller\GroupJoinRequestControllerTest.class
+com\hailiao\api\controller\FriendControllerTest.class
+com\hailiao\api\controller\GroupControllerTest.class
+com\hailiao\api\controller\MessageControllerTest.class
+com\hailiao\api\controller\UserControllerTest.class
+com\hailiao\api\controller\UserOnlineControllerTest.class
+com\hailiao\api\controller\AuthControllerTest.class
+com\hailiao\api\controller\MessageExtControllerTest.class
+com\hailiao\api\controller\VideoCallControllerTest.class
+com\hailiao\api\controller\ContentAuditControllerTest.class
+com\hailiao\api\controller\GroupMemberControllerTest.class
+com\hailiao\api\HailiaoApiApplicationSmokeTest.class
+com\hailiao\api\controller\BlacklistControllerTest.class
+com\hailiao\api\controller\ConversationControllerTest.class
+com\hailiao\api\controller\ReportControllerTest.class
+com\hailiao\api\controller\GroupRobotControllerTest.class

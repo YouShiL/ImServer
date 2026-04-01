@@ -1,0 +1,16 @@
+com\hailiao\admin\controller\OperationLogManageControllerTest.class
+com\hailiao\admin\controller\UserManagementControllerTest.class
+com\hailiao\admin\controller\MessageMonitorControllerTest.class
+com\hailiao\admin\controller\VipManageControllerTest.class
+com\hailiao\admin\controller\ContentAuditManageControllerTest.class
+com\hailiao\admin\controller\DashboardControllerTest.class
+com\hailiao\admin\controller\SystemConfigManageControllerTest.class
+com\hailiao\admin\HailiaoAdminApplicationSmokeTest.class
+com\hailiao\admin\controller\PrettyNumberManageControllerTest.class
+com\hailiao\admin\controller\UserManageControllerTest.class
+com\hailiao\admin\controller\AuthControllerTest.class
+com\hailiao\admin\controller\OrderManageControllerTest.class
+com\hailiao\admin\controller\AdminManageControllerTest.class
+com\hailiao\admin\controller\ReportManageControllerTest.class
+com\hailiao\admin\controller\StatisticsControllerTest.class
+com\hailiao\admin\controller\GroupManageControllerTest.class

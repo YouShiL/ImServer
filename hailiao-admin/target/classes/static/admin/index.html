@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>嗨聊后台管理系统</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .welcome-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .welcome-banner h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .welcome-banner p {
+            opacity: 0.9;
+        }
+        .section-title {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>嗨聊后台管理系统</h1>
+        <div class="user-info">
+            <span id="username">管理员</span>
+            <button class="btn btn-primary" onclick="logout()">退出登录</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="sidebar">
+            <a href="index.html" class="menu-item active">📊 仪表盘</a>
+            <a href="users.html" class="menu-item">👥 用户管理</a>
+            <a href="groups.html" class="menu-item">💬 群组管理</a>
+            <a href="orders.html" class="menu-item">💰 订单管理</a>
+            <a href="reports.html" class="menu-item">🚨 举报管理</a>
+            <a href="audits.html" class="menu-item">🔍 内容审核</a>
+            <a href="vip.html" class="menu-item">👑 VIP管理</a>
+            <a href="pretty-numbers.html" class="menu-item">🔢 靓号管理</a>
+            <a href="admins.html" class="menu-item">🔐 管理员管理</a>
+            <a href="settings.html" class="menu-item">⚙️ 系统设置</a>
+        </div>
+        
+        <div class="main-content">
+            <div class="welcome-banner">
+                <h2>欢迎使用嗨聊后台管理系统</h2>
+                <p>实时监控系统运行状态，管理用户、群组、订单等各项业务</p>
+            </div>
+            
+            <h3 class="section-title">数据统计</h3>
+            <div class="stats-grid">
+                <div class="stat-card primary">
+                    <h3>总用户数</h3>
+                    <div class="number" id="totalUsers">-</div>
+                </div>
+                <div class="stat-card success">
+                    <h3>活跃用户数</h3>
+                    <div class="number" id="activeUsers">-</div>
+                </div>
+                <div class="stat-card warning">
+                    <h3>群组数量</h3>
+                    <div class="number" id="totalGroups">-</div>
+                </div>
+                <div class="stat-card danger">
+                    <h3>待处理举报</h3>
+                    <div class="number" id="pendingReports">-</div>
+                </div>
+                <div class="stat-card primary">
+                    <h3>总订单数</h3>
+                    <div class="number" id="totalOrders">-</div>
+                </div>
+                <div class="stat-card success">
+                    <h3>总收入</h3>
+                    <div class="number" id="totalRevenue">-</div>
+                </div>
+                <div class="stat-card warning">
+                    <h3>VIP会员数</h3>
+                    <div class="number" id="totalVips">-</div>
+                </div>
+                <div class="stat-card danger">
+                    <h3>待审核内容</h3>
+                    <div class="number" id="pendingAudits">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+    <script>
+        /**
+         * 加载仪表盘统计数据
+         */
+        function loadDashboardStats() {
+            get('/admin/dashboard/stats')
+                .then(data => {
+                    document.getElementById('totalUsers').textContent = data.totalUsers || 0;
+                    document.getElementById('activeUsers').textContent = data.activeUsers || 0;
+                    document.getElementById('totalGroups').textContent = data.totalGroups || 0;
+                    document.getElementById('pendingReports').textContent = data.pendingReports || 0;
+                    document.getElementById('totalOrders').textContent = data.totalOrders || 0;
+                    document.getElementById('totalRevenue').textContent = '¥' + (data.totalRevenue || 0);
+                    document.getElementById('totalVips').textContent = data.totalVips || 0;
+                    document.getElementById('pendingAudits').textContent = data.pendingAudits || 0;
+                })
+                .catch(error => console.error('加载数据失败:', error));
+        }
+
+        // 页面加载时获取数据
+        loadDashboardStats();
+    </script>
+</body>
+</html>

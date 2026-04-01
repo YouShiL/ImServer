@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>群组管理 - 嗨聊后台</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    <style>
+        .group-avatar { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
+        .member-list { max-height: 300px; overflow-y: auto; }
+        .member-item { display: flex; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .member-avatar { width: 30px; height: 30px; border-radius: 50%; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <a href="index.html" class="back-btn">← 返回</a>
+            <h1>群组管理</h1>
+        </div>
+        <button class="btn btn-primary" onclick="logout()">退出登录</button>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <a href="index.html" class="menu-item">📊 仪表盘</a>
+            <a href="users.html" class="menu-item">👥 用户管理</a>
+            <a href="groups.html" class="menu-item active">💬 群组管理</a>
+            <a href="orders.html" class="menu-item">💰 订单管理</a>
+            <a href="reports.html" class="menu-item">🚨 举报管理</a>
+            <a href="audits.html" class="menu-item">🔍 内容审核</a>
+            <a href="vip.html" class="menu-item">👑 VIP管理</a>
+            <a href="pretty-numbers.html" class="menu-item">🔢 靓号管理</a>
+            <a href="admins.html" class="menu-item">🔐 管理员管理</a>
+            <a href="settings.html" class="menu-item">⚙️ 系统设置</a>
+        </div>
+        <div class="main-content">
+            <h2 class="page-title">群组管理</h2>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="搜索群组ID、名称...">
+                <button class="btn btn-primary" onclick="searchGroups()">搜索</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>群组ID</th>
+                            <th>群头像</th>
+                            <th>群名称</th>
+                            <th>群主</th>
+                            <th>成员数</th>
+                            <th>最大人数</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="groupTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button onclick="prevPage()">上一页</button>
+                <span id="pageInfo">第 1 页</span>
+                <button onclick="nextPage()">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="groupModal">
+        <div class="modal-content">
+            <h3 class="modal-title">群组详情</h3>
+            <div id="groupDetail"></div>
+            <h4 style="margin: 20px 0 10px;">群成员</h4>
+            <div class="member-list" id="memberList"></div>
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn" onclick="closeModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+    <script>
+        const pagination = new Pagination('pageInfo', loadGroups);
+        const statusMap = {
+            1: { text: '正常', class: 'normal' },
+            2: { text: '禁言', class: 'muted' },
+            0: { text: '封禁', class: 'banned' }
+        };
+
+        function loadGroups(page = 0) {
+            get(`/admin/group/list?page=${page}&size=20`)
+                .then(data => {
+                    renderTable('groupTable', data.content, [
+                        { field: 'id' },
+                        { field: 'avatar', formatter: v => `<img src="${v || '/default-group.png'}" class="group-avatar">` },
+                        { field: 'name' },
+                        { field: 'ownerId' },
+                        { field: 'memberCount', formatter: v => v || 0 },
+                        { field: 'maxMembers' },
+                        { field: 'status', formatter: v => getStatusBadge(v, statusMap) },
+                        { field: 'createdAt', formatter: v => formatDate(v) }
+                    ], row => `
+                        <button class="action-btn btn-primary" onclick="viewGroup(${row.id})">查看</button>
+                        <button class="action-btn btn-warning" onclick="muteGroup(${row.id})">禁言</button>
+                        <button class="action-btn btn-danger" onclick="banGroup(${row.id})">封禁</button>
+                    `);
+                    pagination.update(data.totalPages);
+                });
+        }
+
+        function viewGroup(id) {
+            get(`/admin/group/${id}`)
+                .then(g => {
+                    document.getElementById('groupDetail').innerHTML = `
+                        <p><strong>群组ID:</strong> ${g.id}</p>
+                        <p><strong>群名称:</strong> ${g.name}</p>
+                        <p><strong>群公告:</strong> ${g.notice || '-'}</p>
+                        <p><strong>群主ID:</strong> ${g.ownerId}</p>
+                        <p><strong>成员数:</strong> ${g.memberCount || 0}/${g.maxMembers}</p>
+                        <p><strong>创建时间:</strong> ${formatDate(g.createdAt)}</p>
+                    `;
+                    showModal('groupModal');
+                });
+        }
+
+        function muteGroup(id) {
+            if (!confirmAction('确定要禁言该群组吗？')) return;
+            post(`/admin/group/${id}/mute`)
+                .then(() => { showSuccess('禁言成功'); loadGroups(pagination.currentPage); });
+        }
+
+        function banGroup(id) {
+            if (!confirmAction('确定要封禁该群组吗？')) return;
+            post(`/admin/group/${id}/ban`)
+                .then(() => { showSuccess('封禁成功'); loadGroups(pagination.currentPage); });
+        }
+
+        function searchGroups() {
+            pagination.currentPage = 0;
+            loadGroups(0);
+        }
+
+        loadGroups();
+    </script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>订单管理 - 嗨聊后台</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <div class="header">
+        <div>
+            <a href="index.html" class="back-btn">← 返回</a>
+            <h1>订单管理</h1>
+        </div>
+        <button class="btn btn-primary" onclick="logout()">退出登录</button>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <a href="index.html" class="menu-item">📊 仪表盘</a>
+            <a href="users.html" class="menu-item">👥 用户管理</a>
+            <a href="groups.html" class="menu-item">💬 群组管理</a>
+            <a href="orders.html" class="menu-item active">💰 订单管理</a>
+            <a href="reports.html" class="menu-item">🚨 举报管理</a>
+            <a href="audits.html" class="menu-item">🔍 内容审核</a>
+            <a href="vip.html" class="menu-item">👑 VIP管理</a>
+            <a href="pretty-numbers.html" class="menu-item">🔢 靓号管理</a>
+            <a href="admins.html" class="menu-item">🔐 管理员管理</a>
+            <a href="settings.html" class="menu-item">⚙️ 系统设置</a>
+        </div>
+        <div class="main-content">
+            <h2 class="page-title">订单管理</h2>
+            <div class="stats-cards">
+                <div class="stat-card">
+                    <h4>今日订单</h4>
+                    <div class="number" id="todayOrders">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>今日收入</h4>
+                    <div class="number" id="todayRevenue">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>总订单数</h4>
+                    <div class="number" id="totalOrders">-</div>
+                </div>
+                <div class="stat-card">
+                    <h4>总收入</h4>
+                    <div class="number" id="totalRevenue">-</div>
+                </div>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="搜索订单号、用户ID...">
+                <select id="statusFilter">
+                    <option value="">全部状态</option>
+                    <option value="0">待支付</option>
+                    <option value="1">已支付</option>
+                    <option value="2">已取消</option>
+                    <option value="3">已退款</option>
+                </select>
+                <select id="typeFilter">
+                    <option value="">全部类型</option>
+                    <option value="1">VIP充值</option>
+                    <option value="2">靓号购买</option>
+                    <option value="3">礼物充值</option>
+                </select>
+                <button class="btn btn-primary" onclick="searchOrders()">搜索</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>订单号</th>
+                            <th>用户ID</th>
+                            <th>订单类型</th>
+                            <th>商品名称</th>
+                            <th>金额</th>
+                            <th>状态</th>
+                            <th>支付方式</th>
+                            <th>创建时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orderTable"></tbody>
+                </table>
+            </div>
+            <div class="pagination">
+                <button onclick="prevPage()">上一页</button>
+                <span id="pageInfo">第 1 页</span>
+                <button onclick="nextPage()">下一页</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+    <script>
+        const pagination = new Pagination('pageInfo', loadOrders);
+        const typeMap = { 1: 'VIP充值', 2: '靓号购买', 3: '礼物充值' };
+        const statusMap = {
+            0: { text: '待支付', class: 'pending' },
+            1: { text: '已支付', class: 'paid' },
+            2: { text: '已取消', class: 'cancelled' },
+            3: { text: '已退款', class: 'refunded' }
+        };
+
+        function loadStats() {
+            get('/admin/order/stats')
+                .then(data => {
+                    document.getElementById('todayOrders').textContent = data.todayOrders || 0;
+                    document.getElementById('todayRevenue').textContent = '¥' + (data.todayRevenue || 0);
+                    document.getElementById('totalOrders').textContent = data.totalOrders || 0;
+                    document.getElementById('totalRevenue').textContent = '¥' + (data.totalRevenue || 0);
+                });
+        }
+
+        function loadOrders(page = 0) {
+            get(`/admin/order/list?page=${page}&size=20`)
+                .then(data => {
+                    renderTable('orderTable', data.content, [
+                        { field: 'orderNo' },
+                        { field: 'userId' },
+                        { field: 'orderType', formatter: v => typeMap[v] || '未知' },
+                        { field: 'productName', formatter: v => v || '-' },
+                        { field: 'amount', formatter: v => `<span class="amount">¥${v}</span>` },
+                        { field: 'status', formatter: v => getStatusBadge(v, statusMap) },
+                        { field: 'payType', formatter: v => v || '-' },
+                        { field: 'createdAt', formatter: v => formatDate(v) }
+                    ], row => `
+                        ${row.status === 0 ? `<button class="btn btn-primary" onclick="cancelOrder(${row.id})">取消</button>` : '-'}
+                    `);
+                    pagination.update(data.totalPages);
+                });
+        }
+
+        function cancelOrder(id) {
+            if (!confirmAction('确定要取消该订单吗？')) return;
+            post(`/admin/order/${id}/cancel`)
+                .then(() => { showSuccess('取消成功'); loadOrders(pagination.currentPage); loadStats(); });
+        }
+
+        function searchOrders() {
+            pagination.currentPage = 0;
+            loadOrders(0);
+        }
+
+        loadStats();
+        loadOrders();
+    </script>
+</body>
+</html>
