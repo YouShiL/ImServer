@@ -81,7 +81,7 @@ public class MessageService {
         try {
             messageCacheService.cachePrivateMessage(fromUserId, toUserId, savedMessage);
         } catch (Exception e) {
-            logger.warn("\u7f13\u5b58\u79c1\u804a\u6d88\u606f\u5931\u8d25: {}", e.getMessage());
+            logger.warn("缓存私聊消息失败: {}", e.getMessage());
         }
 
         createContentAuditIfNeeded(savedMessage);
@@ -107,7 +107,7 @@ public class MessageService {
             audit.setContent(buildAuditContent(message));
             contentAuditService.createAudit(audit);
         } catch (Exception e) {
-            logger.warn("\u521b\u5efa\u5185\u5bb9\u5ba1\u6838\u8bb0\u5f55\u5931\u8d25: {}", e.getMessage());
+            logger.warn("创建内容审核记录失败: {}", e.getMessage());
         }
     }
 
@@ -151,7 +151,7 @@ public class MessageService {
         try {
             messageCacheService.cacheGroupMessage(groupId, savedMessage);
         } catch (Exception e) {
-            logger.warn("\u7f13\u5b58\u7fa4\u804a\u6d88\u606f\u5931\u8d25: {}", e.getMessage());
+            logger.warn("缓存群聊消息失败: {}", e.getMessage());
         }
 
         createContentAuditIfNeeded(savedMessage);
@@ -164,15 +164,15 @@ public class MessageService {
     @Transactional
     public void recallMessage(Long messageId, Long userId) {
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("\u6d88\u606f\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("消息不存在"));
 
         if (!message.getFromUserId().equals(userId)) {
-            throw new RuntimeException("\u53ea\u80fd\u64a4\u56de\u81ea\u5df1\u7684\u6d88\u606f");
+            throw new RuntimeException("只能撤回自己的消息");
         }
 
         long diff = new Date().getTime() - message.getCreatedAt().getTime();
         if (diff > 2 * 60 * 1000) {
-            throw new RuntimeException("\u6d88\u606f\u8d85\u8fc7 2 \u5206\u949f\uff0c\u65e0\u6cd5\u64a4\u56de");
+            throw new RuntimeException("消息超过 2 分钟，无法撤回");
         }
 
         message.setIsRecall(true);
@@ -268,23 +268,23 @@ public class MessageService {
      */
     private String getMessagePreview(Message message) {
         if (message.getIsRecall() != null && message.getIsRecall()) {
-            return "[\u6d88\u606f\u5df2\u64a4\u56de]";
+            return "[消息已撤回]";
         }
         switch (message.getMsgType()) {
             case 1:
                 return message.getContent();
             case 2:
-                return "[\u56fe\u7247]";
+                return "[图片]";
             case 3:
-                return "[\u97f3\u9891]";
+                return "[音频]";
             case 4:
-                return "[\u89c6\u9891]";
+                return "[视频]";
             case 5:
-                return "[\u6587\u4ef6]";
+                return "[文件]";
             case 6:
-                return "[\u4f4d\u7f6e]";
+                return "[位置]";
             default:
-                return "[\u672a\u77e5\u6d88\u606f]";
+                return "[未知消息]";
         }
     }
 
@@ -305,10 +305,10 @@ public class MessageService {
     @Transactional
     public Message forwardMessage(Long fromUserId, Long toUserId, Long groupId, Long originalMsgId) {
         Message originalMsg = messageRepository.findById(originalMsgId)
-                .orElseThrow(() -> new RuntimeException("\u539f\u6d88\u606f\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("原消息不存在"));
 
         if (originalMsg.getIsRecall() != null && originalMsg.getIsRecall()) {
-            throw new RuntimeException("\u5df2\u64a4\u56de\u7684\u6d88\u606f\u65e0\u6cd5\u8f6c\u53d1");
+            throw new RuntimeException("已撤回的消息无法转发");
         }
 
         Message forwardMessage;
@@ -329,19 +329,19 @@ public class MessageService {
     @Transactional
     public Message editMessage(Long messageId, Long userId, String newContent) {
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("\u6d88\u606f\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("消息不存在"));
 
         if (!message.getFromUserId().equals(userId)) {
-            throw new RuntimeException("\u53ea\u80fd\u7f16\u8f91\u81ea\u5df1\u7684\u6d88\u606f");
+            throw new RuntimeException("只能编辑自己的消息");
         }
 
         long diff = new Date().getTime() - message.getCreatedAt().getTime();
         if (diff > EDIT_TIME_LIMIT) {
-            throw new RuntimeException("\u6d88\u606f\u8d85\u8fc7 15 \u5206\u949f\uff0c\u65e0\u6cd5\u7f16\u8f91");
+            throw new RuntimeException("消息超过 15 分钟，无法编辑");
         }
 
         if (message.getMsgType() != 1) {
-            throw new RuntimeException("\u53ea\u80fd\u7f16\u8f91\u6587\u672c\u6d88\u606f");
+            throw new RuntimeException("只能编辑文本消息");
         }
 
         message.setContent(newContent);
@@ -354,7 +354,7 @@ public class MessageService {
     @Transactional
     public Message pinMessage(Long messageId, Long userId, boolean pinned) {
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("\u6d88\u606f\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("消息不存在"));
 
         message.setIsPinned(pinned);
         message.setPinTime(pinned ? new Date() : null);
@@ -371,7 +371,7 @@ public class MessageService {
             try {
                 message.setAtUserIds(objectMapper.writeValueAsString(atUserIds));
             } catch (JsonProcessingException e) {
-                logger.warn("\u5e8f\u5217\u5316 @\u7528\u6237\u5217\u8868\u5931\u8d25: {}", e.getMessage());
+                logger.warn("序列化 @用户列表失败: {}", e.getMessage());
             }
         }
         message.setIsAtAll(atAll);
@@ -382,10 +382,10 @@ public class MessageService {
     @Transactional
     public void markGroupMessageAsRead(Long messageId, Long userId) {
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("\u6d88\u606f\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("消息不存在"));
 
         if (message.getGroupId() == null) {
-            throw new RuntimeException("\u53ea\u80fd\u6807\u8bb0\u7fa4\u804a\u6d88\u606f\u7684\u5df2\u8bfb\u72b6\u6001");
+            throw new RuntimeException("只能标记群聊消息的已读状态");
         }
 
         MessageReadStatus existing = messageReadStatusRepository
@@ -428,7 +428,7 @@ public class MessageService {
         try {
             return objectMapper.readValue(message.getAtUserIds(), new TypeReference<List<Long>>() {});
         } catch (JsonProcessingException e) {
-            logger.warn("\u89e3\u6790 @\u7528\u6237\u5217\u8868\u5931\u8d25: {}", e.getMessage());
+            logger.warn("解析 @用户列表失败: {}", e.getMessage());
             return new ArrayList<>();
         }
     }

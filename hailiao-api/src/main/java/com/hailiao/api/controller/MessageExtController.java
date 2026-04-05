@@ -79,7 +79,7 @@ public class MessageExtController {
     public ResponseEntity<ResponseDTO<String>> markGroupMessageAsRead(@RequestAttribute("userId") Long userId,
                                                                       @PathVariable Long messageId) {
         messageService.markGroupMessageAsRead(messageId, userId);
-        return ResponseEntity.ok(ResponseDTO.success("\u5df2\u6807\u8bb0\u5df2\u8bfb"));
+        return ResponseEntity.ok(ResponseDTO.success("已标记已读"));
     }
 
     @GetMapping("/{messageId}/read-status")
@@ -116,6 +116,6 @@ public class MessageExtController {
     @PostMapping("/heartbeat")
     public ResponseEntity<ResponseDTO<String>> heartbeat(@RequestAttribute("userId") Long userId) {
         userOnlineService.heartbeat(userId);
-        return ResponseEntity.ok(ResponseDTO.success("\u64cd\u4f5c\u6210\u529f"));
+        return ResponseEntity.ok(ResponseDTO.success("操作成功"));
     }
 }

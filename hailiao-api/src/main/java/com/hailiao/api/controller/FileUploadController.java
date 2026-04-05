@@ -15,7 +15,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 
-@Tag(name = "\u6587\u4ef6\u4e0a\u4f20", description = "\u56fe\u7247\u3001\u89c6\u9891\u3001\u97f3\u9891\u7b49\u6587\u4ef6\u4e0a\u4f20\u63a5\u53e3")
+@Tag(name = "文件上传", description = "图片、视频、音频等文件上传接口")
 @RestController
 @RequestMapping("/api/upload")
 public class FileUploadController {
@@ -23,16 +23,16 @@ public class FileUploadController {
     @Autowired
     private FileUploadService fileUploadService;
 
-    @Operation(summary = "\u4e0a\u4f20\u56fe\u7247", description = "\u652f\u6301 jpg/jpeg/png/gif/bmp/webp\uff0c\u6700\u5927 5MB")
+    @Operation(summary = "上传图片", description = "支持 jpg/jpeg/png/gif/bmp/webp，最大 5MB")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "\u4e0a\u4f20\u6210\u529f"),
-            @ApiResponse(responseCode = "400", description = "\u4e0a\u4f20\u5931\u8d25\uff0c\u6587\u4ef6\u683c\u5f0f\u4e0d\u652f\u6301\u6216\u5927\u5c0f\u8d85\u9650"),
-            @ApiResponse(responseCode = "401", description = "\u672a\u6388\u6743")
+            @ApiResponse(responseCode = "200", description = "上传成功"),
+            @ApiResponse(responseCode = "400", description = "上传失败，文件格式不支持或大小超限"),
+            @ApiResponse(responseCode = "401", description = "未授权")
     })
     @PostMapping("/image")
     public ResponseEntity<ResponseDTO<FileUploadResultDTO>> uploadImage(
             @RequestAttribute("userId") Long userId,
-            @Parameter(name = "file", description = "\u56fe\u7247\u6587\u4ef6", required = true) @RequestParam("file") MultipartFile file) {
+            @Parameter(name = "file", description = "图片文件", required = true) @RequestParam("file") MultipartFile file) {
         try {
             FileUploadResultDTO result = fileUploadService.uploadImage(file, userId);
             return ResponseEntity.ok(ResponseDTO.success(result));
@@ -41,16 +41,16 @@ public class FileUploadController {
         }
     }
 
-    @Operation(summary = "\u4e0a\u4f20\u89c6\u9891", description = "\u652f\u6301 mp4/avi/mov/wmv/flv/mkv\uff0c\u6700\u5927 100MB")
+    @Operation(summary = "上传视频", description = "支持 mp4/avi/mov/wmv/flv/mkv，最大 100MB")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "\u4e0a\u4f20\u6210\u529f"),
-            @ApiResponse(responseCode = "400", description = "\u4e0a\u4f20\u5931\u8d25\uff0c\u6587\u4ef6\u683c\u5f0f\u4e0d\u652f\u6301\u6216\u5927\u5c0f\u8d85\u9650"),
-            @ApiResponse(responseCode = "401", description = "\u672a\u6388\u6743")
+            @ApiResponse(responseCode = "200", description = "上传成功"),
+            @ApiResponse(responseCode = "400", description = "上传失败，文件格式不支持或大小超限"),
+            @ApiResponse(responseCode = "401", description = "未授权")
     })
     @PostMapping("/video")
     public ResponseEntity<ResponseDTO<FileUploadResultDTO>> uploadVideo(
             @RequestAttribute("userId") Long userId,
-            @Parameter(name = "file", description = "\u89c6\u9891\u6587\u4ef6", required = true) @RequestParam("file") MultipartFile file) {
+            @Parameter(name = "file", description = "视频文件", required = true) @RequestParam("file") MultipartFile file) {
         try {
             FileUploadResultDTO result = fileUploadService.uploadVideo(file, userId);
             return ResponseEntity.ok(ResponseDTO.success(result));
@@ -59,16 +59,16 @@ public class FileUploadController {
         }
     }
 
-    @Operation(summary = "\u4e0a\u4f20\u97f3\u9891", description = "\u652f\u6301 mp3/wav/aac/ogg/m4a\uff0c\u6700\u5927 10MB")
+    @Operation(summary = "上传音频", description = "支持 mp3/wav/aac/ogg/m4a，最大 10MB")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "\u4e0a\u4f20\u6210\u529f"),
-            @ApiResponse(responseCode = "400", description = "\u4e0a\u4f20\u5931\u8d25\uff0c\u6587\u4ef6\u683c\u5f0f\u4e0d\u652f\u6301\u6216\u5927\u5c0f\u8d85\u9650"),
-            @ApiResponse(responseCode = "401", description = "\u672a\u6388\u6743")
+            @ApiResponse(responseCode = "200", description = "上传成功"),
+            @ApiResponse(responseCode = "400", description = "上传失败，文件格式不支持或大小超限"),
+            @ApiResponse(responseCode = "401", description = "未授权")
     })
     @PostMapping("/audio")
     public ResponseEntity<ResponseDTO<FileUploadResultDTO>> uploadAudio(
             @RequestAttribute("userId") Long userId,
-            @Parameter(name = "file", description = "\u97f3\u9891\u6587\u4ef6", required = true) @RequestParam("file") MultipartFile file) {
+            @Parameter(name = "file", description = "音频文件", required = true) @RequestParam("file") MultipartFile file) {
         try {
             FileUploadResultDTO result = fileUploadService.uploadAudio(file, userId);
             return ResponseEntity.ok(ResponseDTO.success(result));

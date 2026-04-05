@@ -18,7 +18,7 @@ public class SystemConfigService {
     @Transactional
     public SystemConfig createConfig(SystemConfig config) {
         if (systemConfigRepository.existsByConfigKey(config.getConfigKey())) {
-            throw new RuntimeException("\u914d\u7f6e\u952e\u5df2\u5b58\u5728");
+            throw new RuntimeException("配置键已存在");
         }
         config.setUpdatedAt(new Date());
         return systemConfigRepository.save(config);
@@ -26,12 +26,12 @@ public class SystemConfigService {
 
     public SystemConfig getConfigById(Long id) {
         return systemConfigRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u914d\u7f6e\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("配置不存在"));
     }
 
     public SystemConfig getConfigByKey(String configKey) {
         return systemConfigRepository.findByConfigKey(configKey)
-                .orElseThrow(() -> new RuntimeException("\u914d\u7f6e\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("配置不存在"));
     }
 
     public String getConfigValue(String configKey, String defaultValue) {

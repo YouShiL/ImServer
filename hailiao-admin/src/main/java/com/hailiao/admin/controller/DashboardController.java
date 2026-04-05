@@ -79,10 +79,10 @@ public class DashboardController {
                     "pendingWorkItems", pendingReports + pendingAudits
             ));
             stats.put("cards", mapOf(
-                    "users", mapOf("label", "\u7528\u6237", "value", totalUsers, "secondaryLabel", "\u6d3b\u8dc3\u7528\u6237", "secondaryValue", activeUsers),
-                    "groups", mapOf("label", "\u7fa4\u7ec4", "value", totalGroups, "secondaryLabel", "\u8ba2\u5355", "secondaryValue", totalOrders),
-                    "compliance", mapOf("label", "\u5f85\u5904\u7406\u4e3e\u62a5", "value", pendingReports, "secondaryLabel", "\u5f85\u5ba1\u6838\u5185\u5bb9", "secondaryValue", pendingAudits),
-                    "commercial", mapOf("label", "VIP", "value", totalVips, "secondaryLabel", "\u5df2\u552e\u9753\u53f7", "secondaryValue", soldPrettyNumbers)
+                    "users", mapOf("label", "用户", "value", totalUsers, "secondaryLabel", "活跃用户", "secondaryValue", activeUsers),
+                    "groups", mapOf("label", "群组", "value", totalGroups, "secondaryLabel", "订单", "secondaryValue", totalOrders),
+                    "compliance", mapOf("label", "待处理举报", "value", pendingReports, "secondaryLabel", "待审核内容", "secondaryValue", pendingAudits),
+                    "commercial", mapOf("label", "VIP", "value", totalVips, "secondaryLabel", "已售靓号", "secondaryValue", soldPrettyNumbers)
             ));
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
@@ -103,10 +103,10 @@ public class DashboardController {
             stats.put("messagesToday", 0);
             stats.put("revenueToday", orderService.getTotalRevenue());
             stats.put("summary", mapOf(
-                    "onlineUsersLabel", "\u5728\u7ebf\u7528\u6237",
-                    "newUsersTodayLabel", "\u4eca\u65e5\u65b0\u589e\u7528\u6237",
-                    "messagesTodayLabel", "\u4eca\u65e5\u6d88\u606f\u91cf",
-                    "revenueTodayLabel", "\u4eca\u65e5\u6536\u5165"
+                    "onlineUsersLabel", "在线用户",
+                    "newUsersTodayLabel", "今日新增用户",
+                    "messagesTodayLabel", "今日消息量",
+                    "revenueTodayLabel", "今日收入"
             ));
             return ResponseEntity.ok(stats);
         } catch (Exception e) {

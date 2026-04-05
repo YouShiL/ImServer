@@ -1,0 +1,13 @@
+# Codex / 自动调试残留
+.codex_tmp_playwright/
+codex_tmp_playwright/
+
+# 临时日志
+debug.log
+**/run_*stdout.log
+**/run_*stderr.log
+
+# 常见构建/自动化产物
+node_modules/
+target/
+*.jar

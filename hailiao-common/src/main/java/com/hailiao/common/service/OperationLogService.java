@@ -104,7 +104,7 @@ public class OperationLogService {
         item.put("responseData", log.getResponseData());
         item.put("ip", log.getIp());
         item.put("status", log.getStatus());
-        item.put("statusLabel", log.getStatus() != null && log.getStatus() == 1 ? "\u6210\u529f" : "\u5931\u8d25");
+        item.put("statusLabel", log.getStatus() != null && log.getStatus() == 1 ? "成功" : "失败");
         item.put("errorMsg", log.getErrorMsg());
         item.put("executeTime", log.getExecuteTime());
         item.put("createdAt", log.getCreatedAt());
@@ -156,35 +156,35 @@ public class OperationLogService {
 
     public String getModuleLabel(String module) {
         if (module == null) {
-            return "\u672a\u77e5\u6a21\u5757";
+            return "未知模块";
         }
         switch (module) {
             case "admin-user":
-                return "\u7ba1\u7406\u5458\u7ba1\u7406";
+                return "管理员管理";
             case "operation-log":
-                return "\u64cd\u4f5c\u65e5\u5fd7";
+                return "操作日志";
             case "user":
-                return "\u7528\u6237\u7ba1\u7406";
+                return "用户管理";
             case "group":
-                return "\u7fa4\u7ec4\u7ba1\u7406";
+                return "群组管理";
             case "order":
-                return "\u8ba2\u5355\u7ba1\u7406";
+                return "订单管理";
             case "report":
-                return "\u4e3e\u62a5\u7ba1\u7406";
+                return "举报管理";
             case "content-audit":
-                return "\u5185\u5bb9\u5ba1\u6838";
+                return "内容审核";
             case "system-config":
-                return "\u7cfb\u7edf\u914d\u7f6e";
+                return "系统配置";
             case "vip":
-                return "VIP \u7ba1\u7406";
+                return "VIP 管理";
             case "pretty-number":
-                return "\u9753\u53f7\u7ba1\u7406";
+                return "靓号管理";
             case "message-monitor":
-                return "\u6d88\u606f\u76d1\u63a7";
+                return "消息监控";
             case "dashboard":
-                return "\u4eea\u8868\u76d8";
+                return "仪表盘";
             case "statistics":
-                return "\u7edf\u8ba1\u5206\u6790";
+                return "统计分析";
             default:
                 return module;
         }
@@ -192,25 +192,25 @@ public class OperationLogService {
 
     public String getOperationTypeLabel(String operationType) {
         if (operationType == null) {
-            return "\u672a\u77e5\u64cd\u4f5c";
+            return "未知操作";
         }
         switch (operationType) {
             case "ADMIN_CREATE":
-                return "\u521b\u5efa\u7ba1\u7406\u5458";
+                return "创建管理员";
             case "ADMIN_UPDATE":
-                return "\u66f4\u65b0\u7ba1\u7406\u5458";
+                return "更新管理员";
             case "ADMIN_PERMISSION_UPDATE":
-                return "\u66f4\u65b0\u7ba1\u7406\u5458\u6743\u9650";
+                return "更新管理员权限";
             case "ADMIN_PASSWORD_RESET":
-                return "\u91cd\u7f6e\u7ba1\u7406\u5458\u5bc6\u7801";
+                return "重置管理员密码";
             case "ADMIN_DELETE":
-                return "\u5220\u9664\u7ba1\u7406\u5458";
+                return "删除管理员";
             case "CREATE_OR_ACTION":
-                return "\u521b\u5efa/\u6267\u884c\u64cd\u4f5c";
+                return "创建/执行操作";
             case "UPDATE":
-                return "\u66f4\u65b0";
+                return "更新";
             case "DELETE":
-                return "\u5220\u9664";
+                return "删除";
             default:
                 return operationType;
         }

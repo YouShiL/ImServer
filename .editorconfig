@@ -1,0 +1,5 @@
+# https://editorconfig.org — default UTF-8 for new/edited files across the repo.
+root = true
+
+[*]
+charset = utf-8

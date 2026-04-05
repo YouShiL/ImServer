@@ -19,7 +19,7 @@ import 'package:hailiao_flutter/models/user_dto.dart';
 import 'package:hailiao_flutter/models/user_session_dto.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://localhost:8082/api';
+  static const String baseUrl = 'http://192.168.2.3:8082/api';
   static String? _token;
   static Future<void> Function()? _unauthorizedHandler;
 

@@ -36,16 +36,16 @@ public class VideoCallService {
         Optional<User> callee = userRepository.findById(calleeId);
 
         if (!caller.isPresent()) {
-            throw new RuntimeException("\u547c\u53eb\u65b9\u4e0d\u5b58\u5728");
+            throw new RuntimeException("呼叫方不存在");
         }
 
         if (!callee.isPresent()) {
-            throw new RuntimeException("\u88ab\u547c\u53eb\u65b9\u4e0d\u5b58\u5728");
+            throw new RuntimeException("被呼叫方不存在");
         }
 
         List<VideoCall> activeCalls = videoCallRepository.findByStatusAndUserId(0, calleeId);
         if (!activeCalls.isEmpty()) {
-            throw new RuntimeException("\u88ab\u547c\u53eb\u65b9\u6b63\u5728\u901a\u8bdd\u4e2d");
+            throw new RuntimeException("被呼叫方正在通话中");
         }
 
         VideoCall videoCall = new VideoCall();
@@ -67,7 +67,7 @@ public class VideoCallService {
 
         webSocketNotificationService.sendToUser(calleeId, "call_request", callData);
 
-        logger.info("\u53d1\u8d77\u901a\u8bdd: callId={}, callerId={}, calleeId={}, type={}",
+        logger.info("发起通话: callId={}, callerId={}, calleeId={}, type={}",
                 savedCall.getId(), callerId, calleeId, callType);
 
         return savedCall;
@@ -78,17 +78,17 @@ public class VideoCallService {
         Optional<VideoCall> callOpt = videoCallRepository.findById(callId);
 
         if (!callOpt.isPresent()) {
-            throw new RuntimeException("\u901a\u8bdd\u4e0d\u5b58\u5728");
+            throw new RuntimeException("通话不存在");
         }
 
         VideoCall call = callOpt.get();
 
         if (!call.getCalleeId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u63a5\u542c\u6b64\u901a\u8bdd");
+            throw new RuntimeException("无权接听此通话");
         }
 
         if (call.getStatus() != 0) {
-            throw new RuntimeException("\u901a\u8bdd\u72b6\u6001\u4e0d\u6b63\u786e");
+            throw new RuntimeException("通话状态不正确");
         }
 
         call.setStatus(1);
@@ -103,7 +103,7 @@ public class VideoCallService {
 
         webSocketNotificationService.sendToUser(call.getCallerId(), "call_accepted", callData);
 
-        logger.info("\u63a5\u542c\u901a\u8bdd: callId={}, userId={}", callId, userId);
+        logger.info("接听通话: callId={}, userId={}", callId, userId);
 
         return savedCall;
     }
@@ -113,21 +113,21 @@ public class VideoCallService {
         Optional<VideoCall> callOpt = videoCallRepository.findById(callId);
 
         if (!callOpt.isPresent()) {
-            throw new RuntimeException("\u901a\u8bdd\u4e0d\u5b58\u5728");
+            throw new RuntimeException("通话不存在");
         }
 
         VideoCall call = callOpt.get();
 
         if (!call.getCalleeId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u62d2\u7edd\u6b64\u901a\u8bdd");
+            throw new RuntimeException("无权拒绝此通话");
         }
 
         if (call.getStatus() != 0) {
-            throw new RuntimeException("\u901a\u8bdd\u72b6\u6001\u4e0d\u6b63\u786e");
+            throw new RuntimeException("通话状态不正确");
         }
 
         call.setStatus(3);
-        call.setEndReason("\u88ab\u62d2\u7edd");
+        call.setEndReason("被拒绝");
 
         VideoCall savedCall = videoCallRepository.save(call);
 
@@ -138,7 +138,7 @@ public class VideoCallService {
 
         webSocketNotificationService.sendToUser(call.getCallerId(), "call_rejected", callData);
 
-        logger.info("\u62d2\u7edd\u901a\u8bdd: callId={}, userId={}", callId, userId);
+        logger.info("拒绝通话: callId={}, userId={}", callId, userId);
 
         return savedCall;
     }
@@ -148,17 +148,17 @@ public class VideoCallService {
         Optional<VideoCall> callOpt = videoCallRepository.findById(callId);
 
         if (!callOpt.isPresent()) {
-            throw new RuntimeException("\u901a\u8bdd\u4e0d\u5b58\u5728");
+            throw new RuntimeException("通话不存在");
         }
 
         VideoCall call = callOpt.get();
 
         if (!call.getCallerId().equals(userId) && !call.getCalleeId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u7ed3\u675f\u6b64\u901a\u8bdd");
+            throw new RuntimeException("无权结束此通话");
         }
 
         if (call.getStatus() == 2 || call.getStatus() == 3) {
-            throw new RuntimeException("\u901a\u8bdd\u5df2\u7ed3\u675f");
+            throw new RuntimeException("通话已结束");
         }
 
         LocalDateTime endTime = LocalDateTime.now();
@@ -185,7 +185,7 @@ public class VideoCallService {
 
         webSocketNotificationService.sendToUser(otherUserId, "call_ended", callData);
 
-        logger.info("\u7ed3\u675f\u901a\u8bdd: callId={}, userId={}, reason={}, duration={}",
+        logger.info("结束通话: callId={}, userId={}, reason={}, duration={}",
                 callId, userId, reason, savedCall.getDuration());
 
         return savedCall;
@@ -196,21 +196,21 @@ public class VideoCallService {
         Optional<VideoCall> callOpt = videoCallRepository.findById(callId);
 
         if (!callOpt.isPresent()) {
-            throw new RuntimeException("\u901a\u8bdd\u4e0d\u5b58\u5728");
+            throw new RuntimeException("通话不存在");
         }
 
         VideoCall call = callOpt.get();
 
         if (!call.getCallerId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u53d6\u6d88\u6b64\u901a\u8bdd");
+            throw new RuntimeException("无权取消此通话");
         }
 
         if (call.getStatus() != 0) {
-            throw new RuntimeException("\u901a\u8bdd\u72b6\u6001\u4e0d\u6b63\u786e");
+            throw new RuntimeException("通话状态不正确");
         }
 
         call.setStatus(3);
-        call.setEndReason("\u547c\u53eb\u65b9\u53d6\u6d88");
+        call.setEndReason("呼叫方取消");
 
         videoCallRepository.save(call);
 
@@ -221,7 +221,7 @@ public class VideoCallService {
 
         webSocketNotificationService.sendToUser(call.getCalleeId(), "call_cancelled", callData);
 
-        logger.info("\u53d6\u6d88\u901a\u8bdd: callId={}, userId={}", callId, userId);
+        logger.info("取消通话: callId={}, userId={}", callId, userId);
     }
 
     @Transactional(readOnly = true)
@@ -252,13 +252,13 @@ public class VideoCallService {
         Optional<VideoCall> callOpt = videoCallRepository.findById(callId);
 
         if (!callOpt.isPresent()) {
-            throw new RuntimeException("\u901a\u8bdd\u4e0d\u5b58\u5728");
+            throw new RuntimeException("通话不存在");
         }
 
         VideoCall call = callOpt.get();
 
         if (!call.getCallerId().equals(userId) && !call.getCalleeId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u53d1\u9001\u4fe1\u4ee4");
+            throw new RuntimeException("无权发送信令");
         }
 
         Long targetUserId = call.getCallerId().equals(userId) ? call.getCalleeId() : call.getCallerId();
@@ -271,7 +271,7 @@ public class VideoCallService {
 
         webSocketNotificationService.sendToUser(targetUserId, "webrtc_signal", message);
 
-        logger.debug("WebRTC \u4fe1\u4ee4: callId={}, from={}, to={}, type={}",
+        logger.debug("WebRTC 信令: callId={}, from={}, to={}, type={}",
                 callId, userId, targetUserId, signalType);
     }
 }

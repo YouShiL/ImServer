@@ -82,10 +82,10 @@ public class UserController {
                                                               @RequestBody ChangePasswordRequestDTO request) {
         try {
             if (request.getOldPassword() == null || request.getNewPassword() == null) {
-                return ResponseEntity.badRequest().body(ResponseDTO.badRequest("\u8bf7\u586b\u5199\u539f\u5bc6\u7801\u548c\u65b0\u5bc6\u7801"));
+                return ResponseEntity.badRequest().body(ResponseDTO.badRequest("请填写原密码和新密码"));
             }
             userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
-            return ResponseEntity.ok(ResponseDTO.success("\u5bc6\u7801\u4fee\u6539\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("密码修改成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -102,12 +102,12 @@ public class UserController {
                 if (!user.getId().equals(currentUserId)
                         && user.getAllowSearchByPhone() != null
                         && !user.getAllowSearchByPhone()) {
-                    return ResponseEntity.badRequest().body(ResponseDTO.badRequest("\u7528\u6237\u4e0d\u5b58\u5728"));
+                    return ResponseEntity.badRequest().body(ResponseDTO.badRequest("用户不存在"));
                 }
             } else if ("userId".equals(request.getType())) {
                 user = userService.getUserByUserId(request.getKeyword());
             } else {
-                return ResponseEntity.badRequest().body(ResponseDTO.badRequest("\u4e0d\u652f\u6301\u7684\u641c\u7d22\u7c7b\u578b"));
+                return ResponseEntity.badRequest().body(ResponseDTO.badRequest("不支持的搜索类型"));
             }
 
             return ResponseEntity.ok(ResponseDTO.success(toUserDTO(user, !user.getId().equals(currentUserId))));
@@ -135,7 +135,7 @@ public class UserController {
                                                                   @RequestBody UpdateOnlineStatusRequestDTO request) {
         try {
             userService.updateOnlineStatus(userId, request.getStatus());
-            return ResponseEntity.ok(ResponseDTO.success("\u5728\u7ebf\u72b6\u6001\u66f4\u65b0\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("在线状态更新成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }

@@ -238,7 +238,7 @@ public class AuthController {
         }
         String userAgent = request.getHeader("User-Agent");
         if (userAgent == null || userAgent.trim().isEmpty()) {
-            return "\u672a\u77e5\u8bbe\u5907";
+            return "未知设备";
         }
         return userAgent.length() > 100 ? userAgent.substring(0, 100) : userAgent;
     }

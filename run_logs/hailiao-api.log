@@ -1,0 +1,2582 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ----------------------< com.hailiao:hailiao-api >-----------------------
+[INFO] Building Hailiao API 1.0.0
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:2.7.15:run (default-cli) > test-compile @ hailiao-api >>>
+[INFO] 
+[INFO] --- resources:3.2.0:resources (default-resources) @ hailiao-api ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Using 'UTF-8' encoding to copy filtered properties files.
+[INFO] Copying 2 resources
+[INFO] Copying 0 resource
+[INFO] 
+[INFO] --- compiler:3.8.1:compile (default-compile) @ hailiao-api ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.2.0:testResources (default-testResources) @ hailiao-api ---
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] Using 'UTF-8' encoding to copy filtered properties files.
+[INFO] skip non existing resourceDirectory E:\IM\ImServer\hailiao-api\src\test\resources
+[INFO] 
+[INFO] --- compiler:3.8.1:testCompile (default-testCompile) @ hailiao-api ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] <<< spring-boot:2.7.15:run (default-cli) < test-compile @ hailiao-api <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:2.7.15:run (default-cli) @ hailiao-api ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+ :: Spring Boot ::               (v2.7.15)
+
+2026-04-04 17:29:12.920  INFO 30840 --- [           main] com.hailiao.api.HailiaoApiApplication    : Starting HailiaoApiApplication using Java 1.8.0_333 on PC-YouL with PID 30840 (E:\IM\ImServer\hailiao-api\target\classes started by Administrator in E:\IM\ImServer\hailiao-api)
+2026-04-04 17:29:12.922 DEBUG 30840 --- [           main] com.hailiao.api.HailiaoApiApplication    : Running with Spring Boot v2.7.15, Spring v5.3.29
+2026-04-04 17:29:12.922  INFO 30840 --- [           main] com.hailiao.api.HailiaoApiApplication    : No active profile set, falling back to 1 default profile: "default"
+2026-04-04 17:29:13.515  INFO 30840 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-04 17:29:13.515  INFO 30840 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-04-04 17:29:13.598  INFO 30840 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 76 ms. Found 22 JPA repository interfaces.
+2026-04-04 17:29:13.802  INFO 30840 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Multiple Spring Data modules found, entering strict repository configuration mode
+2026-04-04 17:29:13.803  INFO 30840 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data Redis repositories in DEFAULT mode.
+2026-04-04 17:29:13.814  INFO 30840 --- [           main] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 4 ms. Found 0 Redis repository interfaces.
+2026-04-04 17:29:15.190  INFO 30840 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port(s): 8082 (http)
+2026-04-04 17:29:15.202  INFO 30840 --- [           main] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-04-04 17:29:15.203  INFO 30840 --- [           main] org.apache.catalina.core.StandardEngine  : Starting Servlet engine: [Apache Tomcat/9.0.79]
+2026-04-04 17:29:15.355  INFO 30840 --- [           main] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-04-04 17:29:15.358  INFO 30840 --- [           main] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 2388 ms
+2026-04-04 17:29:15.463  INFO 30840 --- [           main] c.a.d.s.b.a.DruidDataSourceAutoConfigure : Init DruidDataSource
+2026-04-04 17:29:15.914  INFO 30840 --- [           main] com.alibaba.druid.pool.DruidDataSource   : {dataSource-1} inited
+2026-04-04 17:29:15.972  INFO 30840 --- [           main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-04-04 17:29:16.019  INFO 30840 --- [           main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 5.6.15.Final
+2026-04-04 17:29:16.163  INFO 30840 --- [           main] o.hibernate.annotations.common.Version   : HCANN000001: Hibernate Commons Annotations {5.1.2.Final}
+2026-04-04 17:29:16.255  INFO 30840 --- [           main] org.hibernate.dialect.Dialect            : HHH000400: Using dialect: org.hibernate.dialect.MySQL8Dialect
+2026-04-04 17:29:17.045  INFO 30840 --- [           main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000490: Using JtaPlatform implementation: [org.hibernate.engine.transaction.jta.platform.internal.NoJtaPlatform]
+2026-04-04 17:29:17.052  INFO 30840 --- [           main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-04-04 17:29:17.460 DEBUG 30840 --- [           main] c.h.a.security.JwtAuthenticationFilter   : Filter 'jwtAuthenticationFilter' configured for use
+2026-04-04 17:29:18.484 DEBUG 30840 --- [           main] swordEncoderAuthenticationManagerBuilder : No authenticationProviders and no parentAuthenticationManager defined. Returning null.
+2026-04-04 17:29:18.576 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/auth/**']
+2026-04-04 17:29:18.582 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/api/public/**']
+2026-04-04 17:29:18.582 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for Ant [pattern='/ws/**']
+2026-04-04 17:29:18.582 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/uploads/**']
+2026-04-04 17:29:18.582 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-ui/**']
+2026-04-04 17:29:18.584 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/v3/api-docs/**']
+2026-04-04 17:29:18.584 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-resources/**']
+2026-04-04 17:29:18.584 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/swagger-ui.html']
+2026-04-04 17:29:18.584 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/webjars/**']
+2026-04-04 17:29:18.584 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/favicon.ico']
+2026-04-04 17:29:18.585 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [permitAll] for Ant [pattern='/**', OPTIONS]
+2026-04-04 17:29:18.585 DEBUG 30840 --- [           main] edFilterInvocationSecurityMetadataSource : Adding web access control expression [authenticated] for any request
+2026-04-04 17:29:18.590  INFO 30840 --- [           main] o.s.s.web.DefaultSecurityFilterChain     : Will secure any request with [org.springframework.security.web.session.DisableEncodeUrlFilter@6ed87ccf, org.springframework.security.web.context.request.async.WebAsyncManagerIntegrationFilter@4d4600fb, org.springframework.security.web.context.SecurityContextPersistenceFilter@167bb934, org.springframework.security.web.header.HeaderWriterFilter@54a033b8, org.springframework.web.filter.CorsFilter@7352418c, org.springframework.security.web.authentication.logout.LogoutFilter@42d7e8bc, com.hailiao.api.security.JwtAuthenticationFilter@3245efdb, org.springframework.security.web.savedrequest.RequestCacheAwareFilter@5b3ee43e, org.springframework.security.web.servletapi.SecurityContextHolderAwareRequestFilter@18a38bba, org.springframework.security.web.authentication.AnonymousAuthenticationFilter@60ba6631, org.springframework.security.web.session.SessionManagementFilter@54e680fe, org.springframework.security.web.access.ExceptionTranslationFilter@44117b0d, org.springframework.security.web.access.intercept.FilterSecurityInterceptor@4860627a]
+2026-04-04 17:29:18.687  WARN 30840 --- [           main] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-04-04 17:29:19.676  INFO 30840 --- [           main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port(s): 8082 (http) with context path ''
+2026-04-04 17:29:19.710  INFO 30840 --- [           main] com.hailiao.api.HailiaoApiApplication    : Started HailiaoApiApplication in 7.181 seconds (JVM running for 7.565)
+2026-04-04 17:40:34.214  INFO 30840 --- [nio-8082-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-04-04 17:40:34.214  INFO 30840 --- [nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-04-04 17:40:34.217  INFO 30840 --- [nio-8082-exec-1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
+2026-04-04 17:40:34.233 DEBUG 30840 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing OPTIONS /api/auth/login
+2026-04-04 17:40:34.240 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:40:34.270 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:37.865 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing POST /api/auth/login
+2026-04-04 17:43:37.866 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:43:37.868 DEBUG 30840 --- [nio-8082-exec-3] o.s.s.w.a.AnonymousAuthenticationFilter  : Set SecurityContextHolder to anonymous SecurityContext
+2026-04-04 17:43:37.872 DEBUG 30840 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [POST /api/auth/login] with attributes [permitAll]
+2026-04-04 17:43:37.872 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured POST /api/auth/login
+Hibernate: 
+    select
+        user0_.id as id1_18_,
+        user0_.allow_search_by_phone as allow_se2_18_,
+        user0_.avatar as avatar3_18_,
+        user0_.background as backgrou4_18_,
+        user0_.created_at as created_5_18_,
+        user0_.device_lock as device_l6_18_,
+        user0_.friend_limit as friend_l7_18_,
+        user0_.gender as gender8_18_,
+        user0_.group_limit as group_li9_18_,
+        user0_.group_member_limit as group_m10_18_,
+        user0_.is_pretty_number as is_pret11_18_,
+        user0_.is_vip as is_vip12_18_,
+        user0_.last_login_at as last_lo13_18_,
+        user0_.last_login_ip as last_lo14_18_,
+        user0_.last_online_at as last_on15_18_,
+        user0_.need_friend_verification as need_fr16_18_,
+        user0_.nickname as nicknam17_18_,
+        user0_.online_status as online_18_18_,
+        user0_.password as passwor19_18_,
+        user0_.phone as phone20_18_,
+        user0_.pretty_number as pretty_21_18_,
+        user0_.region as region22_18_,
+        user0_.show_last_online as show_la23_18_,
+        user0_.show_online_status as show_on24_18_,
+        user0_.signature as signatu25_18_,
+        user0_.status as status26_18_,
+        user0_.updated_at as updated27_18_,
+        user0_.user_id as user_id28_18_ 
+    from
+        user user0_ 
+    where
+        user0_.phone=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.is_active=1
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.device_id=? 
+        and usersessio0_.is_active=1
+Hibernate: 
+    insert 
+    into
+        user_session
+        (created_at, device_id, device_name, device_type, is_active, last_active_at, login_ip, revoked_at, session_id, user_agent, user_id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    update
+        user 
+    set
+        allow_search_by_phone=?,
+        avatar=?,
+        background=?,
+        created_at=?,
+        device_lock=?,
+        friend_limit=?,
+        gender=?,
+        group_limit=?,
+        group_member_limit=?,
+        is_pretty_number=?,
+        is_vip=?,
+        last_login_at=?,
+        last_login_ip=?,
+        last_online_at=?,
+        need_friend_verification=?,
+        nickname=?,
+        online_status=?,
+        password=?,
+        phone=?,
+        pretty_number=?,
+        region=?,
+        show_last_online=?,
+        show_online_status=?,
+        signature=?,
+        status=?,
+        updated_at=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:43:38.472 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:40.249 DEBUG 30840 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/friend/request/received
+2026-04-04 17:43:40.250 DEBUG 30840 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:43:40.251 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/conversation/list
+2026-04-04 17:43:40.251 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:43:40.252 DEBUG 30840 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Securing GET /api/friend/list
+2026-04-04 17:43:40.253 DEBUG 30840 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:43:40.294 DEBUG 30840 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/conversation/list] with attributes [authenticated]
+2026-04-04 17:43:40.294 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/conversation/list
+2026-04-04 17:43:40.295 DEBUG 30840 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/friend/request/received] with attributes [authenticated]
+2026-04-04 17:43:40.295 DEBUG 30840 --- [nio-8082-exec-7] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/friend/list] with attributes [authenticated]
+2026-04-04 17:43:40.296 DEBUG 30840 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/friend/request/received
+2026-04-04 17:43:40.296 DEBUG 30840 --- [nio-8082-exec-7] o.s.security.web.FilterChainProxy        : Secured GET /api/friend/list
+Hibernate: 
+    select
+        friend0_.id as id1_4_,
+        friend0_.created_at as created_2_4_,
+        friend0_.friend_id as friend_i3_4_,
+        friend0_.group_name as group_na4_4_,
+        friend0_.remark as remark5_4_,
+        friend0_.status as status6_4_,
+        friend0_.updated_at as updated_7_4_,
+        friend0_.user_id as user_id8_4_ 
+    from
+        friend friend0_ 
+    where
+        friend0_.user_id=? 
+        and friend0_.status=?
+Hibernate: 
+    select
+        friendrequ0_.id as id1_5_,
+        friendrequ0_.created_at as created_2_5_,
+        friendrequ0_.from_user_id as from_use3_5_,
+        friendrequ0_.handled_at as handled_4_5_,
+        friendrequ0_.message as message5_5_,
+        friendrequ0_.remark as remark6_5_,
+        friendrequ0_.status as status7_5_,
+        friendrequ0_.to_user_id as to_user_8_5_,
+        friendrequ0_.updated_at as updated_9_5_ 
+    from
+        friend_request friendrequ0_ 
+    where
+        friendrequ0_.to_user_id=? 
+        and friendrequ0_.status=? 
+    order by
+        friendrequ0_.created_at desc
+Hibernate: 
+    select
+        conversati0_.id as id1_3_,
+        conversati0_.is_mute as is_mute2_3_,
+        conversati0_.is_top as is_top3_3_,
+        conversati0_.last_msg_content as last_msg4_3_,
+        conversati0_.last_msg_id as last_msg5_3_,
+        conversati0_.target_id as target_i6_3_,
+        conversati0_.type as type7_3_,
+        conversati0_.unread_count as unread_c8_3_,
+        conversati0_.updated_at as updated_9_3_,
+        conversati0_.user_id as user_id10_3_ 
+    from
+        conversation conversati0_ 
+    where
+        conversati0_.user_id=? 
+    order by
+        conversati0_.is_top desc,
+        conversati0_.updated_at desc
+2026-04-04 17:43:40.308 DEBUG 30840 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:40.308 DEBUG 30840 --- [nio-8082-exec-7] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:40.310 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:40.434 DEBUG 30840 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/friend/request/sent
+2026-04-04 17:43:40.435 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:43:40.445 DEBUG 30840 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/friend/request/sent] with attributes [authenticated]
+2026-04-04 17:43:40.446 DEBUG 30840 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/friend/request/sent
+Hibernate: 
+    select
+        friendrequ0_.id as id1_5_,
+        friendrequ0_.created_at as created_2_5_,
+        friendrequ0_.from_user_id as from_use3_5_,
+        friendrequ0_.handled_at as handled_4_5_,
+        friendrequ0_.message as message5_5_,
+        friendrequ0_.remark as remark6_5_,
+        friendrequ0_.status as status7_5_,
+        friendrequ0_.to_user_id as to_user_8_5_,
+        friendrequ0_.updated_at as updated_9_5_ 
+    from
+        friend_request friendrequ0_ 
+    where
+        friendrequ0_.from_user_id=? 
+    order by
+        friendrequ0_.created_at desc
+2026-04-04 17:43:40.451 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:46.974 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/blacklist/list
+2026-04-04 17:43:46.976 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/conversation/list
+2026-04-04 17:43:46.978 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:43:46.978 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:43:46.988 DEBUG 30840 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/conversation/list] with attributes [authenticated]
+2026-04-04 17:43:46.989 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/conversation/list
+Hibernate: 
+    select
+        conversati0_.id as id1_3_,
+        conversati0_.is_mute as is_mute2_3_,
+        conversati0_.is_top as is_top3_3_,
+        conversati0_.last_msg_content as last_msg4_3_,
+        conversati0_.last_msg_id as last_msg5_3_,
+        conversati0_.target_id as target_i6_3_,
+        conversati0_.type as type7_3_,
+        conversati0_.unread_count as unread_c8_3_,
+        conversati0_.updated_at as updated_9_3_,
+        conversati0_.user_id as user_id10_3_ 
+    from
+        conversation conversati0_ 
+    where
+        conversati0_.user_id=? 
+    order by
+        conversati0_.is_top desc,
+        conversati0_.updated_at desc
+2026-04-04 17:43:46.990 DEBUG 30840 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/blacklist/list] with attributes [authenticated]
+2026-04-04 17:43:46.991 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/blacklist/list
+2026-04-04 17:43:46.993 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+Hibernate: 
+    select
+        blacklist0_.id as id1_1_,
+        blacklist0_.blocked_user_id as blocked_2_1_,
+        blacklist0_.created_at as created_3_1_,
+        blacklist0_.user_id as user_id4_1_ 
+    from
+        blacklist blacklist0_ 
+    where
+        blacklist0_.user_id=?
+2026-04-04 17:43:46.999 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:47.005 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/message/private/1?page=0&size=20
+2026-04-04 17:43:47.005 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:43:47.015 DEBUG 30840 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/message/private/1?page=0&size=20] with attributes [authenticated]
+2026-04-04 17:43:47.016 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/message/private/1?page=0&size=20
+Hibernate: 
+    select
+        message0_.id as id1_10_,
+        message0_.at_user_ids as at_user_2_10_,
+        message0_.content as content3_10_,
+        message0_.created_at as created_4_10_,
+        message0_.edit_time as edit_tim5_10_,
+        message0_.extra as extra6_10_,
+        message0_.forward_from_msg_id as forward_7_10_,
+        message0_.forward_from_nickname as forward_8_10_,
+        message0_.forward_from_user_id as forward_9_10_,
+        message0_.from_user_id as from_us10_10_,
+        message0_.group_id as group_i11_10_,
+        message0_.is_at_all as is_at_a12_10_,
+        message0_.is_edited as is_edit13_10_,
+        message0_.is_pinned as is_pinn14_10_,
+        message0_.is_read as is_read15_10_,
+        message0_.is_recall as is_reca16_10_,
+        message0_.msg_id as msg_id17_10_,
+        message0_.msg_type as msg_typ18_10_,
+        message0_.pin_time as pin_tim19_10_,
+        message0_.read_count as read_co20_10_,
+        message0_.recall_time as recall_21_10_,
+        message0_.reply_to_msg_id as reply_t22_10_,
+        message0_.status as status23_10_,
+        message0_.to_user_id as to_user24_10_ 
+    from
+        message message0_ 
+    where
+        message0_.from_user_id=? 
+        and message0_.to_user_id=? 
+    order by
+        message0_.created_at desc,
+        message0_.created_at desc limit ?
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+2026-04-04 17:43:47.059 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:47.196 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing POST /api/message/read/1
+2026-04-04 17:43:47.198 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:43:47.206 DEBUG 30840 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [POST /api/message/read/1] with attributes [authenticated]
+2026-04-04 17:43:47.206 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured POST /api/message/read/1
+Hibernate: 
+    select
+        message0_.id as id1_10_,
+        message0_.at_user_ids as at_user_2_10_,
+        message0_.content as content3_10_,
+        message0_.created_at as created_4_10_,
+        message0_.edit_time as edit_tim5_10_,
+        message0_.extra as extra6_10_,
+        message0_.forward_from_msg_id as forward_7_10_,
+        message0_.forward_from_nickname as forward_8_10_,
+        message0_.forward_from_user_id as forward_9_10_,
+        message0_.from_user_id as from_us10_10_,
+        message0_.group_id as group_i11_10_,
+        message0_.is_at_all as is_at_a12_10_,
+        message0_.is_edited as is_edit13_10_,
+        message0_.is_pinned as is_pinn14_10_,
+        message0_.is_read as is_read15_10_,
+        message0_.is_recall as is_reca16_10_,
+        message0_.msg_id as msg_id17_10_,
+        message0_.msg_type as msg_typ18_10_,
+        message0_.pin_time as pin_tim19_10_,
+        message0_.read_count as read_co20_10_,
+        message0_.recall_time as recall_21_10_,
+        message0_.reply_to_msg_id as reply_t22_10_,
+        message0_.status as status23_10_,
+        message0_.to_user_id as to_user24_10_ 
+    from
+        message message0_ 
+    where
+        message0_.from_user_id=? 
+        and message0_.to_user_id=? 
+        and message0_.created_at>?
+Hibernate: 
+    select
+        conversati0_.id as id1_3_,
+        conversati0_.is_mute as is_mute2_3_,
+        conversati0_.is_top as is_top3_3_,
+        conversati0_.last_msg_content as last_msg4_3_,
+        conversati0_.last_msg_id as last_msg5_3_,
+        conversati0_.target_id as target_i6_3_,
+        conversati0_.type as type7_3_,
+        conversati0_.unread_count as unread_c8_3_,
+        conversati0_.updated_at as updated_9_3_,
+        conversati0_.user_id as user_id10_3_ 
+    from
+        conversation conversati0_ 
+    where
+        conversati0_.user_id=? 
+        and conversati0_.target_id=? 
+        and conversati0_.type=?
+2026-04-04 17:43:47.218 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:43:47.230 DEBUG 30840 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/online/status/1
+2026-04-04 17:43:47.230 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:43:47.240 DEBUG 30840 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/online/status/1] with attributes [authenticated]
+2026-04-04 17:43:47.241 DEBUG 30840 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/online/status/1
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+2026-04-04 17:43:47.682 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:00.218 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/blacklist/list
+2026-04-04 17:45:00.218 DEBUG 30840 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/conversation/list
+2026-04-04 17:45:00.220 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:45:00.220 DEBUG 30840 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:00.231 DEBUG 30840 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/conversation/list] with attributes [authenticated]
+2026-04-04 17:45:00.232 DEBUG 30840 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/conversation/list
+2026-04-04 17:45:00.232 DEBUG 30840 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/blacklist/list] with attributes [authenticated]
+Hibernate: 
+    select
+        conversati0_.id as id1_3_,
+        conversati0_.is_mute as is_mute2_3_,
+        conversati0_.is_top as is_top3_3_,
+        conversati0_.last_msg_content as last_msg4_3_,
+        conversati0_.last_msg_id as last_msg5_3_,
+        conversati0_.target_id as target_i6_3_,
+        conversati0_.type as type7_3_,
+        conversati0_.unread_count as unread_c8_3_,
+        conversati0_.updated_at as updated_9_3_,
+        conversati0_.user_id as user_id10_3_ 
+    from
+        conversation conversati0_ 
+    where
+        conversati0_.user_id=? 
+    order by
+        conversati0_.is_top desc,
+        conversati0_.updated_at desc
+2026-04-04 17:45:00.232 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/blacklist/list
+Hibernate: 
+    select
+        blacklist0_.id as id1_1_,
+        blacklist0_.blocked_user_id as blocked_2_1_,
+        blacklist0_.created_at as created_3_1_,
+        blacklist0_.user_id as user_id4_1_ 
+    from
+        blacklist blacklist0_ 
+    where
+        blacklist0_.user_id=?
+2026-04-04 17:45:00.235 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:00.235 DEBUG 30840 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:00.252 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/message/private/1?page=0&size=20
+2026-04-04 17:45:00.252 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:00.260 DEBUG 30840 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/message/private/1?page=0&size=20] with attributes [authenticated]
+2026-04-04 17:45:00.261 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/message/private/1?page=0&size=20
+Hibernate: 
+    select
+        message0_.id as id1_10_,
+        message0_.at_user_ids as at_user_2_10_,
+        message0_.content as content3_10_,
+        message0_.created_at as created_4_10_,
+        message0_.edit_time as edit_tim5_10_,
+        message0_.extra as extra6_10_,
+        message0_.forward_from_msg_id as forward_7_10_,
+        message0_.forward_from_nickname as forward_8_10_,
+        message0_.forward_from_user_id as forward_9_10_,
+        message0_.from_user_id as from_us10_10_,
+        message0_.group_id as group_i11_10_,
+        message0_.is_at_all as is_at_a12_10_,
+        message0_.is_edited as is_edit13_10_,
+        message0_.is_pinned as is_pinn14_10_,
+        message0_.is_read as is_read15_10_,
+        message0_.is_recall as is_reca16_10_,
+        message0_.msg_id as msg_id17_10_,
+        message0_.msg_type as msg_typ18_10_,
+        message0_.pin_time as pin_tim19_10_,
+        message0_.read_count as read_co20_10_,
+        message0_.recall_time as recall_21_10_,
+        message0_.reply_to_msg_id as reply_t22_10_,
+        message0_.status as status23_10_,
+        message0_.to_user_id as to_user24_10_ 
+    from
+        message message0_ 
+    where
+        message0_.from_user_id=? 
+        and message0_.to_user_id=? 
+    order by
+        message0_.created_at desc,
+        message0_.created_at desc limit ?
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+2026-04-04 17:45:00.272 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:00.454 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing POST /api/message/read/1
+2026-04-04 17:45:00.455 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:00.464 DEBUG 30840 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [POST /api/message/read/1] with attributes [authenticated]
+2026-04-04 17:45:00.464 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured POST /api/message/read/1
+Hibernate: 
+    select
+        message0_.id as id1_10_,
+        message0_.at_user_ids as at_user_2_10_,
+        message0_.content as content3_10_,
+        message0_.created_at as created_4_10_,
+        message0_.edit_time as edit_tim5_10_,
+        message0_.extra as extra6_10_,
+        message0_.forward_from_msg_id as forward_7_10_,
+        message0_.forward_from_nickname as forward_8_10_,
+        message0_.forward_from_user_id as forward_9_10_,
+        message0_.from_user_id as from_us10_10_,
+        message0_.group_id as group_i11_10_,
+        message0_.is_at_all as is_at_a12_10_,
+        message0_.is_edited as is_edit13_10_,
+        message0_.is_pinned as is_pinn14_10_,
+        message0_.is_read as is_read15_10_,
+        message0_.is_recall as is_reca16_10_,
+        message0_.msg_id as msg_id17_10_,
+        message0_.msg_type as msg_typ18_10_,
+        message0_.pin_time as pin_tim19_10_,
+        message0_.read_count as read_co20_10_,
+        message0_.recall_time as recall_21_10_,
+        message0_.reply_to_msg_id as reply_t22_10_,
+        message0_.status as status23_10_,
+        message0_.to_user_id as to_user24_10_ 
+    from
+        message message0_ 
+    where
+        message0_.from_user_id=? 
+        and message0_.to_user_id=? 
+        and message0_.created_at>?
+Hibernate: 
+    select
+        conversati0_.id as id1_3_,
+        conversati0_.is_mute as is_mute2_3_,
+        conversati0_.is_top as is_top3_3_,
+        conversati0_.last_msg_content as last_msg4_3_,
+        conversati0_.last_msg_id as last_msg5_3_,
+        conversati0_.target_id as target_i6_3_,
+        conversati0_.type as type7_3_,
+        conversati0_.unread_count as unread_c8_3_,
+        conversati0_.updated_at as updated_9_3_,
+        conversati0_.user_id as user_id10_3_ 
+    from
+        conversation conversati0_ 
+    where
+        conversati0_.user_id=? 
+        and conversati0_.target_id=? 
+        and conversati0_.type=?
+2026-04-04 17:45:00.472 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:00.482 DEBUG 30840 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Securing GET /api/online/status/1
+2026-04-04 17:45:00.482 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:00.493 DEBUG 30840 --- [nio-8082-exec-1] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/online/status/1] with attributes [authenticated]
+2026-04-04 17:45:00.493 DEBUG 30840 --- [nio-8082-exec-1] o.s.security.web.FilterChainProxy        : Secured GET /api/online/status/1
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+2026-04-04 17:45:00.500 DEBUG 30840 --- [nio-8082-exec-1] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:16.942 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/user/2
+2026-04-04 17:45:16.944 DEBUG 30840 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Securing GET /api/blacklist/list
+2026-04-04 17:45:16.946 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:45:16.946 DEBUG 30840 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:16.955 DEBUG 30840 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/user/2] with attributes [authenticated]
+2026-04-04 17:45:16.956 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/user/2
+2026-04-04 17:45:16.957 DEBUG 30840 --- [nio-8082-exec-5] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/blacklist/list] with attributes [authenticated]
+2026-04-04 17:45:16.957 DEBUG 30840 --- [nio-8082-exec-5] o.s.security.web.FilterChainProxy        : Secured GET /api/blacklist/list
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+Hibernate: 
+    select
+        blacklist0_.id as id1_1_,
+        blacklist0_.blocked_user_id as blocked_2_1_,
+        blacklist0_.created_at as created_3_1_,
+        blacklist0_.user_id as user_id4_1_ 
+    from
+        blacklist blacklist0_ 
+    where
+        blacklist0_.user_id=?
+2026-04-04 17:45:16.963 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:16.963 DEBUG 30840 --- [nio-8082-exec-5] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:16.973 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/online/status/2
+2026-04-04 17:45:16.974 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:16.982 DEBUG 30840 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/online/status/2] with attributes [authenticated]
+2026-04-04 17:45:16.983 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/online/status/2
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+2026-04-04 17:45:16.992 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:21.409 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/blacklist/list
+2026-04-04 17:45:21.409 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+2026-04-04 17:45:21.409 DEBUG 30840 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/user/2
+2026-04-04 17:45:21.409 DEBUG 30840 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:21.417 DEBUG 30840 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/blacklist/list] with attributes [authenticated]
+2026-04-04 17:45:21.417 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/blacklist/list
+2026-04-04 17:45:21.419 DEBUG 30840 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/user/2] with attributes [authenticated]
+Hibernate: 
+    select
+        blacklist0_.id as id1_1_,
+        blacklist0_.blocked_user_id as blocked_2_1_,
+        blacklist0_.created_at as created_3_1_,
+        blacklist0_.user_id as user_id4_1_ 
+    from
+        blacklist blacklist0_ 
+    where
+        blacklist0_.user_id=?
+2026-04-04 17:45:21.419 DEBUG 30840 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/user/2
+2026-04-04 17:45:21.420 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+2026-04-04 17:45:21.423 DEBUG 30840 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:45:21.432 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/online/status/2
+2026-04-04 17:45:21.433 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:45:21.441 DEBUG 30840 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/online/status/2] with attributes [authenticated]
+2026-04-04 17:45:21.441 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/online/status/2
+Hibernate: 
+    select
+        user0_.id as id1_18_0_,
+        user0_.allow_search_by_phone as allow_se2_18_0_,
+        user0_.avatar as avatar3_18_0_,
+        user0_.background as backgrou4_18_0_,
+        user0_.created_at as created_5_18_0_,
+        user0_.device_lock as device_l6_18_0_,
+        user0_.friend_limit as friend_l7_18_0_,
+        user0_.gender as gender8_18_0_,
+        user0_.group_limit as group_li9_18_0_,
+        user0_.group_member_limit as group_m10_18_0_,
+        user0_.is_pretty_number as is_pret11_18_0_,
+        user0_.is_vip as is_vip12_18_0_,
+        user0_.last_login_at as last_lo13_18_0_,
+        user0_.last_login_ip as last_lo14_18_0_,
+        user0_.last_online_at as last_on15_18_0_,
+        user0_.need_friend_verification as need_fr16_18_0_,
+        user0_.nickname as nicknam17_18_0_,
+        user0_.online_status as online_18_18_0_,
+        user0_.password as passwor19_18_0_,
+        user0_.phone as phone20_18_0_,
+        user0_.pretty_number as pretty_21_18_0_,
+        user0_.region as region22_18_0_,
+        user0_.show_last_online as show_la23_18_0_,
+        user0_.show_online_status as show_on24_18_0_,
+        user0_.signature as signatu25_18_0_,
+        user0_.status as status26_18_0_,
+        user0_.updated_at as updated27_18_0_,
+        user0_.user_id as user_id28_18_0_ 
+    from
+        user user0_ 
+    where
+        user0_.id=?
+2026-04-04 17:45:21.448 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:52:36.079 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/group/my-groups
+2026-04-04 17:52:36.083 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:52:36.095 DEBUG 30840 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/group/my-groups] with attributes [authenticated]
+2026-04-04 17:52:36.096 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/group/my-groups
+Hibernate: 
+    select
+        groupmembe0_.id as id1_8_,
+        groupmembe0_.group_id as group_id2_8_,
+        groupmembe0_.is_mute as is_mute3_8_,
+        groupmembe0_.is_mute_notification as is_mute_4_8_,
+        groupmembe0_.is_top as is_top5_8_,
+        groupmembe0_.join_time as join_tim6_8_,
+        groupmembe0_.last_read_msg_id as last_rea7_8_,
+        groupmembe0_.mute_until as mute_unt8_8_,
+        groupmembe0_.nickname as nickname9_8_,
+        groupmembe0_.role as role10_8_,
+        groupmembe0_.user_id as user_id11_8_ 
+    from
+        group_member groupmembe0_ 
+    where
+        groupmembe0_.user_id=?
+2026-04-04 17:52:36.103 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:52:36.110 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/group/join-requests/mine
+2026-04-04 17:52:36.110 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:52:36.119 DEBUG 30840 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/group/join-requests/mine] with attributes [authenticated]
+2026-04-04 17:52:36.119 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/group/join-requests/mine
+Hibernate: 
+    select
+        groupjoinr0_.id as id1_7_,
+        groupjoinr0_.created_at as created_2_7_,
+        groupjoinr0_.group_id as group_id3_7_,
+        groupjoinr0_.handled_at as handled_4_7_,
+        groupjoinr0_.handled_by as handled_5_7_,
+        groupjoinr0_.message as message6_7_,
+        groupjoinr0_.status as status7_7_,
+        groupjoinr0_.updated_at as updated_8_7_,
+        groupjoinr0_.user_id as user_id9_7_ 
+    from
+        group_join_request groupjoinr0_ 
+    where
+        groupjoinr0_.user_id=? 
+    order by
+        groupjoinr0_.created_at desc
+2026-04-04 17:52:36.127 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:52:45.155 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/group/my-groups
+2026-04-04 17:52:45.157 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:52:45.166 DEBUG 30840 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/group/my-groups] with attributes [authenticated]
+2026-04-04 17:52:45.167 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/group/my-groups
+Hibernate: 
+    select
+        groupmembe0_.id as id1_8_,
+        groupmembe0_.group_id as group_id2_8_,
+        groupmembe0_.is_mute as is_mute3_8_,
+        groupmembe0_.is_mute_notification as is_mute_4_8_,
+        groupmembe0_.is_top as is_top5_8_,
+        groupmembe0_.join_time as join_tim6_8_,
+        groupmembe0_.last_read_msg_id as last_rea7_8_,
+        groupmembe0_.mute_until as mute_unt8_8_,
+        groupmembe0_.nickname as nickname9_8_,
+        groupmembe0_.role as role10_8_,
+        groupmembe0_.user_id as user_id11_8_ 
+    from
+        group_member groupmembe0_ 
+    where
+        groupmembe0_.user_id=?
+2026-04-04 17:52:45.170 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 17:52:45.175 DEBUG 30840 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Securing GET /api/group/join-requests/mine
+2026-04-04 17:52:45.175 DEBUG 30840 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 17:52:45.184 DEBUG 30840 --- [io-8082-exec-10] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/group/join-requests/mine] with attributes [authenticated]
+2026-04-04 17:52:45.184 DEBUG 30840 --- [io-8082-exec-10] o.s.security.web.FilterChainProxy        : Secured GET /api/group/join-requests/mine
+Hibernate: 
+    select
+        groupjoinr0_.id as id1_7_,
+        groupjoinr0_.created_at as created_2_7_,
+        groupjoinr0_.group_id as group_id3_7_,
+        groupjoinr0_.handled_at as handled_4_7_,
+        groupjoinr0_.handled_by as handled_5_7_,
+        groupjoinr0_.message as message6_7_,
+        groupjoinr0_.status as status7_7_,
+        groupjoinr0_.updated_at as updated_8_7_,
+        groupjoinr0_.user_id as user_id9_7_ 
+    from
+        group_join_request groupjoinr0_ 
+    where
+        groupjoinr0_.user_id=? 
+    order by
+        groupjoinr0_.created_at desc
+2026-04-04 17:52:45.187 DEBUG 30840 --- [io-8082-exec-10] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 18:14:19.627 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Securing GET /api/report/mine
+2026-04-04 18:14:19.627 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 18:14:19.641 DEBUG 30840 --- [nio-8082-exec-4] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/report/mine] with attributes [authenticated]
+2026-04-04 18:14:19.642 DEBUG 30840 --- [nio-8082-exec-4] o.s.security.web.FilterChainProxy        : Secured GET /api/report/mine
+Hibernate: 
+    select
+        report0_.id as id1_15_,
+        report0_.created_at as created_2_15_,
+        report0_.evidence as evidence3_15_,
+        report0_.handle_result as handle_r4_15_,
+        report0_.handled_at as handled_5_15_,
+        report0_.handler_id as handler_6_15_,
+        report0_.reason as reason7_15_,
+        report0_.reporter_id as reporter8_15_,
+        report0_.status as status9_15_,
+        report0_.target_id as target_10_15_,
+        report0_.target_type as target_11_15_ 
+    from
+        report report0_ 
+    where
+        report0_.reporter_id=?
+2026-04-04 18:14:19.650 DEBUG 30840 --- [nio-8082-exec-4] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 18:14:21.107 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Securing GET /api/content-audit/mine
+2026-04-04 18:14:21.107 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 18:14:21.117 DEBUG 30840 --- [nio-8082-exec-3] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/content-audit/mine] with attributes [authenticated]
+2026-04-04 18:14:21.117 DEBUG 30840 --- [nio-8082-exec-3] o.s.security.web.FilterChainProxy        : Secured GET /api/content-audit/mine
+Hibernate: 
+    select
+        contentaud0_.id as id1_2_,
+        contentaud0_.ai_result as ai_resul2_2_,
+        contentaud0_.ai_score as ai_score3_2_,
+        contentaud0_.content as content4_2_,
+        contentaud0_.content_type as content_5_2_,
+        contentaud0_.created_at as created_6_2_,
+        contentaud0_.handle_note as handle_n7_2_,
+        contentaud0_.handled_at as handled_8_2_,
+        contentaud0_.handler_id as handler_9_2_,
+        contentaud0_.manual_result as manual_10_2_,
+        contentaud0_.status as status11_2_,
+        contentaud0_.target_id as target_12_2_,
+        contentaud0_.user_id as user_id13_2_ 
+    from
+        content_audit contentaud0_ 
+    where
+        contentaud0_.user_id=?
+2026-04-04 18:14:21.124 DEBUG 30840 --- [nio-8082-exec-3] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 19:13:13.401 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Securing GET /api/group/my-groups
+2026-04-04 19:13:13.403 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 19:13:13.457 DEBUG 30840 --- [nio-8082-exec-6] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/group/my-groups] with attributes [authenticated]
+2026-04-04 19:13:13.457 DEBUG 30840 --- [nio-8082-exec-6] o.s.security.web.FilterChainProxy        : Secured GET /api/group/my-groups
+Hibernate: 
+    select
+        groupmembe0_.id as id1_8_,
+        groupmembe0_.group_id as group_id2_8_,
+        groupmembe0_.is_mute as is_mute3_8_,
+        groupmembe0_.is_mute_notification as is_mute_4_8_,
+        groupmembe0_.is_top as is_top5_8_,
+        groupmembe0_.join_time as join_tim6_8_,
+        groupmembe0_.last_read_msg_id as last_rea7_8_,
+        groupmembe0_.mute_until as mute_unt8_8_,
+        groupmembe0_.nickname as nickname9_8_,
+        groupmembe0_.role as role10_8_,
+        groupmembe0_.user_id as user_id11_8_ 
+    from
+        group_member groupmembe0_ 
+    where
+        groupmembe0_.user_id=?
+2026-04-04 19:13:13.468 DEBUG 30840 --- [nio-8082-exec-6] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request
+2026-04-04 19:13:13.477 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Securing GET /api/group/join-requests/mine
+2026-04-04 19:13:13.478 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Set SecurityContextHolder to empty SecurityContext
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.user_id=? 
+        and usersessio0_.session_id=?
+Hibernate: 
+    select
+        usersessio0_.id as id1_19_,
+        usersessio0_.created_at as created_2_19_,
+        usersessio0_.device_id as device_i3_19_,
+        usersessio0_.device_name as device_n4_19_,
+        usersessio0_.device_type as device_t5_19_,
+        usersessio0_.is_active as is_activ6_19_,
+        usersessio0_.last_active_at as last_act7_19_,
+        usersessio0_.login_ip as login_ip8_19_,
+        usersessio0_.revoked_at as revoked_9_19_,
+        usersessio0_.session_id as session10_19_,
+        usersessio0_.user_agent as user_ag11_19_,
+        usersessio0_.user_id as user_id12_19_ 
+    from
+        user_session usersessio0_ 
+    where
+        usersessio0_.session_id=?
+Hibernate: 
+    update
+        user_session 
+    set
+        created_at=?,
+        device_id=?,
+        device_name=?,
+        device_type=?,
+        is_active=?,
+        last_active_at=?,
+        login_ip=?,
+        revoked_at=?,
+        session_id=?,
+        user_agent=?,
+        user_id=? 
+    where
+        id=?
+2026-04-04 19:13:13.488 DEBUG 30840 --- [nio-8082-exec-9] o.s.s.w.a.i.FilterSecurityInterceptor    : Authorized filter invocation [GET /api/group/join-requests/mine] with attributes [authenticated]
+2026-04-04 19:13:13.489 DEBUG 30840 --- [nio-8082-exec-9] o.s.security.web.FilterChainProxy        : Secured GET /api/group/join-requests/mine
+Hibernate: 
+    select
+        groupjoinr0_.id as id1_7_,
+        groupjoinr0_.created_at as created_2_7_,
+        groupjoinr0_.group_id as group_id3_7_,
+        groupjoinr0_.handled_at as handled_4_7_,
+        groupjoinr0_.handled_by as handled_5_7_,
+        groupjoinr0_.message as message6_7_,
+        groupjoinr0_.status as status7_7_,
+        groupjoinr0_.updated_at as updated_8_7_,
+        groupjoinr0_.user_id as user_id9_7_ 
+    from
+        group_join_request groupjoinr0_ 
+    where
+        groupjoinr0_.user_id=? 
+    order by
+        groupjoinr0_.created_at desc
+2026-04-04 19:13:13.493 DEBUG 30840 --- [nio-8082-exec-9] s.s.w.c.SecurityContextPersistenceFilter : Cleared SecurityContextHolder to complete request

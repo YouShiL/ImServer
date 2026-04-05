@@ -145,7 +145,7 @@ public class ContentAuditManageController {
         item.put("handlerId", audit.getHandlerId());
         item.put("handleNote", audit.getHandleNote());
         item.put("status", audit.getStatus());
-        item.put("statusLabel", audit.getStatus() != null && audit.getStatus() == 1 ? "\u5df2\u5904\u7406" : "\u5f85\u5904\u7406");
+        item.put("statusLabel", audit.getStatus() != null && audit.getStatus() == 1 ? "已处理" : "待处理");
         item.put("createdAt", audit.getCreatedAt());
         item.put("handledAt", audit.getHandledAt());
         return item;
@@ -153,33 +153,33 @@ public class ContentAuditManageController {
 
     private String getContentTypeLabel(Integer contentType) {
         if (contentType == null) {
-            return "\u672a\u77e5\u5185\u5bb9";
+            return "未知内容";
         }
         switch (contentType) {
             case 1:
-                return "\u6587\u672c";
+                return "文本";
             case 2:
-                return "\u56fe\u7247";
+                return "图片";
             case 3:
-                return "\u97f3\u9891";
+                return "音频";
             case 4:
-                return "\u89c6\u9891";
+                return "视频";
             default:
-                return "\u672a\u77e5\u5185\u5bb9";
+                return "未知内容";
         }
     }
 
     private String getAuditResultLabel(Integer result) {
         if (result == null) {
-            return "\u672a\u5904\u7406";
+            return "未处理";
         }
         switch (result) {
             case 1:
-                return "\u901a\u8fc7";
+                return "通过";
             case 2:
-                return "\u62e6\u622a";
+                return "拦截";
             default:
-                return "\u5f85\u5b9a";
+                return "待定";
         }
     }
 }

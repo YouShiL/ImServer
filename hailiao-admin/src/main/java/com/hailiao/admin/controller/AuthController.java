@@ -39,7 +39,7 @@ public class AuthController {
             String password = request.get("password");
 
             if (username == null || password == null) {
-                return ResponseEntity.badRequest().body("\u7528\u6237\u540d\u548c\u5bc6\u7801\u4e0d\u80fd\u4e3a\u7a7a");
+                return ResponseEntity.badRequest().body("用户名和密码不能为空");
             }
 
             AdminUser adminUser = adminUserService.login(username, password);
@@ -105,12 +105,12 @@ public class AuthController {
             String oldPassword = request.get("oldPassword");
             String newPassword = request.get("newPassword");
             if (oldPassword == null || newPassword == null) {
-                return ResponseEntity.badRequest().body("\u539f\u5bc6\u7801\u548c\u65b0\u5bc6\u7801\u4e0d\u80fd\u4e3a\u7a7a");
+                return ResponseEntity.badRequest().body("原密码和新密码不能为空");
             }
 
             adminUserService.changePassword(adminId, oldPassword, newPassword);
             Map<String, Object> response = new java.util.LinkedHashMap<>();
-            response.put("message", "\u5bc6\u7801\u4fee\u6539\u6210\u529f");
+            response.put("message", "密码修改成功");
             response.put("requireLoginRefresh", true);
             return ResponseEntity.ok(response);
         } catch (Exception e) {

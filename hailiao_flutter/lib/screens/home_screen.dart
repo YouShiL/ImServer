@@ -8,6 +8,11 @@ import 'package:hailiao_flutter/providers/friend_provider.dart';
 import 'package:hailiao_flutter/providers/message_provider.dart';
 import 'package:hailiao_flutter/screens/qrcode_scanner_screen.dart';
 import 'package:hailiao_flutter/services/api_service.dart';
+import 'package:hailiao_flutter/theme/conversation_ui_tokens.dart';
+import 'package:hailiao_flutter/widgets/chat/conversation_empty_state.dart';
+import 'package:hailiao_flutter/widgets/chat/conversation_list_item.dart';
+import 'package:hailiao_flutter/widgets/chat/conversation_search_bar.dart';
+import 'package:hailiao_flutter/widgets/chat/conversation_stats_panel.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -22,8 +27,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _conversationSearchController =
       TextEditingController();
   String _conversationQuery = '';
-  String _conversationFilter = '全部';
-  String _conversationSort = '智能排序';
+  String _conversationFilter = 'all';
+  String _conversationSort = 'smart';
 
   @override
   void initState() {
@@ -146,7 +151,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final keywordController = TextEditingController();
     final remarkController = TextEditingController();
     final messageController = TextEditingController(
-      text: '你好，我想加你为好友。',
+      text: '你好，我想加你为好友。'  
+
     );
 
     String searchType = 'userId';
@@ -414,13 +420,13 @@ class _HomeScreenState extends State<HomeScreen> {
     bool hasUnread,
   ) {
     switch (_conversationFilter) {
-      case '未读':
+      case 'unread':
         return hasUnread;
-      case '草稿':
+      case 'draft':
         return draftText.isNotEmpty;
-      case '置顶':
+      case 'top':
         return conversation.isTop == true;
-      case '免打扰':
+      case 'mute':
         return conversation.isMute == true;
       default:
         return true;
@@ -453,7 +459,7 @@ class _HomeScreenState extends State<HomeScreen> {
       return haystack.contains(query);
     }).toList();
 
-    if (_conversationSort == '未读优先') {
+    if (_conversationSort == 'unreadFirst') {
       items.sort((a, b) {
         final unreadCompare =
             (b.unreadCount ?? 0).compareTo(a.unreadCount ?? 0);
@@ -462,48 +468,15 @@ class _HomeScreenState extends State<HomeScreen> {
         }
         return (b.lastMessageTime ?? '').compareTo(a.lastMessageTime ?? '');
       });
-    } else if (_conversationSort == '最近消息') {
+    } else if (_conversationSort == 'recent') {
       items.sort(
         (a, b) => (b.lastMessageTime ?? '').compareTo(a.lastMessageTime ?? ''),
       );
-    } else if (_conversationSort == '名称排序') {
+    } else if (_conversationSort == 'name') {
       items.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
     }
 
     return items;
-  }
-
-  Widget _buildConversationStatChip(
-    String label,
-    String value, {
-    Color valueColor = const Color(0xFF111827),
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: RichText(
-        text: TextSpan(
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF4B5563),
-          ),
-          children: [
-            TextSpan(text: '$label '),
-            TextSpan(
-              text: value,
-              style: TextStyle(
-                color: valueColor,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildMessagesTab(MessageProvider messageProvider) {
@@ -516,9 +489,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     if (messageProvider.conversations.isEmpty) {
-      return const _EmptyState(
+      return const ConversationEmptyState(
         icon: Icons.chat_bubble_outline,
-        text: '暂无消息',
+        title: '暂无消息',
+        detail: '新的会话会显示在这里',
       );
     }
 
@@ -544,251 +518,197 @@ class _HomeScreenState extends State<HomeScreen> {
         .where((item) => item.isMute == true)
         .length;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Column(
-            children: [
-              TextField(
-                controller: _conversationSearchController,
-                decoration: InputDecoration(
-                  hintText: '搜索会话、草稿或最近消息',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _conversationQuery.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            setState(() {
-                              _conversationSearchController.clear();
-                              _conversationQuery = '';
-                            });
-                          },
-                          icon: const Icon(Icons.clear),
-                        ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _conversationQuery = value;
-                  });
-                },
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: [
-                    for (final filter in const [
-                      '全部',
-                      '未读',
-                      '草稿',
-                      '置顶',
-                      '免打扰',
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(filter),
-                          selected: _conversationFilter == filter,
-                          onSelected: (_) {
-                            setState(() {
-                              _conversationFilter = filter;
-                            });
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            '${filteredConversations.length} / $totalCount 个会话',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF374151),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        PopupMenuButton<String>(
-                          tooltip: '排序',
-                          onSelected: (value) {
-                            setState(() {
-                              _conversationSort = value;
-                            });
-                          },
-                          itemBuilder: (context) => [
-                            CheckedPopupMenuItem(
-                              value: '智能排序',
-                              checked: _conversationSort == '智能排序',
-                              child: const Text('智能排序'),
-                            ),
-                            CheckedPopupMenuItem(
-                              value: '最近消息',
-                              checked: _conversationSort == '最近消息',
-                              child: const Text('最近消息'),
-                            ),
-                            CheckedPopupMenuItem(
-                              value: '未读优先',
-                              checked: _conversationSort == '未读优先',
-                              child: const Text('未读优先'),
-                            ),
-                            CheckedPopupMenuItem(
-                              value: '名称排序',
-                              checked: _conversationSort == '名称排序',
-                              child: const Text('名称排序'),
-                            ),
-                          ],
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.sort, size: 18),
-                              const SizedBox(width: 4),
-                              Text(
-                                _conversationSort,
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        TextButton(
-                          onPressed: () {
-                            setState(() {
-                              _conversationSearchController.clear();
-                              _conversationQuery = '';
-                              _conversationFilter = '全部';
-                              _conversationSort = '智能排序';
-                            });
-                          },
-                          child: const Text('重置'),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
-                      children: [
-                        _buildConversationStatChip(
-                          '未读',
-                          '$unreadCount',
-                          valueColor: const Color(0xFF2563EB),
-                        ),
-                        _buildConversationStatChip(
-                          '草稿',
-                          '$draftCount',
-                          valueColor: const Color(0xFFEA580C),
-                        ),
-                        _buildConversationStatChip(
-                          '置顶',
-                          '$topCount',
-                          valueColor: const Color(0xFF7C3AED),
-                        ),
-                        _buildConversationStatChip(
-                          '免打扰',
-                          '$muteCount',
-                          valueColor: const Color(0xFF0F766E),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: filteredConversations.isEmpty
-              ? const _EmptyState(
-                  icon: Icons.filter_list_off,
-                  text: '没有符合当前筛选条件的会话',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: filteredConversations.length,
-                  itemBuilder: (context, index) {
-                    final conversation = filteredConversations[index];
-                    final hasUnread =
-                        conversation.unreadCount != null && conversation.unreadCount! > 0;
-                    final draft = messageProvider.getDraft(
-                      conversation.targetId,
-                      conversation.type,
-                    );
-                    final draftText = (draft?.trim().isNotEmpty == true
-                            ? draft!.trim()
-                            : (conversation.draft?.trim() ?? ''));
-                    final statusLabels = <String>[
-                      if (conversation.isTop == true) '置顶',
-                      if (conversation.isMute == true) '免打扰',
-                    ];
-                    final previewText = draftText.isNotEmpty
-                        ? '[草稿] $draftText'
-                        : conversation.lastMessage ?? '';
+    const filterOptions = <Map<String, String>>[
+      {'label': '全部', 'value': 'all'},
+      {'label': '未读', 'value': 'unread'},
+      {'label': '草稿', 'value': 'draft'},
+      {'label': '置顶', 'value': 'top'},
+      {'label': '免打扰', 'value': 'mute'},
+    ];
+    const sortOptions = <Map<String, String>>[
+      {'label': '智能排序', 'value': 'smart'},
+      {'label': '最近消息', 'value': 'recent'},
+      {'label': '未读优先', 'value': 'unreadFirst'},
+      {'label': '名称排序', 'value': 'name'},
+    ];
 
-                    return _buildCard(
-                      child: ListTile(
-                        leading: _buildAvatar(),
-                        title: Text(
-                          conversation.name ?? '',
-                          style: TextStyle(
-                            color: const Color(0xFF333333),
-                            fontWeight:
-                                hasUnread ? FontWeight.bold : FontWeight.normal,
+    String resolveSortLabel(String value) {
+      for (final item in sortOptions) {
+        if (item['value'] == value) {
+          return item['label']!;
+        }
+      }
+      return '智能排序';
+    }
+
+    return Container(
+      color: ConversationUiTokens.pageBackground,
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Text(
+                      '会话工作台',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: ConversationUiTokens.mutedText,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '$totalCount 个会话',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: ConversationUiTokens.mutedText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                ConversationSearchBar(
+                  controller: _conversationSearchController,
+                  hintText: '搜索会话、草稿或最近消息',
+                  showClear: _conversationQuery.isNotEmpty,
+                  onChanged: (value) {
+                    setState(() {
+                      _conversationQuery = value;
+                    });
+                  },
+                  onClear: () {
+                    setState(() {
+                      _conversationSearchController.clear();
+                      _conversationQuery = '';
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 36,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: [
+                      for (final filter in filterOptions)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(filter['label']!),
+                            selected: _conversationFilter == filter['value'],
+                            onSelected: (_) {
+                              setState(() {
+                                _conversationFilter = filter['value']!;
+                              });
+                            },
                           ),
                         ),
-                        subtitle: Text(
-                          [
-                            if (statusLabels.isNotEmpty)
-                              '[${statusLabels.join(' / ')}]',
-                            previewText,
-                          ].where((item) => item.isNotEmpty).join(' '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: draftText.isNotEmpty
-                                ? const Color(0xFFEA580C)
-                                : const Color(0xFF9E9E9E),
-                            fontSize: 14,
-                          ),
-                        ),
-                        trailing: Text(
-                          conversation.lastMessageTime ?? '',
-                          style: TextStyle(
-                            color: hasUnread
-                                ? Theme.of(context).primaryColor
-                                : const Color(0xFF9E9E9E),
-                            fontSize: 12,
-                            fontWeight:
-                                hasUnread ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                        minVerticalPadding: 12,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        titleAlignment: ListTileTitleAlignment.center,
-                        selected: draftText.isNotEmpty,
-                        selectedTileColor: const Color(0xFFFFF7ED),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                ConversationStatsPanel(
+                  summaryText:
+                      '${filteredConversations.length} / $totalCount 个会话',
+                  currentSortLabel: resolveSortLabel(_conversationSort),
+                  sortOptions:
+                      sortOptions.map((item) => item['label']!).toList(),
+                  onSortSelected: (label) {
+                    for (final item in sortOptions) {
+                      if (item['label'] == label) {
+                        setState(() {
+                          _conversationSort = item['value']!;
+                        });
+                        break;
+                      }
+                    }
+                  },
+                  onReset: () {
+                    setState(() {
+                      _conversationSearchController.clear();
+                      _conversationQuery = '';
+                      _conversationFilter = 'all';
+                      _conversationSort = 'smart';
+                    });
+                  },
+                  stats: [
+                    ConversationStatData(
+                      label: '未读',
+                      value: '$unreadCount',
+                      valueColor: const Color(0xFF2563EB),
+                    ),
+                    ConversationStatData(
+                      label: '草稿',
+                      value: '$draftCount',
+                      valueColor: const Color(0xFFEA580C),
+                    ),
+                    ConversationStatData(
+                      label: '置顶',
+                      value: '$topCount',
+                      valueColor: const Color(0xFF7C3AED),
+                    ),
+                    ConversationStatData(
+                      label: '免打扰',
+                      value: '$muteCount',
+                      valueColor: const Color(0xFF0F766E),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: filteredConversations.isEmpty
+                ? const ConversationEmptyState(
+                    icon: Icons.filter_list_off,
+                    title: '没有符合当前筛选条件的会话',
+                    detail: '换个关键词或筛选条件试试',
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.only(top: 8, bottom: 12),
+                    itemCount: filteredConversations.length,
+                    itemBuilder: (context, index) {
+                      final conversation = filteredConversations[index];
+                      final hasUnread = conversation.unreadCount != null &&
+                          conversation.unreadCount! > 0;
+                      final draft = messageProvider.getDraft(
+                        conversation.targetId,
+                        conversation.type,
+                      );
+                      final draftText = (draft?.trim().isNotEmpty == true
+                              ? draft!.trim()
+                              : (conversation.draft?.trim() ?? ''));
+                      final statusLabels = <String>[
+                        if (conversation.isTop == true) '置顶',
+                        if (conversation.isMute == true) '免打扰',
+                      ];
+                      final previewText = draftText.isNotEmpty
+                          ? '[草稿] $draftText'
+                          : (conversation.lastMessage ?? '');
+                      final title = conversation.name ?? '';
+                      final avatarText = title.trim().isEmpty
+                          ? '?'
+                          : title.trim().substring(0, 1).toUpperCase();
+
+                      return ConversationListItem(
+                        title: title,
+                        previewText: [
+                          if (statusLabels.isNotEmpty)
+                            '[${statusLabels.join(' / ')}]',
+                          previewText,
+                        ].where((item) => item.isNotEmpty).join(' '),
+                        timeText: conversation.lastMessageTime ?? '',
+                        hasUnread: hasUnread,
+                        isTop: conversation.isTop == true,
+                        isMute: conversation.isMute == true,
+                        isDraft: draftText.isNotEmpty,
+                        unreadCount: conversation.unreadCount ?? 0,
+                        avatarText: avatarText,
                         onLongPress: () => _showConversationActions(conversation),
                         onTap: () {
                           Navigator.pushNamed(
@@ -801,15 +721,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             },
                           );
                         },
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
-  }
-
+    }
   Widget _buildRequestActionButton({
     required String label,
     required VoidCallback? onPressed,
@@ -915,9 +834,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final message = success
-        ? ((conversation.isTop ?? false)
-            ? '已取消置顶'
-            : '已置顶会话')
+        ? ((conversation.isTop ?? false) ? '已取消置顶' : '已置顶会话')
         : (messageProvider.error ?? '置顶设置失败');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
@@ -937,55 +854,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final message = success
-        ? ((conversation.isMute ?? false)
-            ? '已取消免打扰'
-            : '已开启免打扰')
+        ? ((conversation.isMute ?? false) ? '已取消免打扰' : '已开启免打扰')
         : (messageProvider.error ?? '免打扰设置失败');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  Future<void> _deleteConversation(dynamic conversation) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('删除会话'),
-          content: const Text(
-            '删除后会从会话列表中移除，但不会删除历史消息记录。',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('确认删除'),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed != true || !mounted) {
-      return;
-    }
-
-    final messageProvider = context.read<MessageProvider>();
-    final success = await messageProvider.deleteConversation(
-      conversation.targetId!,
-      type: conversation.type ?? 1,
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    final message = success
-        ? '已删除会话'
-        : (messageProvider.error ?? '删除会话失败');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -1007,7 +877,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 title: Text(
                   (conversation.isTop ?? false)
-                      ? '取消置顶'
+                      ? '取消top'
                       : '置顶会话',
                 ),
                 onTap: () {
@@ -1042,7 +912,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 onTap: () {
                   Navigator.pop(context);
-                  _deleteConversation(conversation);
+                  _showConversationActions(conversation);
                 },
               ),
             ],
@@ -1292,7 +1162,7 @@ class _HomeScreenState extends State<HomeScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           child: ListTile(
             leading: const Icon(Icons.security_outlined),
-            title: const Text('账户与设备'),
+            title: const Text('账号与设备'),
             subtitle: const Text('管理设备锁、登录设备和异地登录提示'),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.pushNamed(context, '/security'),
@@ -1459,7 +1329,3 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-
-
-
-

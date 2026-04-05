@@ -41,7 +41,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
             Future<void> submit() async {
               if (nameController.text.trim().isEmpty) {
                 setDialogState(() {
-                  error = '\u8bf7\u8f93\u5165\u7fa4\u540d\u79f0';
+                  error = '请输入群名称';
                 });
                 return;
               }
@@ -64,18 +64,18 @@ class _GroupListScreenState extends State<GroupListScreen> {
               if (success) {
                 Navigator.of(dialogContext).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('\u7fa4\u7ec4\u5df2\u521b\u5efa')),
+                  const SnackBar(content: Text('群组已创建')),
                 );
               } else {
                 setDialogState(() {
-                  error = groupProvider.error ?? '\u521b\u5efa\u7fa4\u7ec4\u5931\u8d25';
+                  error = groupProvider.error ?? '创建群组失败';
                   isSubmitting = false;
                 });
               }
             }
 
             return AlertDialog(
-              title: const Text('\u521b\u5efa\u7fa4\u7ec4'),
+              title: const Text('创建群组'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -83,7 +83,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                     TextField(
                       controller: nameController,
                       decoration: const InputDecoration(
-                        labelText: '\u7fa4\u540d\u79f0',
+                        labelText: '群名称',
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -91,7 +91,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                       controller: descriptionController,
                       maxLines: 3,
                       decoration: const InputDecoration(
-                        labelText: '\u7fa4\u4ecb\u7ecd',
+                        labelText: '群介绍',
                         alignLabelWithHint: true,
                       ),
                     ),
@@ -113,12 +113,12 @@ class _GroupListScreenState extends State<GroupListScreen> {
                   onPressed: isSubmitting
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('\u53d6\u6d88'),
+                  child: const Text('取消'),
                 ),
                 ElevatedButton(
                   onPressed: isSubmitting ? null : submit,
                   child: Text(
-                    isSubmitting ? '\u521b\u5efa\u4e2d...' : '\u521b\u5efa',
+                    isSubmitting ? '创建中...' : '创建',
                   ),
                 ),
               ],
@@ -144,7 +144,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
               final keyword = groupIdController.text.trim();
               if (keyword.isEmpty) {
                 setDialogState(() {
-                  error = '\u8bf7\u8f93\u5165\u7fa4\u53f7';
+                  error = '请输入群号';
                 });
                 return;
               }
@@ -166,7 +166,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                 });
               } catch (_) {
                 setDialogState(() {
-                  error = '\u641c\u7d22\u7fa4\u7ec4\u5931\u8d25';
+                  error = '搜索群组失败';
                 });
               } finally {
                 setDialogState(() {
@@ -176,7 +176,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
             }
 
             return AlertDialog(
-              title: const Text('\u67e5\u627e\u7fa4\u7ec4'),
+              title: const Text('查找群组'),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -184,7 +184,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                     TextField(
                       controller: groupIdController,
                       decoration: InputDecoration(
-                        labelText: '\u7fa4\u53f7',
+                        labelText: '群号',
                         suffixIcon: isSearching
                             ? const Padding(
                                 padding: EdgeInsets.all(12),
@@ -213,11 +213,11 @@ class _GroupListScreenState extends State<GroupListScreen> {
                             color: Theme.of(context).primaryColor,
                           ),
                         ),
-                        title: Text(group!.groupName ?? '\u672a\u547d\u540d\u7fa4\u7ec4'),
+                        title: Text(group!.groupName ?? '未命名群组'),
                         subtitle: Text(
                           [
                             if ((group!.groupId ?? '').isNotEmpty)
-                              '\u7fa4\u53f7 ${group!.groupId}',
+                              '群号 ${group!.groupId}',
                             if ((group!.description ?? '').isNotEmpty)
                               group!.description!,
                           ].join(' | '),
@@ -231,7 +231,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                               arguments: {'groupId': group!.id, 'group': group},
                             );
                           },
-                          child: const Text('\u67e5\u770b'),
+                          child: const Text('查看'),
                         ),
                       ),
                     ],
@@ -248,7 +248,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('\u5173\u95ed'),
+                  child: const Text('关闭'),
                 ),
               ],
             );
@@ -273,7 +273,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
                 Text(
-                  '\u67e5\u627e\u7fa4\u7ec4',
+                  '查找群组',
                   style: TextStyle(
                     color: Color(0xFF333333),
                     fontSize: 16,
@@ -282,7 +282,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                 ),
                 SizedBox(height: 6),
                 Text(
-                  '\u8f93\u5165\u7fa4\u53f7\uff0c\u5feb\u901f\u67e5\u770b\u7fa4\u8d44\u6599\u5e76\u53d1\u8d77\u5165\u7fa4\u7533\u8bf7',
+                  '输入群号，快速查看群资料并发起入群申请',
                   style: TextStyle(color: Color(0xFF666666), fontSize: 13),
                 ),
               ],
@@ -292,7 +292,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
           ElevatedButton.icon(
             onPressed: _openSearchGroupDialog,
             icon: const Icon(Icons.search),
-            label: const Text('\u67e5\u7fa4'),
+            label: const Text('查群'),
           ),
         ],
       ),
@@ -301,10 +301,10 @@ class _GroupListScreenState extends State<GroupListScreen> {
 
   Widget _buildGroupTile(GroupDTO group) {
     final meta = <String>[
-      if ((group.groupId ?? '').isNotEmpty) '\u7fa4\u53f7 ${group.groupId}',
-      if (group.memberCount != null) '${group.memberCount}\u4eba',
-      if (group.maxMembers != null) '\u4e0a\u9650 ${group.maxMembers}',
-      if (group.isMute == true) '\u5df2\u9759\u97f3',
+      if ((group.groupId ?? '').isNotEmpty) '群号 ${group.groupId}',
+      if (group.memberCount != null) '${group.memberCount}人',
+      if (group.maxMembers != null) '上限 ${group.maxMembers}',
+      if (group.isMute == true) '已静音',
     ];
 
     return Container(
@@ -327,7 +327,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
           child: Icon(Icons.groups, color: Theme.of(context).primaryColor),
         ),
         title: Text(
-          group.groupName ?? '\u672a\u547d\u540d\u7fa4\u7ec4',
+          group.groupName ?? '未命名群组',
           style: const TextStyle(
             color: Color(0xFF333333),
             fontWeight: FontWeight.w600,
@@ -366,16 +366,16 @@ class _GroupListScreenState extends State<GroupListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('\u64a4\u56de\u7533\u8bf7'),
-          content: const Text('\u786e\u5b9a\u64a4\u56de\u8fd9\u6761\u5165\u7fa4\u7533\u8bf7\u5417\uff1f'),
+          title: const Text('撤回申请'),
+          content: const Text('确定撤回这条入群申请吗？'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('\u53d6\u6d88'),
+              child: const Text('取消'),
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('\u786e\u8ba4\u64a4\u56de'),
+              child: const Text('确认撤回'),
             ),
           ],
         );
@@ -397,8 +397,8 @@ class _GroupListScreenState extends State<GroupListScreen> {
       SnackBar(
         content: Text(
           success
-              ? '\u5165\u7fa4\u7533\u8bf7\u5df2\u64a4\u56de'
-              : (groupProvider.error ?? '\u64a4\u56de\u5165\u7fa4\u7533\u8bf7\u5931\u8d25'),
+              ? '入群申请已撤回'
+              : (groupProvider.error ?? '撤回入群申请失败'),
         ),
       ),
     );
@@ -406,10 +406,10 @@ class _GroupListScreenState extends State<GroupListScreen> {
 
   Widget _buildJoinRequestCard(GroupJoinRequestDTO request) {
     final statusText = switch (request.status) {
-      1 => '\u5df2\u901a\u8fc7',
-      2 => '\u5df2\u62d2\u7edd',
-      3 => '\u5df2\u64a4\u56de',
-      _ => '\u5f85\u5ba1\u6838',
+      1 => '已通过',
+      2 => '已拒绝',
+      3 => '已撤回',
+      _ => '待审核',
     };
     final statusColor = switch (request.status) {
       1 => const Color(0xFF2E7D32),
@@ -432,7 +432,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
             children: [
               Expanded(
                 child: Text(
-                  request.groupInfo?.groupName ?? '\u672a\u77e5\u7fa4\u7ec4',
+                  request.groupInfo?.groupName ?? '未知群组',
                   style: const TextStyle(
                     color: Color(0xFF333333),
                     fontWeight: FontWeight.w600,
@@ -460,8 +460,8 @@ class _GroupListScreenState extends State<GroupListScreen> {
           Text(
             [
               if ((request.groupInfo?.groupId ?? '').isNotEmpty)
-                '\u7fa4\u53f7 ${request.groupInfo!.groupId}',
-              if ((request.message ?? '').isNotEmpty) '\u7533\u8bf7\u4fe1\u606f\uff1a${request.message!}',
+                '群号 ${request.groupInfo!.groupId}',
+              if ((request.message ?? '').isNotEmpty) '申请信息：${request.message!}',
             ].join(' | '),
             style: const TextStyle(color: Color(0xFF666666), fontSize: 13),
           ),
@@ -474,7 +474,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                 if (request.status == 0)
                   TextButton(
                     onPressed: () => _withdrawJoinRequest(request),
-                    child: const Text('\u64a4\u56de\u7533\u8bf7'),
+                    child: const Text('撤回申请'),
                   ),
                 TextButton(
                   onPressed: request.groupInfo?.id == null
@@ -489,7 +489,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                             },
                           );
                         },
-                  child: const Text('\u67e5\u770b\u7fa4\u8be6\u60c5'),
+                  child: const Text('查看群详情'),
                 ),
               ],
             ),
@@ -538,17 +538,17 @@ class _GroupListScreenState extends State<GroupListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('\u7fa4\u7ec4'),
+        title: const Text('群组'),
         actions: [
           IconButton(
             onPressed: _openSearchGroupDialog,
             icon: const Icon(Icons.search),
-            tooltip: '\u67e5\u627e\u7fa4\u7ec4',
+            tooltip: '查找群组',
           ),
           IconButton(
             onPressed: _openCreateGroupDialog,
             icon: const Icon(Icons.add),
-            tooltip: '\u521b\u5efa\u7fa4\u7ec4',
+            tooltip: '创建群组',
           ),
         ],
       ),
@@ -565,28 +565,28 @@ class _GroupListScreenState extends State<GroupListScreen> {
                 children: [
                   _buildSearchCard(),
                   _buildSectionTitle(
-                    '\u6211\u7684\u5165\u7fa4\u7533\u8bf7',
-                    subtitle: '\u53ef\u4ee5\u5728\u8fd9\u91cc\u67e5\u770b\u5ba1\u6838\u8fdb\u5ea6',
+                    '我的入群申请',
+                    subtitle: '可以在这里查看审核进度',
                   ),
                   if (groupProvider.myJoinRequests.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       child: Text(
-                        '\u6682\u65e0\u5165\u7fa4\u7533\u8bf7',
+                        '暂无入群申请',
                         style: TextStyle(color: Color(0xFF9E9E9E)),
                       ),
                     )
                   else
                     ...groupProvider.myJoinRequests.map(_buildJoinRequestCard),
                   _buildSectionTitle(
-                    '\u6211\u7684\u7fa4\u7ec4',
-                    subtitle: '\u5df2\u52a0\u5165\u548c\u5df2\u521b\u5efa\u7684\u7fa4\u90fd\u5728\u8fd9\u91cc',
+                    '我的群组',
+                    subtitle: '已加入和已创建的群都在这里',
                   ),
                   if (groupProvider.groups.isEmpty)
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                       child: Text(
-                        '\u6682\u65e0\u7fa4\u7ec4',
+                        '暂无群组',
                         style: TextStyle(color: Color(0xFF9E9E9E)),
                       ),
                     )

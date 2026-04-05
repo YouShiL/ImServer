@@ -24,7 +24,7 @@ public class VipMemberService {
     @Transactional
     public VipMember createVipMember(Long userId, Integer vipLevel, Integer months) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
 
         VipMember vipMember = vipMemberRepository.findByUserId(userId).orElse(new VipMember());
 
@@ -61,7 +61,7 @@ public class VipMemberService {
 
     public VipMember getVipMemberByUserId(Long userId) {
         return vipMemberRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("VIP\u4f1a\u5458\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("VIP会员不存在"));
     }
 
     public List<VipMember> getAllVipMembers() {

@@ -76,7 +76,7 @@ public class VipManageController {
     public ResponseEntity<?> cancelVip(@PathVariable Long userId) {
         try {
             vipMemberService.cancelVip(userId);
-            return ResponseEntity.ok("VIP \u53d6\u6d88\u6210\u529f");
+            return ResponseEntity.ok("VIP 取消成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -132,7 +132,7 @@ public class VipManageController {
         item.put("vipLevel", vip.getVipLevel());
         item.put("vipLevelLabel", getVipLevelLabel(vip.getVipLevel()));
         item.put("status", vip.getStatus());
-        item.put("statusLabel", vip.getStatus() != null && vip.getStatus() == 1 ? "\u751f\u6548\u4e2d" : "\u5df2\u5931\u6548");
+        item.put("statusLabel", vip.getStatus() != null && vip.getStatus() == 1 ? "生效中" : "已失效");
         item.put("startTime", vip.getStartTime());
         item.put("expireTime", vip.getExpireTime());
         item.put("createdAt", vip.getCreatedAt());
@@ -141,7 +141,7 @@ public class VipManageController {
 
     private String getVipLevelLabel(Integer vipLevel) {
         if (vipLevel == null) {
-            return "\u672a\u77e5\u7b49\u7ea7";
+            return "未知等级";
         }
         switch (vipLevel) {
             case 1:

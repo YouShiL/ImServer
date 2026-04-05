@@ -38,25 +38,25 @@ public class GroupJoinRequestService {
     @Transactional
     public GroupJoinRequest submitJoinRequest(Long groupId, Long userId, String message) {
         if (groupMemberRepository.existsByGroupIdAndUserId(groupId, userId)) {
-            throw new RuntimeException("\u4f60\u5df2\u662f\u7fa4\u6210\u5458");
+            throw new RuntimeException("你已是群成员");
         }
 
         GroupChat group = groupChatRepository.findById(groupId)
-                .orElseThrow(() -> new RuntimeException("\u7fa4\u7ec4\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("群组不存在"));
 
         if (group.getStatus() == null || group.getStatus() != 1) {
-            throw new RuntimeException("\u7fa4\u7ec4\u5f53\u524d\u4e0d\u53ef\u7528");
+            throw new RuntimeException("群组当前不可用");
         }
 
         if (group.getMemberCount() != null
                 && group.getMaxMemberCount() != null
                 && group.getMemberCount() >= group.getMaxMemberCount()) {
-            throw new RuntimeException("\u7fa4\u6210\u5458\u6570\u91cf\u5df2\u8fbe\u4e0a\u9650");
+            throw new RuntimeException("群成员数量已达上限");
         }
 
         groupJoinRequestRepository.findByGroupIdAndUserIdAndStatus(groupId, userId, STATUS_PENDING)
                 .ifPresent(existing -> {
-                    throw new RuntimeException("\u5165\u7fa4\u7533\u8bf7\u5df2\u63d0\u4ea4\uff0c\u8bf7\u52ff\u91cd\u590d\u7533\u8bf7");
+                    throw new RuntimeException("入群申请已提交，请勿重复申请");
                 });
 
         GroupJoinRequest request = new GroupJoinRequest();
@@ -82,7 +82,7 @@ public class GroupJoinRequestService {
     public GroupJoinRequest withdrawRequest(Long requestId, Long userId) {
         GroupJoinRequest request = getPendingRequest(requestId);
         if (!request.getUserId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u64a4\u56de\u8be5\u5165\u7fa4\u7533\u8bf7");
+            throw new RuntimeException("无权撤回该入群申请");
         }
 
         request.setStatus(STATUS_WITHDRAWN);
@@ -126,16 +126,16 @@ public class GroupJoinRequestService {
 
     private GroupJoinRequest getPendingRequest(Long requestId) {
         GroupJoinRequest request = groupJoinRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("\u5165\u7fa4\u7533\u8bf7\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("入群申请不存在"));
         if (request.getStatus() == null || request.getStatus() != STATUS_PENDING) {
-            throw new RuntimeException("\u5165\u7fa4\u7533\u8bf7\u5df2\u5904\u7406");
+            throw new RuntimeException("入群申请已处理");
         }
         return request;
     }
 
     private void ensureCanReview(Long groupId, Long operatorId) {
         if (!groupMemberService.isGroupAdmin(groupId, operatorId)) {
-            throw new RuntimeException("\u65e0\u6743\u5ba1\u6838\u5165\u7fa4\u7533\u8bf7");
+            throw new RuntimeException("无权审核入群申请");
         }
     }
 }

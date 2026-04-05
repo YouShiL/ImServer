@@ -86,7 +86,7 @@ public class UserManageController {
         try {
             String reason = request.get("reason");
             userService.banUser(userId, reason);
-            return ResponseEntity.ok("\u5c01\u7981\u6210\u529f");
+            return ResponseEntity.ok("封禁成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -99,7 +99,7 @@ public class UserManageController {
     public ResponseEntity<?> unbanUser(@PathVariable Long userId) {
         try {
             userService.unbanUser(userId);
-            return ResponseEntity.ok("\u89e3\u5c01\u6210\u529f");
+            return ResponseEntity.ok("解封成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -119,8 +119,8 @@ public class UserManageController {
             stats.put("activeUsers", activeUsers);
             stats.put("inactiveUsers", inactiveUsers);
             stats.put("summary", mapOf(
-                    "activeLabel", "\u6b63\u5e38\u7528\u6237",
-                    "inactiveLabel", "\u975e\u6d3b\u8dc3/\u5f02\u5e38\u7528\u6237",
+                    "activeLabel", "正常用户",
+                    "inactiveLabel", "非活跃/异常用户",
                     "activeRatio", totalUsers == 0 ? "0.00%" : String.format("%.2f%%", (activeUsers * 100.0) / totalUsers)
             ));
             return ResponseEntity.ok(stats);
@@ -170,15 +170,15 @@ public class UserManageController {
         item.put("gender", user.getGender());
         item.put("genderLabel", getGenderLabel(user.getGender()));
         item.put("onlineStatus", user.getOnlineStatus());
-        item.put("onlineStatusLabel", user.getOnlineStatus() != null && user.getOnlineStatus() == 1 ? "\u5728\u7ebf" : "\u79bb\u7ebf");
+        item.put("onlineStatusLabel", user.getOnlineStatus() != null && user.getOnlineStatus() == 1 ? "在线" : "离线");
         item.put("isVip", user.getIsVip());
-        item.put("vipLabel", Boolean.TRUE.equals(user.getIsVip()) ? "VIP" : "\u666e\u901a\u7528\u6237");
+        item.put("vipLabel", Boolean.TRUE.equals(user.getIsVip()) ? "VIP" : "普通用户");
         item.put("isPrettyNumber", user.getIsPrettyNumber());
-        item.put("prettyNumberLabel", Boolean.TRUE.equals(user.getIsPrettyNumber()) ? "\u9773\u53f7\u7528\u6237" : "\u666e\u901a\u53f7\u7801");
+        item.put("prettyNumberLabel", Boolean.TRUE.equals(user.getIsPrettyNumber()) ? "靓号用户" : "普通号码");
         item.put("status", user.getStatus());
-        item.put("statusLabel", user.getStatus() != null && user.getStatus() == 0 ? "\u5df2\u5c01\u7981" : "\u6b63\u5e38");
+        item.put("statusLabel", user.getStatus() != null && user.getStatus() == 0 ? "已封禁" : "正常");
         item.put("deviceLock", user.getDeviceLock());
-        item.put("deviceLockLabel", Boolean.TRUE.equals(user.getDeviceLock()) ? "\u5df2\u5f00\u542f" : "\u672a\u5f00\u542f");
+        item.put("deviceLockLabel", Boolean.TRUE.equals(user.getDeviceLock()) ? "已开启" : "未开启");
         item.put("createdAt", user.getCreatedAt());
         item.put("lastLoginAt", user.getLastLoginAt());
         return item;
@@ -186,15 +186,15 @@ public class UserManageController {
 
     private String getGenderLabel(Integer gender) {
         if (gender == null || gender == 0) {
-            return "\u672a\u8bbe\u7f6e";
+            return "未设置";
         }
         if (gender == 1) {
-            return "\u7537";
+            return "男";
         }
         if (gender == 2) {
-            return "\u5973";
+            return "女";
         }
-        return "\u672a\u77e5";
+        return "未知";
     }
 
     private Map<String, Object> mapOf(Object... values) {

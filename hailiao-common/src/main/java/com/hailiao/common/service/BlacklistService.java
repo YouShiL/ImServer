@@ -18,11 +18,11 @@ public class BlacklistService {
     @Transactional
     public Blacklist addToBlacklist(Long userId, Long blockedUserId) {
         if (userId.equals(blockedUserId)) {
-            throw new RuntimeException("\u4e0d\u80fd\u62c9\u9ed1\u81ea\u5df1");
+            throw new RuntimeException("不能拉黑自己");
         }
 
         if (blacklistRepository.existsByUserIdAndBlockedUserId(userId, blockedUserId)) {
-            throw new RuntimeException("\u5df2\u5728\u9ed1\u540d\u5355\u4e2d");
+            throw new RuntimeException("已在黑名单中");
         }
 
         Blacklist blacklist = new Blacklist();

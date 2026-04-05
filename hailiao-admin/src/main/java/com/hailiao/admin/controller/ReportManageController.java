@@ -148,30 +148,30 @@ public class ReportManageController {
 
     private String getTargetTypeLabel(Integer targetType) {
         if (targetType == null) {
-            return "\u672a\u77e5\u5bf9\u8c61";
+            return "未知对象";
         }
         switch (targetType) {
             case 1:
-                return "\u7528\u6237";
+                return "用户";
             case 2:
-                return "\u7fa4\u7ec4";
+                return "群组";
             case 3:
-                return "\u6d88\u606f";
+                return "消息";
             default:
-                return "\u672a\u77e5\u5bf9\u8c61";
+                return "未知对象";
         }
     }
 
     private String getReportStatusLabel(Integer status) {
         if (status == null || status == 0) {
-            return "\u5f85\u5904\u7406";
+            return "待处理";
         }
         if (status == 1) {
-            return "\u5df2\u5904\u7406";
+            return "已处理";
         }
         if (status == 2) {
-            return "\u5df2\u9a73\u56de";
+            return "已驳回";
         }
-        return "\u672a\u77e5";
+        return "未知";
     }
 }

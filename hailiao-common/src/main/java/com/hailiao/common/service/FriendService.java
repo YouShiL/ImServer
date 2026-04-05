@@ -32,17 +32,17 @@ public class FriendService {
     @Transactional
     public FriendRequest sendFriendRequest(Long userId, Long friendId, String remark, String message) {
         if (userId.equals(friendId)) {
-            throw new RuntimeException("\u4e0d\u80fd\u6dfb\u52a0\u81ea\u5df1\u4e3a\u597d\u53cb");
+            throw new RuntimeException("不能添加自己为好友");
         }
 
         if (isFriend(userId, friendId)) {
-            throw new RuntimeException("\u4f60\u4eec\u5df2\u7ecf\u662f\u597d\u53cb\u4e86");
+            throw new RuntimeException("你们已经是好友了");
         }
 
         User friendUser = userRepository.findById(friendId)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
 
         validateNotBlocked(userId, friendId);
 
@@ -63,12 +63,12 @@ public class FriendService {
 
         long friendCount = friendRepository.countByUserIdAndStatus(userId, 1);
         if (friendCount >= user.getFriendLimit()) {
-            throw new RuntimeException("\u597d\u53cb\u6570\u91cf\u5df2\u8fbe\u4e0a\u9650");
+            throw new RuntimeException("好友数量已达上限");
         }
 
         friendRequestRepository.findByFromUserIdAndToUserIdAndStatus(userId, friendId, 0)
                 .ifPresent(request -> {
-                    throw new RuntimeException("\u597d\u53cb\u7533\u8bf7\u5df2\u53d1\u9001\uff0c\u8bf7\u52ff\u91cd\u590d\u63d0\u4ea4");
+                    throw new RuntimeException("好友申请已发送，请勿重复提交");
                 });
 
         FriendRequest reversePending = friendRequestRepository
@@ -97,7 +97,7 @@ public class FriendService {
 
     public Friend getFriend(Long userId, Long friendId) {
         return friendRepository.findByUserIdAndFriendId(userId, friendId)
-                .orElseThrow(() -> new RuntimeException("\u597d\u53cb\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("好友不存在"));
     }
 
     @Transactional
@@ -119,7 +119,7 @@ public class FriendService {
     @Transactional
     public void deleteFriend(Long userId, Long friendId) {
         Friend friend = friendRepository.findByUserIdAndFriendId(userId, friendId)
-                .orElseThrow(() -> new RuntimeException("\u597d\u53cb\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("好友不存在"));
         friend.setStatus(0);
         friend.setUpdatedAt(new Date());
         friendRepository.save(friend);
@@ -155,7 +155,7 @@ public class FriendService {
     public FriendRequest acceptFriendRequest(Long requestId, Long userId) {
         FriendRequest request = getPendingRequest(requestId);
         if (!request.getToUserId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u5904\u7406\u8be5\u597d\u53cb\u7533\u8bf7");
+            throw new RuntimeException("无权处理该好友申请");
         }
 
         validateNotBlocked(request.getFromUserId(), request.getToUserId());
@@ -174,7 +174,7 @@ public class FriendService {
     public FriendRequest rejectFriendRequest(Long requestId, Long userId) {
         FriendRequest request = getPendingRequest(requestId);
         if (!request.getToUserId().equals(userId)) {
-            throw new RuntimeException("\u65e0\u6743\u5904\u7406\u8be5\u597d\u53cb\u7533\u8bf7");
+            throw new RuntimeException("无权处理该好友申请");
         }
         request.setStatus(2);
         request.setHandledAt(new Date());
@@ -184,24 +184,24 @@ public class FriendService {
 
     private FriendRequest getPendingRequest(Long requestId) {
         FriendRequest request = friendRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("\u597d\u53cb\u7533\u8bf7\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("好友申请不存在"));
         if (request.getStatus() == null || request.getStatus() != 0) {
-            throw new RuntimeException("\u597d\u53cb\u7533\u8bf7\u5df2\u5904\u7406");
+            throw new RuntimeException("好友申请已处理");
         }
         return request;
     }
 
     private void createFriendRelation(Long userId, Long friendId, String remark) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
         User friendUser = userRepository.findById(friendId)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
 
         Friend friend = friendRepository.findByUserIdAndFriendId(userId, friendId).orElse(new Friend());
         friend.setUserId(userId);
         friend.setFriendId(friendId);
         friend.setRemark(remark != null ? remark : friendUser.getNickname());
-        friend.setGroupName(friend.getGroupName() != null ? friend.getGroupName() : "\u6211\u7684\u597d\u53cb");
+        friend.setGroupName(friend.getGroupName() != null ? friend.getGroupName() : "我的好友");
         friend.setStatus(1);
         friend.setCreatedAt(friend.getCreatedAt() != null ? friend.getCreatedAt() : new Date());
         friend.setUpdatedAt(new Date());
@@ -210,7 +210,7 @@ public class FriendService {
         reverseFriend.setUserId(friendId);
         reverseFriend.setFriendId(userId);
         reverseFriend.setRemark(reverseFriend.getRemark() != null ? reverseFriend.getRemark() : user.getNickname());
-        reverseFriend.setGroupName(reverseFriend.getGroupName() != null ? reverseFriend.getGroupName() : "\u6211\u7684\u597d\u53cb");
+        reverseFriend.setGroupName(reverseFriend.getGroupName() != null ? reverseFriend.getGroupName() : "我的好友");
         reverseFriend.setStatus(1);
         reverseFriend.setCreatedAt(reverseFriend.getCreatedAt() != null ? reverseFriend.getCreatedAt() : new Date());
         reverseFriend.setUpdatedAt(new Date());
@@ -221,10 +221,10 @@ public class FriendService {
 
     private void validateNotBlocked(Long userId, Long friendId) {
         if (blacklistRepository.existsByUserIdAndBlockedUserId(userId, friendId)) {
-            throw new RuntimeException("\u4f60\u5df2\u5c06\u5bf9\u65b9\u52a0\u5165\u9ed1\u540d\u5355");
+            throw new RuntimeException("你已将对方加入黑名单");
         }
         if (blacklistRepository.existsByUserIdAndBlockedUserId(friendId, userId)) {
-            throw new RuntimeException("\u5bf9\u65b9\u5df2\u5c06\u4f60\u52a0\u5165\u9ed1\u540d\u5355");
+            throw new RuntimeException("对方已将你加入黑名单");
         }
     }
 }

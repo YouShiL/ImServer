@@ -44,12 +44,12 @@ public class StatisticsService {
         stats.put("totalVideoCalls", totalVideoCalls);
         stats.put("totalRobots", totalRobots);
         stats.put("summary", mapOf(
-                "userLabel", "\u7528\u6237\u603b\u6570",
-                "messageLabel", "\u6d88\u606f\u603b\u91cf",
-                "groupLabel", "\u7fa4\u7ec4\u603b\u6570",
-                "conversationLabel", "\u4f1a\u8bdd\u603b\u6570",
-                "videoCallLabel", "\u97f3\u89c6\u9891\u901a\u8bdd\u603b\u6570",
-                "robotLabel", "\u673a\u5668\u4eba\u603b\u6570"
+                "userLabel", "用户总数",
+                "messageLabel", "消息总量",
+                "groupLabel", "群组总数",
+                "conversationLabel", "会话总数",
+                "videoCallLabel", "音视频通话总数",
+                "robotLabel", "机器人总数"
         ));
 
         return stats;
@@ -66,9 +66,9 @@ public class StatisticsService {
         stats.put("totalCalls", totalCalls != null ? totalCalls : 0);
         stats.put("totalCallDuration", totalDuration != null ? totalDuration : 0);
         stats.put("summary", mapOf(
-                "sentMessageLabel", "\u53d1\u9001\u6d88\u606f\u6570",
-                "callCountLabel", "\u901a\u8bdd\u6b21\u6570",
-                "callDurationLabel", "\u901a\u8bdd\u65f6\u957f(\u79d2)"
+                "sentMessageLabel", "发送消息数",
+                "callCountLabel", "通话次数",
+                "callDurationLabel", "通话时长(秒)"
         ));
 
         return stats;
@@ -90,14 +90,14 @@ public class StatisticsService {
         stats.put("audioMessages", audioMessages);
         stats.put("videoMessages", videoMessages);
         stats.put("distribution", mapOf(
-                "text", mapOf("label", "\u6587\u672c", "count", textMessages),
-                "image", mapOf("label", "\u56fe\u7247", "count", imageMessages),
-                "audio", mapOf("label", "\u97f3\u9891", "count", audioMessages),
-                "video", mapOf("label", "\u89c6\u9891", "count", videoMessages)
+                "text", mapOf("label", "文本", "count", textMessages),
+                "image", mapOf("label", "图片", "count", imageMessages),
+                "audio", mapOf("label", "音频", "count", audioMessages),
+                "video", mapOf("label", "视频", "count", videoMessages)
         ));
         stats.put("summary", mapOf(
-                "totalLabel", "\u6d88\u606f\u603b\u91cf",
-                "distributionLabel", "\u6d88\u606f\u7c7b\u578b\u5206\u5e03",
+                "totalLabel", "消息总量",
+                "distributionLabel", "消息类型分布",
                 "activeTypeCount", countPositive(textMessages, imageMessages, audioMessages, videoMessages)
         ));
 
@@ -109,7 +109,7 @@ public class StatisticsService {
         long totalMessages = messageRepository.countByGroupId(groupId);
         stats.put("totalMessages", totalMessages);
         stats.put("summary", mapOf(
-                "totalLabel", "\u7fa4\u6d88\u606f\u603b\u91cf",
+                "totalLabel", "群消息总量",
                 "groupId", groupId
         ));
 

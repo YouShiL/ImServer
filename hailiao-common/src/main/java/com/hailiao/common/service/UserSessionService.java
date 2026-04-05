@@ -78,7 +78,7 @@ public class UserSessionService {
     @Transactional
     public void revokeSession(Long userId, String sessionId) {
         UserSession session = userSessionRepository.findByUserIdAndSessionId(userId, sessionId)
-                .orElseThrow(() -> new RuntimeException("\u4f1a\u8bdd\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("会话不存在"));
         revokeSession(session);
     }
 

@@ -105,7 +105,7 @@ public class PrettyNumberManageController {
     public ResponseEntity<?> releasePrettyNumber(@PathVariable Long prettyNumberId) {
         try {
             prettyNumberService.releasePrettyNumber(prettyNumberId);
-            return ResponseEntity.ok("\u91ca\u653e\u6210\u529f");
+            return ResponseEntity.ok("释放成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -125,8 +125,8 @@ public class PrettyNumberManageController {
             stats.put("availablePrettyNumbers", availablePrettyNumbers);
             stats.put("soldPrettyNumbers", soldPrettyNumbers);
             stats.put("summary", mapOf(
-                    "availableLabel", "\u5f85\u552e\u9753\u53f7",
-                    "soldLabel", "\u5df2\u552e\u9753\u53f7",
+                    "availableLabel", "待售靓号",
+                    "soldLabel", "已售靓号",
                     "soldRatio", totalPrettyNumbers == 0 ? "0.00%" : String.format("%.2f%%", (soldPrettyNumbers * 100.0) / totalPrettyNumbers)
             ));
             return ResponseEntity.ok(stats);
@@ -174,7 +174,7 @@ public class PrettyNumberManageController {
         item.put("levelLabel", getPrettyNumberLevelLabel(prettyNumber.getLevel()));
         item.put("price", prettyNumber.getPrice());
         item.put("status", prettyNumber.getStatus());
-        item.put("statusLabel", prettyNumber.getStatus() != null && prettyNumber.getStatus() == 1 ? "\u5df2\u552e\u51fa" : "\u5f85\u552e");
+        item.put("statusLabel", prettyNumber.getStatus() != null && prettyNumber.getStatus() == 1 ? "已售出" : "待售");
         item.put("userId", prettyNumber.getUserId());
         item.put("buyTime", prettyNumber.getBuyTime());
         item.put("expireTime", prettyNumber.getExpireTime());
@@ -184,18 +184,18 @@ public class PrettyNumberManageController {
 
     private String getPrettyNumberLevelLabel(Integer level) {
         if (level == null) {
-            return "\u672a\u77e5\u7b49\u7ea7";
+            return "未知等级";
         }
         if (level == 1) {
-            return "\u666e\u901a\u9753\u53f7";
+            return "普通靓号";
         }
         if (level == 2) {
-            return "\u7cbe\u9009\u9753\u53f7";
+            return "精选靓号";
         }
         if (level == 3) {
-            return "\u7a00\u7f3a\u9753\u53f7";
+            return "稀缺靓号";
         }
-        return "\u7b49\u7ea7" + level;
+        return "等级" + level;
     }
 
     private Map<String, Object> mapOf(Object... values) {

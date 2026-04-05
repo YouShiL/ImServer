@@ -42,12 +42,12 @@ public class OrderService {
 
     public Order getOrderById(Long id) {
         return orderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u8ba2\u5355\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("订单不存在"));
     }
 
     public Order getOrderByOrderNo(String orderNo) {
         return orderRepository.findByOrderNo(orderNo)
-                .orElseThrow(() -> new RuntimeException("\u8ba2\u5355\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("订单不存在"));
     }
 
     public List<Order> getUserOrders(Long userId) {
@@ -84,7 +84,7 @@ public class OrderService {
     public Order payOrder(Long orderId, Integer payType, String payNo) {
         Order order = getOrderById(orderId);
         if (order.getPayStatus() == 1) {
-            throw new RuntimeException("\u8ba2\u5355\u5df2\u652f\u4ed8");
+            throw new RuntimeException("订单已支付");
         }
 
         order.setPayType(payType);
@@ -100,7 +100,7 @@ public class OrderService {
     public void cancelOrder(Long orderId) {
         Order order = getOrderById(orderId);
         if (order.getPayStatus() == 1) {
-            throw new RuntimeException("\u5df2\u652f\u4ed8\u8ba2\u5355\u4e0d\u80fd\u53d6\u6d88");
+            throw new RuntimeException("已支付订单不能取消");
         }
         order.setStatus(0);
         order.setUpdatedAt(new Date());

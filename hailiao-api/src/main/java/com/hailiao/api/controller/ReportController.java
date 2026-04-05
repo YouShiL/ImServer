@@ -30,7 +30,7 @@ public class ReportController {
             String evidence = request.get("evidence") != null ? request.get("evidence").toString() : null;
 
             if (userId.equals(targetId) && targetType == 1) {
-                return ResponseEntity.badRequest().body(ResponseDTO.badRequest("\u4e0d\u80fd\u4e3e\u62a5\u81ea\u5df1"));
+                return ResponseEntity.badRequest().body(ResponseDTO.badRequest("不能举报自己"));
             }
 
             Report report = new Report();
@@ -82,31 +82,31 @@ public class ReportController {
 
     private String getTargetTypeLabel(Integer targetType) {
         if (targetType == null) {
-            return "\u672a\u77e5\u5bf9\u8c61";
+            return "未知对象";
         }
         switch (targetType) {
             case 1:
-                return "\u7528\u6237";
+                return "用户";
             case 2:
-                return "\u7fa4\u7ec4";
+                return "群组";
             case 3:
-                return "\u6d88\u606f";
+                return "消息";
             default:
-                return "\u672a\u77e5\u5bf9\u8c61";
+                return "未知对象";
         }
     }
 
     private String getStatusLabel(Integer status) {
         if (status == null) {
-            return "\u5f85\u5904\u7406";
+            return "待处理";
         }
         switch (status) {
             case 1:
-                return "\u5df2\u5904\u7406";
+                return "已处理";
             case 2:
-                return "\u5df2\u9a73\u56de";
+                return "已驳回";
             default:
-                return "\u5f85\u5904\u7406";
+                return "待处理";
         }
     }
 }

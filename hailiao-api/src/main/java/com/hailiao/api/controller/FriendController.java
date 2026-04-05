@@ -38,8 +38,8 @@ public class FriendController {
             String message = (String) request.get("message");
             FriendRequest friendRequest = friendService.sendFriendRequest(userId, friendId, remark, message);
             String resultMessage = friendRequest.getStatus() != null && friendRequest.getStatus() == 1
-                    ? "\u5df2\u81ea\u52a8\u6dfb\u52a0\u4e3a\u597d\u53cb"
-                    : "\u597d\u53cb\u7533\u8bf7\u5df2\u53d1\u9001";
+                    ? "已自动添加为好友"
+                    : "好友申请已发送";
             return ResponseEntity.ok(ResponseDTO.success(resultMessage));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
@@ -79,7 +79,7 @@ public class FriendController {
                                                              @PathVariable Long requestId) {
         try {
             friendService.acceptFriendRequest(requestId, userId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u540c\u610f\u597d\u53cb\u7533\u8bf7"));
+            return ResponseEntity.ok(ResponseDTO.success("已同意好友申请"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -90,7 +90,7 @@ public class FriendController {
                                                              @PathVariable Long requestId) {
         try {
             friendService.rejectFriendRequest(requestId, userId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u62d2\u7edd\u597d\u53cb\u7533\u8bf7"));
+            return ResponseEntity.ok(ResponseDTO.success("已拒绝好友申请"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -152,7 +152,7 @@ public class FriendController {
                                                             @PathVariable Long friendId) {
         try {
             friendService.deleteFriend(userId, friendId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5220\u9664\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("删除成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }

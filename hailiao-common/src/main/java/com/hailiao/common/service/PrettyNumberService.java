@@ -24,7 +24,7 @@ public class PrettyNumberService {
     @Transactional
     public PrettyNumber createPrettyNumber(String number, Integer level, BigDecimal price) {
         if (prettyNumberRepository.findByNumber(number).isPresent()) {
-            throw new RuntimeException("\u9753\u53f7\u5df2\u5b58\u5728");
+            throw new RuntimeException("靓号已存在");
         }
 
         PrettyNumber prettyNumber = new PrettyNumber();
@@ -39,12 +39,12 @@ public class PrettyNumberService {
 
     public PrettyNumber getPrettyNumberById(Long id) {
         return prettyNumberRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u9753\u53f7\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("靓号不存在"));
     }
 
     public PrettyNumber getPrettyNumberByNumber(String number) {
         return prettyNumberRepository.findByNumber(number)
-                .orElseThrow(() -> new RuntimeException("\u9753\u53f7\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("靓号不存在"));
     }
 
     public Page<PrettyNumber> getPrettyNumberList(Integer status, Integer level, Long userId, Pageable pageable) {
@@ -78,7 +78,7 @@ public class PrettyNumberService {
         PrettyNumber prettyNumber = getPrettyNumberById(prettyNumberId);
 
         if (prettyNumber.getStatus() == 1) {
-            throw new RuntimeException("\u9753\u53f7\u5df2\u88ab\u8d2d\u4e70");
+            throw new RuntimeException("靓号已被购买");
         }
 
         prettyNumber.setStatus(1);

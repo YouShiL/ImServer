@@ -35,7 +35,7 @@ public class AdminUserService {
     public AdminUser createAdminUser(AdminUser adminUser) {
         validateCreateRequest(adminUser);
         if (adminUserRepository.existsByUsername(adminUser.getUsername())) {
-            throw new RuntimeException("\u7528\u6237\u540d\u5df2\u5b58\u5728");
+            throw new RuntimeException("用户名已存在");
         }
 
         normalizeAdminUser(adminUser);
@@ -52,14 +52,14 @@ public class AdminUserService {
 
     public AdminUser login(String username, String password) {
         AdminUser adminUser = adminUserRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
 
         if (!passwordEncoder.matches(password, adminUser.getPassword())) {
-            throw new RuntimeException("\u5bc6\u7801\u9519\u8bef");
+            throw new RuntimeException("密码错误");
         }
 
         if (adminUser.getStatus() == 0) {
-            throw new RuntimeException("\u8d26\u53f7\u5df2\u88ab\u7981\u7528");
+            throw new RuntimeException("账号已被禁用");
         }
 
         adminUser.setLastLoginAt(new Date());
@@ -68,7 +68,7 @@ public class AdminUserService {
 
     public AdminUser getAdminUserById(Long id) {
         return adminUserRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u7ba1\u7406\u5458\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("管理员不存在"));
     }
 
     public List<AdminUser> getAllAdminUsers() {
@@ -192,7 +192,7 @@ public class AdminUserService {
         validatePassword(newPassword, false);
         AdminUser adminUser = getAdminUserById(adminId);
         if (!passwordEncoder.matches(oldPassword, adminUser.getPassword())) {
-            throw new RuntimeException("\u539f\u5bc6\u7801\u9519\u8bef");
+            throw new RuntimeException("原密码错误");
         }
         adminUser.setPassword(passwordEncoder.encode(newPassword));
         adminUser.setUpdatedAt(new Date());
@@ -205,7 +205,7 @@ public class AdminUserService {
         if (name != null) {
             String normalizedName = name.trim();
             if (normalizedName.length() > 50) {
-                throw new RuntimeException("\u6635\u79f0\u957f\u5ea6\u4e0d\u80fd\u8d85\u8fc7 50 \u4e2a\u5b57\u7b26");
+                throw new RuntimeException("昵称长度不能超过 50 个字符");
             }
             adminUser.setName(normalizedName);
         }
@@ -311,41 +311,41 @@ public class AdminUserService {
 
     public String getRoleName(Integer role) {
         if (role == null) {
-            return "\u672a\u77e5\u89d2\u8272";
+            return "未知角色";
         }
         switch (role) {
             case 1:
-                return "\u8d85\u7ea7\u7ba1\u7406\u5458";
+                return "超级管理员";
             case 2:
-                return "\u5ba1\u6838\u7ba1\u7406\u5458";
+                return "审核管理员";
             case 3:
-                return "\u5ba2\u670d\u7ba1\u7406\u5458";
+                return "客服管理员";
             case 4:
-                return "\u8d22\u52a1\u7ba1\u7406\u5458";
+                return "财务管理员";
             case 5:
-                return "\u8fd0\u8425\u7ba1\u7406\u5458";
+                return "运营管理员";
             default:
-                return "\u81ea\u5b9a\u4e49\u89d2\u8272";
+                return "自定义角色";
         }
     }
 
     public String getRoleDescription(Integer role) {
         if (role == null) {
-            return "\u672a\u77e5\u89d2\u8272\u6a21\u677f";
+            return "未知角色模板";
         }
         switch (role) {
             case 1:
-                return "\u62e5\u6709\u6240\u6709\u540e\u53f0\u6a21\u5757\u548c\u6743\u9650\uff0c\u9002\u5408\u7cfb\u7edf\u8d1f\u8d23\u4eba";
+                return "拥有所有后台模块和权限，适合系统负责人";
             case 2:
-                return "\u4e3b\u8981\u8d1f\u8d23\u4e3e\u62a5\u5ba1\u6838\u3001\u5185\u5bb9\u5ba1\u6838\u548c\u64cd\u4f5c\u65e5\u5fd7\u67e5\u770b";
+                return "主要负责举报审核、内容审核和操作日志查看";
             case 3:
-                return "\u4e3b\u8981\u8d1f\u8d23\u7528\u6237\u3001\u7fa4\u7ec4\u3001\u6d88\u606f\u76d1\u63a7\u53ca\u4e3e\u62a5\u5904\u7406";
+                return "主要负责用户、群组、消息监控及举报处理";
             case 4:
-                return "\u4e3b\u8981\u8d1f\u8d23\u8ba2\u5355\u3001VIP \u548c\u9753\u53f7\u7b49\u5546\u4e1a\u5316\u80fd\u529b";
+                return "主要负责订单、VIP 和靓号等商业化能力";
             case 5:
-                return "\u4e3b\u8981\u8d1f\u8d23\u8fd0\u8425\u914d\u7f6e\u3001\u7edf\u8ba1\u548c\u90e8\u5206\u7528\u6237/\u7fa4\u7ec4\u7ba1\u7406";
+                return "主要负责运营配置、统计和部分用户/群组管理";
             default:
-                return "\u81ea\u5b9a\u4e49\u89d2\u8272\u8bf4\u660e";
+                return "自定义角色说明";
         }
     }
 
@@ -388,7 +388,7 @@ public class AdminUserService {
         item.put("permissionRiskLevel", permissionRiskLevel);
         item.put("permissionRiskLabel", getPermissionRiskLabel(permissionRiskLevel));
         item.put("status", adminUser.getStatus());
-        item.put("statusLabel", adminUser.getStatus() != null && adminUser.getStatus() == 1 ? "\u542f\u7528" : "\u7981\u7528");
+        item.put("statusLabel", adminUser.getStatus() != null && adminUser.getStatus() == 1 ? "启用" : "禁用");
         item.put("lastLoginAt", adminUser.getLastLoginAt());
         item.put("lastLoginIp", adminUser.getLastLoginIp());
         item.put("createdAt", adminUser.getCreatedAt());
@@ -406,7 +406,7 @@ public class AdminUserService {
 
     private void validateCreateRequest(AdminUser adminUser) {
         if (adminUser == null) {
-            throw new RuntimeException("\u7ba1\u7406\u5458\u53c2\u6570\u4e0d\u80fd\u4e3a\u7a7a");
+            throw new RuntimeException("管理员参数不能为空");
         }
         validateUsername(adminUser.getUsername());
         validatePassword(adminUser.getPassword(), true);
@@ -418,7 +418,7 @@ public class AdminUserService {
 
     private void validateUpdateRequest(AdminUser adminUser) {
         if (adminUser == null || adminUser.getId() == null) {
-            throw new RuntimeException("\u7ba1\u7406\u5458 ID \u4e0d\u80fd\u4e3a\u7a7a");
+            throw new RuntimeException("管理员 ID 不能为空");
         }
         if (adminUser.getRole() != null) {
             validateRole(adminUser.getRole());
@@ -427,7 +427,7 @@ public class AdminUserService {
             validateStatus(adminUser.getStatus());
         }
         if (adminUser.getName() != null && adminUser.getName().trim().length() > 50) {
-            throw new RuntimeException("\u6635\u79f0\u957f\u5ea6\u4e0d\u80fd\u8d85\u8fc7 50 \u4e2a\u5b57\u7b26");
+            throw new RuntimeException("昵称长度不能超过 50 个字符");
         }
     }
 
@@ -492,17 +492,17 @@ public class AdminUserService {
 
     private String getPermissionRiskLabel(String riskLevel) {
         if (!StringUtils.hasText(riskLevel)) {
-            return "\u4f4e\u98ce\u9669";
+            return "低风险";
         }
         switch (riskLevel) {
             case "critical":
-                return "\u6781\u9ad8\u98ce\u9669";
+                return "极高风险";
             case "high":
-                return "\u9ad8\u98ce\u9669";
+                return "高风险";
             case "medium":
-                return "\u4e2d\u98ce\u9669";
+                return "中风险";
             default:
-                return "\u4f4e\u98ce\u9669";
+                return "低风险";
         }
     }
 
@@ -528,35 +528,35 @@ public class AdminUserService {
 
     private void validateUsername(String username) {
         if (!StringUtils.hasText(username)) {
-            throw new RuntimeException("\u7528\u6237\u540d\u4e0d\u80fd\u4e3a\u7a7a");
+            throw new RuntimeException("用户名不能为空");
         }
         String normalized = username.trim();
         if (normalized.length() < 3 || normalized.length() > 50) {
-            throw new RuntimeException("\u7528\u6237\u540d\u957f\u5ea6\u5fc5\u987b\u5728 3 \u5230 50 \u4e2a\u5b57\u7b26\u4e4b\u95f4");
+            throw new RuntimeException("用户名长度必须在 3 到 50 个字符之间");
         }
     }
 
     private void validatePassword(String password, boolean required) {
         if (!StringUtils.hasText(password)) {
             if (required) {
-                throw new RuntimeException("\u5bc6\u7801\u4e0d\u80fd\u4e3a\u7a7a");
+                throw new RuntimeException("密码不能为空");
             }
             return;
         }
         if (password.trim().length() < 6 || password.trim().length() > 100) {
-            throw new RuntimeException("\u5bc6\u7801\u957f\u5ea6\u5fc5\u987b\u5728 6 \u5230 100 \u4e2a\u5b57\u7b26\u4e4b\u95f4");
+            throw new RuntimeException("密码长度必须在 6 到 100 个字符之间");
         }
     }
 
     private void validateRole(Integer role) {
         if (role == null || role < 1 || role > 5) {
-            throw new RuntimeException("\u89d2\u8272\u503c\u4e0d\u5408\u6cd5");
+            throw new RuntimeException("角色值不合法");
         }
     }
 
     private void validateStatus(Integer status) {
         if (status == null || (status != 0 && status != 1)) {
-            throw new RuntimeException("\u72b6\u6001\u503c\u4e0d\u5408\u6cd5");
+            throw new RuntimeException("状态值不合法");
         }
     }
 
@@ -568,10 +568,10 @@ public class AdminUserService {
             boolean deleting) {
         if (currentAdminId != null && existingUser.getId().equals(currentAdminId)) {
             if (deleting) {
-                throw new RuntimeException("\u4e0d\u80fd\u5220\u9664\u5f53\u524d\u767b\u5f55\u7ba1\u7406\u5458");
+                throw new RuntimeException("不能删除当前登录管理员");
             }
             if (newStatus != null && newStatus == 0) {
-                throw new RuntimeException("\u4e0d\u80fd\u7981\u7528\u5f53\u524d\u767b\u5f55\u7ba1\u7406\u5458");
+                throw new RuntimeException("不能禁用当前登录管理员");
             }
         }
 
@@ -585,7 +585,7 @@ public class AdminUserService {
         if (deleting || roleChangedAwayFromSuperAdmin || disabled) {
             long superAdminCount = adminUserRepository.countByRole(ROLE_SUPER_ADMIN);
             if (superAdminCount <= 1) {
-                throw new RuntimeException("\u81f3\u5c11\u9700\u4fdd\u7559\u4e00\u4e2a\u8d85\u7ea7\u7ba1\u7406\u5458");
+                throw new RuntimeException("至少需保留一个超级管理员");
             }
         }
     }

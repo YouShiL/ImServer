@@ -2,14 +2,37 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hailiao_flutter/im/im_event_bridge.dart';
 import 'package:hailiao_flutter/models/conversation_dto.dart';
 import 'package:hailiao_flutter/models/emoji.dart';
 import 'package:hailiao_flutter/models/message_dto.dart';
 import 'package:hailiao_flutter/models/response_dto.dart';
 import 'package:hailiao_flutter/providers/auth_provider.dart';
 import 'package:hailiao_flutter/providers/blacklist_provider.dart';
+import 'package:hailiao_flutter/providers/call_provider.dart';
 import 'package:hailiao_flutter/providers/message_provider.dart';
+import 'package:hailiao_flutter/screens/call_screen.dart';
 import 'package:hailiao_flutter/services/api_service.dart';
+import 'package:hailiao_flutter/services/call_signal_bridge.dart';
+import 'package:hailiao_flutter/theme/chat_ui_tokens.dart';
+import 'package:hailiao_flutter/theme/common_tokens.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_audio_message_content.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_blocked_banner.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_composer_banner.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_emoji_panel.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_file_message_content.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_header_meta.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_history_status_bar.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_image_message_content.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_input_bar.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_message_bubble.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_message_row.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_selection_summary_bar.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_status_banner.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_text_message_content.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_time_separator.dart';
+import 'package:hailiao_flutter/widgets/common/app_empty_state.dart';
+import 'package:hailiao_flutter/widgets/common/chat_page_scaffold.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -86,6 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int? _type;
   int _currentPage = 1;
   String _title = '聊天';
+  String? _avatarUrl;
   String? _statusText;
   int? _highlightedMessageId;
   final Set<int> _selectedMessageIds = <int>{};
@@ -132,6 +156,9 @@ class _ChatScreenState extends State<ChatScreen> {
     _targetId = args?['targetId'] as int? ?? 1;
     _type = args?['type'] as int? ?? 1;
     _title = args?['title'] as String? ?? '聊天';
+    _avatarUrl =
+        args?['avatarUrl'] as String? ??
+        args?['avatar'] as String?;
     _currentPage = 1;
     _hasMoreHistory = true;
     _loadingHistory = false;
@@ -139,6 +166,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final provider = context.read<MessageProvider>();
     provider.clearMessages();
     await provider.loadConversations();
+    _hydrateConversationMeta(provider.conversations);
     _restoreDraft(provider.conversations);
 
     await _loadHistoryPage(page: 1, reset: true);
@@ -147,6 +175,18 @@ class _ChatScreenState extends State<ChatScreen> {
       await _loadPresence(_targetId!);
     }
     _scrollToLatest();
+  }
+
+  void _hydrateConversationMeta(List<ConversationDTO> conversations) {
+    for (final ConversationDTO item in conversations) {
+      if (item.targetId == _targetId && item.type == _type) {
+        _avatarUrl ??= item.avatar;
+        if ((item.name ?? '').trim().isNotEmpty) {
+          _title = item.name!.trim();
+        }
+        break;
+      }
+    }
   }
 
   void _cacheDraft(String value) {
@@ -229,6 +269,39 @@ class _ChatScreenState extends State<ChatScreen> {
             : (lastOnline.isNotEmpty ? '最后在线 $lastOnline' : '离线');
       });
     } catch (_) {}
+  }
+
+  Future<void> _startCall(CallMediaType mediaType) async {
+    if (_type != 1) {
+      return;
+    }
+    final CallSignalBridge bridge = CallSignalBridge.instance;
+    final CallProvider provider = CallProvider(
+      callType: mediaType,
+      name: _title,
+      stage: CallStage.calling,
+      avatarUrl: _avatarUrl,
+      subtitle: _statusText,
+      isMuted: false,
+      isSpeakerOn: mediaType == CallMediaType.audio,
+      isCameraEnabled: mediaType == CallMediaType.video,
+      isFrontCamera: true,
+    );
+    bridge.onOutgoingStarted(provider);
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CallScreen(
+          name: _title,
+          mediaType: mediaType,
+          stage: CallStage.calling,
+          avatarUrl: _avatarUrl,
+          subtitle: _statusText,
+          provider: provider,
+          disposeProvidedProvider: true,
+        ),
+      ),
+    );
   }
 
   void _handleScroll() {
@@ -437,6 +510,8 @@ class _ChatScreenState extends State<ChatScreen> {
         return '音频';
       case 4:
         return '视频';
+      case 5:
+        return '文件';
       default:
         return '文本';
     }
@@ -831,9 +906,16 @@ class _ChatScreenState extends State<ChatScreen> {
         content: content,
       );
     } else {
-      success = _type == 1
-          ? await provider.sendPrivateMessage(_targetId!, content, 1)
-          : await provider.sendGroupMessage(_targetId!, content, 1);
+      try {
+        context.read<ImEventBridge>().sendTextMessage(
+          targetId: _targetId!,
+          type: _type!,
+          text: content,
+        );
+        success = true;
+      } catch (_) {
+        success = false;
+      }
     }
 
     if (!mounted || !success) {
@@ -1143,6 +1225,8 @@ class _ChatScreenState extends State<ChatScreen> {
         return '[音频]';
       case 4:
         return '[视频]';
+      case 5:
+        return '[文件]';
       default:
         return EmojiList.replacePlaceholders(message.content ?? '');
     }
@@ -1156,9 +1240,37 @@ class _ChatScreenState extends State<ChatScreen> {
         return Icons.mic_none_outlined;
       case 4:
         return Icons.videocam_outlined;
+      case 5:
+        return Icons.insert_drive_file_outlined;
       default:
         return Icons.chat_bubble_outline;
     }
+  }
+
+  String? _audioDurationLabel(MessageDTO message) {
+    final String extra = (message.extra ?? '').trim();
+    if (extra.isEmpty) {
+      return null;
+    }
+
+    final Match? match = RegExp(
+      r'(?:duration|len|length|时长)?\D*(\d{1,4})\s*(?:s|sec|secs|秒)?',
+      caseSensitive: false,
+    ).firstMatch(extra);
+    if (match == null) {
+      return extra.length <= 14 ? extra : null;
+    }
+
+    final int? seconds = int.tryParse(match.group(1) ?? '');
+    if (seconds == null) {
+      return null;
+    }
+    if (seconds < 60) {
+      return '$seconds秒';
+    }
+    final int minutes = seconds ~/ 60;
+    final int remain = seconds % 60;
+    return '$minutes分${remain.toString().padLeft(2, '0')}秒';
   }
 
   Future<void> _openMediaPreview(MessageDTO message) async {
@@ -1371,56 +1483,18 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildDateDivider(String label, {String? bucket}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Divider(
-              thickness: 0.8,
-              color: Color(0xFFE5E7EB),
-            ),
-          ),
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF6B7280),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (_selectionMode && bucket != null) ...[
-                  const SizedBox(width: 6),
-                  GestureDetector(
-                    onTap: () => _selectMessagesForDate(bucket),
-                    child: const Icon(
-                      Icons.checklist_rtl_outlined,
-                      size: 16,
-                      color: Color(0xFF2563EB),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const Expanded(
-            child: Divider(
-              thickness: 0.8,
-              color: Color(0xFFE5E7EB),
-            ),
-          ),
-        ],
-      ),
+    return ChatTimeSeparator(
+      label: label,
+      trailing: _selectionMode && bucket != null
+          ? GestureDetector(
+              onTap: () => _selectMessagesForDate(bucket),
+              child: const Icon(
+                Icons.checklist_rtl_outlined,
+                size: 16,
+                color: ChatUiTokens.info,
+              ),
+            )
+          : null,
     );
   }
 
@@ -2250,47 +2324,42 @@ class _ChatScreenState extends State<ChatScreen> {
     if (target == null) {
       return const SizedBox.shrink();
     }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: const Color(0xFFF8FAFC),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _editingMessage != null ? '编辑消息' : '回复消息',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF2563EB),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _summary(target),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF666666),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, size: 18),
-            onPressed: () {
-              setState(() {
-                _replyingTo = null;
-                _editingMessage = null;
-              });
-            },
-          ),
-        ],
-      ),
+    return ChatComposerBanner(
+      isEditing: _editingMessage != null,
+      summaryText: _summary(target),
+      onClose: () {
+        setState(() {
+          _replyingTo = null;
+          _editingMessage = null;
+        });
+      },
+    );
+  }
+
+  Widget _buildTopContextBanner() {
+    if (_selectionMode) {
+      return const SizedBox.shrink();
+    }
+
+    if (_type == 1) {
+      final bool isOnline = (_statusText ?? '').startsWith('在线');
+      return ChatStatusBanner(
+        icon: isOnline ? Icons.circle_notifications_outlined : Icons.schedule,
+        title: isOnline ? '对方当前在线' : '会话状态',
+        subtitle: _statusText ?? '状态将在会话建立后同步更新',
+        tone: isOnline
+            ? ChatStatusBannerTone.success
+            : ChatStatusBannerTone.neutral,
+        compact: true,
+      );
+    }
+
+    return const ChatStatusBanner(
+      icon: Icons.groups_2_outlined,
+      title: '群聊会话',
+      subtitle: '群公告、成员摘要等辅助信息可在这里继续承载。',
+      tone: ChatStatusBannerTone.info,
+      compact: true,
     );
   }
 
@@ -2304,126 +2373,71 @@ class _ChatScreenState extends State<ChatScreen> {
         : (isCurrentUser ? Colors.white : const Color(0xFF333333));
 
     if (message.isRecalled == true) {
-      return Text(
-        '消息已撤回',
-        style: TextStyle(
-          color: isHighlighted
-              ? const Color(0xFF666666)
-              : (isCurrentUser ? Colors.white70 : const Color(0xFF666666)),
-          fontStyle: FontStyle.italic,
-        ),
+      return ChatTextMessageContent(
+        text: '消息已撤回',
+        textColor: isHighlighted
+            ? ChatUiTokens.systemMessageText
+            : (isCurrentUser
+                ? ChatUiTokens.outgoingMetaText
+                : ChatUiTokens.systemMessageText),
+        isSystem: true,
       );
     }
 
     switch (message.msgType ?? 1) {
       case 2:
-        final path = message.content ?? '';
-        final file = File(path);
-        return GestureDetector(
+        return ChatImageMessageContent(
+          path: message.content ?? '',
           onTap: () => _openMediaPreview(message),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: path.startsWith('http')
-                ? Image.network(
-                    path,
-                    width: 180,
-                    height: 180,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        _buildMediaPlaceholder(180, 180),
-                  )
-                : file.existsSync()
-                    ? Image.file(
-                        file,
-                        width: 180,
-                        height: 180,
-                        fit: BoxFit.cover,
-                      )
-                    : _buildMediaPlaceholder(180, 180),
-          ),
+          label: '图片消息',
         );
       case 4:
-        return GestureDetector(
+        return ChatImageMessageContent(
+          path: message.content ?? '',
           onTap: () => _openMediaPreview(message),
-          child:
-              _buildMediaPlaceholder(180, 140, icon: Icons.play_circle_fill),
+          label: '视频消息',
+          isVideo: true,
         );
       case 3:
-        return GestureDetector(
+        return ChatAudioMessageContent(
+          isCurrentUser: isCurrentUser,
           onTap: () => _openMediaDetails(message),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: isHighlighted
-                  ? const Color(0xFFFFFBEB)
-                  : isCurrentUser
-                      ? Colors.white24
-                      : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.graphic_eq_outlined,
-                  color: textColor,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '音频消息',
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          durationLabel: _audioDurationLabel(message),
+          isHighlighted: isHighlighted,
+        );
+      case 5:
+        return ChatFileMessageContent(
+          path: message.content ?? '',
+          isCurrentUser: isCurrentUser,
+          isHighlighted: isHighlighted,
+          onTap: () => _openMediaDetails(message),
         );
       default:
-        return Text(
-          EmojiList.replacePlaceholders(message.content ?? ''),
-          style: TextStyle(
-            color: textColor,
-            fontSize: 16,
-          ),
+        return ChatTextMessageContent(
+          text: EmojiList.replacePlaceholders(message.content ?? ''),
+          textColor: textColor,
         );
     }
-  }
-
-  Widget _buildMediaPlaceholder(double width, double height, {IconData? icon}) {
-    return Container(
-      width: width,
-      height: height,
-      color: const Color(0xFFE5E7EB),
-      child: Icon(
-        icon ?? Icons.image_outlined,
-        color: const Color(0xFF9CA3AF),
-        size: 36,
-      ),
-    );
   }
 
   Widget _buildSearchStatChip(String label, String value, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ChatUiTokens.searchChipBackground,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: ChatUiTokens.searchChipBorder),
       ),
       child: RichText(
         text: TextSpan(
-          style: const TextStyle(
-            fontSize: 12,
-            color: Color(0xFF374151),
+          style: CommonTokens.caption.copyWith(
+            color: ChatUiTokens.searchChipText,
           ),
           children: [
             TextSpan(text: '$label '),
             TextSpan(
               text: value,
-              style: TextStyle(
+              style: CommonTokens.bodySmall.copyWith(
                 color: color,
                 fontWeight: FontWeight.w700,
               ),
@@ -2443,9 +2457,6 @@ class _ChatScreenState extends State<ChatScreen> {
     final isHighlighted = _highlightedMessageId == message.id;
     final isSelected =
         message.id != null && _selectedMessageIds.contains(message.id);
-    final secondaryTextColor = isHighlighted
-        ? const Color(0xFF666666)
-        : (isCurrentUser ? Colors.white70 : const Color(0xFF666666));
     final statusText = message.isRecalled == true
         ? ''
         : isCurrentUser
@@ -2453,120 +2464,31 @@ class _ChatScreenState extends State<ChatScreen> {
                 ? '已读'
                 : ((message.status ?? 1) == 0 ? '发送中' : '已发送'))
             : '';
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment:
-            isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (_selectionMode)
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Checkbox(
-                value: isSelected,
-                onChanged: (_) => _toggleMessageSelection(message),
-              ),
-            ),
-          Flexible(
-            child: GestureDetector(
-              onLongPress: () => _showMessageActions(message, isCurrentUser),
-              onTap: _selectionMode ? () => _toggleMessageSelection(message) : null,
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.72,
-                ),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: isHighlighted
-                      ? const Color(0xFFFFF3C4)
-                      : isSelected
-                          ? const Color(0xFFDBEAFE)
-                      : (isCurrentUser
-                          ? Theme.of(context).primaryColor
-                          : Colors.white),
-                  borderRadius: BorderRadius.circular(16),
-                  border: isHighlighted
-                      ? Border.all(color: const Color(0xFFF59E0B), width: 1.5)
-                      : (isSelected
-                          ? Border.all(color: const Color(0xFF2563EB), width: 1.5)
-                          : null),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (message.forwardFromMsgId != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isHighlighted
-                              ? const Color(0xFFFFFBEB)
-                              : isCurrentUser
-                                  ? Colors.white24
-                                  : const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          '转发消息',
-                          style: TextStyle(
-                            color: secondaryTextColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    if (replyTarget != null)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: isHighlighted
-                              ? const Color(0xFFFFFBEB)
-                              : isCurrentUser
-                              ? Colors.white24
-                              : const Color(0xFFF3F4F6),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          _summary(replyTarget),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: secondaryTextColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    _buildMessageContent(
-                      message,
-                      isCurrentUser,
-                      isHighlighted: isHighlighted,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      [
-                        message.createdAt ?? '',
-                        if (message.isEdited == true) '已编辑',
-                        if (statusText.isNotEmpty) statusText,
-                      ].where((item) => item.isNotEmpty).join(' · '),
-                      style: TextStyle(
-                        color: isHighlighted
-                            ? const Color(0xFF666666)
-                            : (isCurrentUser
-                                ? Colors.white70
-                                : const Color(0xFF9E9E9E)),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+    return ChatMessageRow(
+      isCurrentUser: isCurrentUser,
+      selectionMode: _selectionMode,
+      selectionValue: isSelected,
+      onLongPress: () => _showMessageActions(message, isCurrentUser),
+      onTap: _selectionMode ? () => _toggleMessageSelection(message) : null,
+      onSelectionToggle: () => _toggleMessageSelection(message),
+      child: ChatMessageBubble(
+        isCurrentUser: isCurrentUser,
+        isHighlighted: isHighlighted,
+        isSelected: isSelected,
+        selectionMode: _selectionMode,
+        selectionValue: isSelected,
+        isForwarded: message.forwardFromMsgId != null,
+        replySummary: replyTarget == null ? null : _summary(replyTarget),
+        footerText: [
+          message.createdAt ?? '',
+          if (message.isEdited == true) '已编辑',
+          if (statusText.isNotEmpty) statusText,
+        ].where((String item) => item.isNotEmpty).join(' · '),
+        child: _buildMessageContent(
+          message,
+          isCurrentUser,
+          isHighlighted: isHighlighted,
+        ),
       ),
     );
   }
@@ -2581,19 +2503,26 @@ class _ChatScreenState extends State<ChatScreen> {
     final showDateDivider =
         previous == null || _dateBucket(previous) != _dateBucket(message);
 
-    return Column(
-      children: [
-        if (showDateDivider)
-          _buildDateDivider(
-            _dateLabel(message),
-            bucket: _dateBucket(message),
-          ),
-        _buildMessageBubble(
-          message,
-          message.fromUserId == currentUserId,
-          messages,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          maxWidth: ChatUiTokens.messageContentMaxWidth,
         ),
-      ],
+        child: Column(
+          children: [
+            if (showDateDivider)
+              _buildDateDivider(
+                _dateLabel(message),
+                bucket: _dateBucket(message),
+              ),
+            _buildMessageBubble(
+              message,
+              message.fromUserId == currentUserId,
+              messages,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -2606,8 +2535,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final isBlocked =
         _type == 1 && _targetId != null && blacklistProvider.isBlocked(_targetId!);
 
-    return Scaffold(
-      appBar: AppBar(
+    return ChatPageScaffold(
+      header: AppBar(
         leading: _selectionMode
             ? IconButton(
                 icon: const Icon(Icons.close),
@@ -2616,20 +2545,15 @@ class _ChatScreenState extends State<ChatScreen> {
             : null,
         title: _selectionMode
             ? Text('已选择 ${_selectedMessageIds.length} 条')
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_title),
-                  if (_type == 1)
-                    Text(
-                      _statusText ?? '',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF9E9E9E),
-                        fontWeight: FontWeight.normal,
-                      ),
-                    ),
-                ],
+            : ChatHeaderMeta(
+                title: _title,
+                contextLabel: _type == 1 ? '单聊' : '群聊',
+                subtitle: _type == 1 ? _statusText : '会话信息',
+                statusColor: _type == 1
+                    ? ((_statusText ?? '').startsWith('在线')
+                        ? ChatUiTokens.headerStatusOnline
+                        : ChatUiTokens.headerStatusIdle)
+                    : ChatUiTokens.headerStatusIdle,
               ),
         actions: [
           if (_selectionMode)
@@ -2704,6 +2628,18 @@ class _ChatScreenState extends State<ChatScreen> {
                   _selectedMessages.isEmpty ? null : _focusFirstSelectedMessage,
             )
           else ...[
+            if (_type == 1)
+              IconButton(
+                icon: const Icon(Icons.call_outlined),
+                tooltip: '语音通话',
+                onPressed: () => _startCall(CallMediaType.audio),
+              ),
+            if (_type == 1)
+              IconButton(
+                icon: const Icon(Icons.videocam_outlined),
+                tooltip: '视频通话',
+                onPressed: () => _startCall(CallMediaType.video),
+              ),
             IconButton(
               icon: const Icon(Icons.search),
               onPressed: _showSearchDialog,
@@ -2732,73 +2668,38 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           if (_selectionMode)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              color: const Color(0xFFEFF6FF),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '已选择 ${_selectedMessageIds.length} 条',
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1D4ED8),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _selectionSummaryText(),
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF2563EB),
-                    ),
-                  ),
-                ],
-              ),
+            ChatSelectionSummaryBar(
+              selectedCount: _selectedMessageIds.length,
+              summaryText: _selectionSummaryText(),
             ),
+          _buildTopContextBanner(),
           Expanded(
             child: messageProvider.isLoading && messageProvider.messages.isEmpty
                 ? const Center(child: CircularProgressIndicator())
                 : messageProvider.messages.isEmpty
-                    ? const Center(child: Text('暂无消息'))
+                    ? const AppEmptyState(
+                        icon: Icons.chat_bubble_outline,
+                        text: '暂无消息',
+                        detail: '开始发送第一条消息吧',
+                      )
                     : Column(
                         children: [
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                            child: Align(
-                              alignment: Alignment.center,
-                              child: _loadingHistory
-                                  ? const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 8),
-                                      child: SizedBox(
-                                        height: 18,
-                                        width: 18,
-                                        child: CircularProgressIndicator(strokeWidth: 2),
-                                      ),
-                                    )
-                                  : (_hasMoreHistory
-                                      ? TextButton.icon(
-                                          onPressed: () => _loadHistoryPage(
-                                            page: _currentPage + 1,
-                                          ),
-                                          icon: const Icon(Icons.history),
-                                          label: const Text('加载更早消息'),
-                                        )
-                                      : const Text(
-                                          '历史消息已全部加载',
-                                          style: TextStyle(
-                                            color: Color(0xFF9E9E9E),
-                                            fontSize: 12,
-                                          ),
-                                        )),
+                          ChatHistoryStatusBar(
+                            isLoading: _loadingHistory,
+                            hasMore: _hasMoreHistory,
+                            onLoadMore: () => _loadHistoryPage(
+                              page: _currentPage + 1,
                             ),
                           ),
                           Expanded(
                             child: ListView.builder(
                               controller: _scrollController,
-                              padding: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.fromLTRB(
+                                12,
+                                ChatUiTokens.messageListTopSpacing,
+                                12,
+                                ChatUiTokens.messageListBottomSpacing,
+                              ),
                               itemCount: messageProvider.messages.length,
                               itemBuilder: (context, index) {
                                 return _buildMessageItem(
@@ -2812,88 +2713,49 @@ class _ChatScreenState extends State<ChatScreen> {
                         ],
                       ),
           ),
-          if (_showEmojiPicker && !_selectionMode)
-            SizedBox(
-              height: 180,
-              child: GridView.count(
-                crossAxisCount: 8,
-                children: EmojiList.emojis
-                    .map(
-                      (emoji) => InkWell(
-                        onTap: () {
-                          _messageController.text += emoji.code;
-                          setState(() {
-                            _isTyping = _messageController.text.isNotEmpty;
-                          });
-                        },
-                        child: Center(child: Text(emoji.display)),
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          if (isBlocked && !_selectionMode)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              color: const Color(0xFFFFF3E0),
-              child: const Text('由于你已拉黑该用户，当前无法发送消息。'),
-            ),
-          if (!_selectionMode) _buildComposerBanner(),
-          if (!_selectionMode)
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                border: Border(top: BorderSide(color: Color(0xFFE0E0E0))),
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.add_circle_outline),
-                    onPressed: isBlocked ? null : _showMediaOptions,
-                  ),
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      enabled: !isBlocked,
-                      decoration: InputDecoration(
-                        hintText: _editingMessage != null ? '编辑消息' : '输入消息',
-                      ),
-                      onChanged: (value) {
-                        _cacheDraft(value);
-                        setState(() {
-                          _isTyping = value.isNotEmpty;
-                        });
-                      },
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.sentiment_satisfied_alt),
-                    onPressed: isBlocked
-                        ? null
-                        : () {
-                            setState(() {
-                              _showEmojiPicker = !_showEmojiPicker;
-                            });
-                          },
-                  ),
-                  IconButton(
-                    icon: Icon(_editingMessage != null ? Icons.check : Icons.send),
-                    onPressed: !isBlocked && _isTyping ? _sendMessage : null,
-                  ),
-                ],
-              ),
-            ),
         ],
       ),
+      inputBar: !_selectionMode
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_showEmojiPicker)
+                  ChatEmojiPanel(
+                    onEmojiSelected: (emoji) {
+                      _messageController.text += emoji.code;
+                      setState(() {
+                        _isTyping = _messageController.text.isNotEmpty;
+                      });
+                    },
+                  ),
+                if (isBlocked) const ChatBlockedBanner(),
+                _buildComposerBanner(),
+                ChatInputBar(
+                  controller: _messageController,
+                  enabled: !isBlocked,
+                  hintText: _editingMessage != null ? '编辑消息' : '输入消息',
+                  onChanged: (String value) {
+                    _cacheDraft(value);
+                    setState(() {
+                      _isTyping = value.isNotEmpty;
+                    });
+                  },
+                  onMediaPressed: isBlocked ? null : _showMediaOptions,
+                  onEmojiPressed: isBlocked
+                      ? null
+                      : () {
+                          setState(() {
+                            _showEmojiPicker = !_showEmojiPicker;
+                          });
+                        },
+                  onSendPressed: !isBlocked && _isTyping ? _sendMessage : null,
+                  showEmojiPicker: _showEmojiPicker,
+                  canSend: !isBlocked && _isTyping,
+                  sendIcon: _editingMessage != null ? Icons.check : Icons.send,
+                ),
+              ],
+            )
+          : null,
     );
   }
 }
-
-
-
-
-
-
-

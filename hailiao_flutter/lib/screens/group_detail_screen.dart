@@ -119,6 +119,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 return;
               }
 
+              final dialogNavigator = Navigator.of(dialogContext);
+              final messenger = ScaffoldMessenger.of(this.context);
+
               setDialogState(() {
                 isSubmitting = true;
                 error = null;
@@ -138,9 +141,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               }
 
               if (success) {
-                Navigator.of(dialogContext).pop();
+                if (!dialogContext.mounted) {
+                  return;
+                }
+                dialogNavigator.pop();
                 _loadGroupData();
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(content: Text('群资料已更新')),
                 );
               } else {
@@ -193,7 +199,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     ),
                     const SizedBox(height: 4),
                     DropdownButtonFormField<int>(
-                      value: joinType,
+                      initialValue: joinType,
                       decoration: const InputDecoration(
                         labelText: '入群方式',
                       ),
@@ -432,6 +438,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> submit() async {
+              final dialogNavigator = Navigator.of(dialogContext);
+              final messenger = ScaffoldMessenger.of(this.context);
+
               setDialogState(() {
                 isSubmitting = true;
                 error = null;
@@ -448,8 +457,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               }
 
               if (success) {
-                Navigator.of(dialogContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
+                if (!dialogContext.mounted) {
+                  return;
+                }
+                dialogNavigator.pop();
+                messenger.showSnackBar(
                   const SnackBar(content: Text('入群申请已提交')),
                 );
               } else {
@@ -561,6 +573,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             Future<void> submit() async {
+              final dialogNavigator = Navigator.of(dialogContext);
+              final messenger = ScaffoldMessenger.of(this.context);
+
               setDialogState(() {
                 isSubmitting = true;
                 error = null;
@@ -579,8 +594,11 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 }
 
                 if (response.isSuccess) {
-                  Navigator.of(dialogContext).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (!dialogContext.mounted) {
+                    return;
+                  }
+                  dialogNavigator.pop();
+                  messenger.showSnackBar(
                     const SnackBar(content: Text('群组举报已提交')),
                   );
                 } else {
@@ -604,7 +622,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: selectedReason,
+                      initialValue: selectedReason,
                       decoration: const InputDecoration(
                         labelText: '举报原因',
                       ),
@@ -698,10 +716,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     });
 
     try {
+      final currentUserId = context.read<AuthProvider>().user?.id;
       final groupProvider = context.read<GroupProvider>();
       final response = await widget.api.getGroupById(_groupId!);
       await groupProvider.loadGroupMembers(_groupId!);
-      final currentUserId = context.read<AuthProvider>().user?.id;
       final currentMember = _findCurrentMember(groupProvider, currentUserId);
       if ((currentMember?.role ?? 99) <= 2) {
         await groupProvider.loadJoinRequests(_groupId!);
@@ -801,6 +819,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 return;
               }
 
+              final dialogNavigator = Navigator.of(dialogContext);
+              final messenger = ScaffoldMessenger.of(this.context);
+
               setDialogState(() {
                 isSubmitting = true;
                 error = null;
@@ -815,9 +836,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
               }
 
               if (success) {
-                Navigator.of(dialogContext).pop();
+                if (!dialogContext.mounted) {
+                  return;
+                }
+                dialogNavigator.pop();
                 _loadGroupData();
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(content: Text('成员已添加')),
                 );
               } else {
@@ -835,7 +859,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     DropdownButtonFormField<String>(
-                      value: searchType,
+                      initialValue: searchType,
                       decoration: const InputDecoration(
                         labelText: '搜索方式',
                       ),
@@ -886,7 +910,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                         contentPadding: EdgeInsets.zero,
                         leading: CircleAvatar(
                           backgroundColor:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
+                              Theme.of(context).primaryColor.withValues(alpha: 0.1),
                           child: Icon(
                             Icons.person,
                             color: Theme.of(context).primaryColor,
@@ -940,9 +964,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('\u79fb\u9664\u6210\u5458'),
+          title: const Text('移除成员'),
           content: Text(
-            '\u786e\u5b9a\u79fb\u9664 ${member.userInfo?.nickname ?? member.nickname ?? '\u8be5\u6210\u5458'} \u5417\uff1f',
+            '确定移除 ${member.userInfo?.nickname ?? member.nickname ?? '该成员'} 吗？',
           ),
           actions: [
             TextButton(
@@ -951,7 +975,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('\u786e\u8ba4'),
+              child: const Text('确认'),
             ),
           ],
         );
@@ -979,8 +1003,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     });
 
     final message = success
-        ? '\u6210\u5458\u5df2\u79fb\u9664'
-        : (groupProvider.error ?? '\u79fb\u9664\u6210\u5458\u5931\u8d25');
+        ? '成员已移除'
+        : (groupProvider.error ?? '移除成员失败');
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
@@ -999,8 +1023,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('\u9000\u51fa\u7fa4\u7ec4'),
-          content: const Text('\u9000\u51fa\u540e\uff0c\u4f60\u5c06\u4ece\u6210\u5458\u5217\u8868\u4e2d\u79fb\u9664\u3002'),
+          title: const Text('退出群组'),
+          content: const Text('退出后，你将从成员列表中移除。'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -1008,7 +1032,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             ),
             ElevatedButton(
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('\u786e\u8ba4\u9000\u51fa'),
+              child: const Text('确认退出'),
             ),
           ],
         );
@@ -1036,24 +1060,24 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     if (success) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('\u5df2\u9000\u51fa\u7fa4\u7ec4')),
+        const SnackBar(content: Text('已退出群组')),
       );
       Navigator.pop(context);
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(groupProvider.error ?? '\u9000\u51fa\u7fa4\u7ec4\u5931\u8d25')),
+      SnackBar(content: Text(groupProvider.error ?? '退出群组失败')),
     );
   }
 
   Widget _buildGroupHeader(GroupDTO group) {
     final meta = <String>[
-      if (group.memberCount != null) '${group.memberCount}\u4eba',
-      if (group.maxMembers != null) '\u4e0a\u9650 ${group.maxMembers}',
-      if (group.allowMemberInvite == false) '\u9650\u5236\u6210\u5458\u9080\u8bf7',
-      if ((group.joinType ?? 0) == 1 || group.needVerify == true) '\u5165\u7fa4\u9700\u9a8c\u8bc1',
-      if ((group.notice ?? '').isNotEmpty) '\u6709\u516c\u544a',
+      if (group.memberCount != null) '${group.memberCount}人',
+      if (group.maxMembers != null) '上限 ${group.maxMembers}',
+      if (group.allowMemberInvite == false) '限制成员邀请',
+      if ((group.joinType ?? 0) == 1 || group.needVerify == true) '入群需验证',
+      if ((group.notice ?? '').isNotEmpty) '有公告',
     ];
 
     return Container(
@@ -1067,12 +1091,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         children: [
           CircleAvatar(
             radius: 40,
-            backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+            backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
             child: Icon(Icons.groups, size: 32, color: Theme.of(context).primaryColor),
           ),
           const SizedBox(height: 16),
           Text(
-            group.groupName ?? '\u672a\u547d\u540d\u7fa4\u7ec4',
+            group.groupName ?? '未命名群组',
             style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
@@ -1104,7 +1128,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                '\u7fa4\u516c\u544a\uff1a${group.notice!}',
+                '群公告：${group.notice!}',
                 style: const TextStyle(color: Color(0xFF333333)),
               ),
             ),
@@ -1134,13 +1158,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                           arguments: {
                             'targetId': group.id,
                             'type': 2,
-                            'title': group.groupName ?? '\u7fa4\u804a',
+                            'title': group.groupName ?? '群聊',
                           },
                         );
                       }
                     : _requestToJoinGroup,
                 icon: Icon(isMember ? Icons.chat_bubble_outline : Icons.how_to_reg),
-                label: Text(isMember ? '\u8fdb\u5165\u804a\u5929' : '\u7533\u8bf7\u52a0\u5165'),
+                label: Text(isMember ? '进入聊天' : '申请加入'),
               ),
             ),
             const SizedBox(width: 12),
@@ -1158,8 +1182,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 ),
                 label: Text(
                   isMember
-                      ? (canInviteMembers ? '\u6dfb\u52a0\u6210\u5458' : '\u9000\u51fa\u7fa4\u7ec4')
-                      : '\u5237\u65b0',
+                      ? (canInviteMembers ? '添加成员' : '退出群组')
+                      : '刷新',
                 ),
               ),
             ),
@@ -1171,7 +1195,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           child: OutlinedButton.icon(
             onPressed: _isActionRunning ? null : _reportGroup,
             icon: const Icon(Icons.flag_outlined),
-            label: const Text('\u4e3e\u62a5\u7fa4\u7ec4'),
+            label: const Text('举报群组'),
           ),
         ),
       ],
@@ -1189,7 +1213,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '\u7fa4\u7ba1\u7406',
+            '群管理',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -1200,16 +1224,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.edit_outlined),
-            title: const Text('\u7f16\u8f91\u7fa4\u8d44\u6599'),
-            subtitle: const Text('\u4fee\u6539\u7fa4\u540d\u79f0\u3001\u7fa4\u4ecb\u7ecd\u548c\u7fa4\u516c\u544a'),
+            title: const Text('编辑群资料'),
+            subtitle: const Text('修改群名称、群介绍和群公告'),
             trailing: const Icon(Icons.chevron_right),
             onTap: _isActionRunning ? null : _editGroupInfo,
           ),
           const Divider(height: 1),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('\u5168\u5458\u9759\u97f3'),
-            subtitle: const Text('\u5f00\u542f\u540e\uff0c\u666e\u901a\u6210\u5458\u5c06\u53d7\u5230\u53d1\u8a00\u9650\u5236'),
+            title: const Text('全员静音'),
+            subtitle: const Text('开启后，普通成员将受到发言限制'),
             value: group.isMute ?? false,
             onChanged: _isActionRunning ? null : _toggleGroupMute,
           ),
@@ -1229,7 +1253,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '\u5165\u7fa4\u7533\u8bf7',
+            '入群申请',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -1239,7 +1263,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           const SizedBox(height: 12),
           if (groupProvider.joinRequests.isEmpty)
             const Text(
-              '\u6682\u65e0\u5f85\u5904\u7406\u7533\u8bf7',
+              '暂无待处理申请',
               style: TextStyle(color: Color(0xFF9E9E9E)),
             )
           else
@@ -1248,19 +1272,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
                   backgroundColor:
-                      Theme.of(context).primaryColor.withOpacity(0.1),
+                      Theme.of(context).primaryColor.withValues(alpha: 0.1),
                   child: Icon(
                     Icons.person_add_alt_1,
                     color: Theme.of(context).primaryColor,
                   ),
                 ),
                 title: Text(
-                  request.userInfo?.nickname ?? '\u672a\u77e5\u7528\u6237',
+                  request.userInfo?.nickname ?? '未知用户',
                 ),
                 subtitle: Text(
                   [
                     if ((request.userInfo?.userId ?? '').isNotEmpty)
-                      '\u7528\u6237\u53f7 ${request.userInfo!.userId}',
+                      '用户号 ${request.userInfo!.userId}',
                     if ((request.message ?? '').isNotEmpty) request.message!,
                   ].join(' | '),
                 ),
@@ -1271,13 +1295,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       onPressed: _isActionRunning || request.id == null
                           ? null
                           : () => _reviewJoinRequest(request.id!, false),
-                      child: const Text('\u62d2\u7edd'),
+                      child: const Text('拒绝'),
                     ),
                     ElevatedButton(
                       onPressed: _isActionRunning || request.id == null
                           ? null
                           : () => _reviewJoinRequest(request.id!, true),
-                      child: const Text('\u540c\u610f'),
+                      child: const Text('同意'),
                     ),
                   ],
                 ),
@@ -1294,20 +1318,20 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     required bool isOwner,
   }) {
     final roleLabel = switch (member.role) {
-      1 => '\u7fa4\u4e3b',
-      2 => '\u7ba1\u7406\u5458',
-      _ => '\u6210\u5458',
+      1 => '群主',
+      2 => '管理员',
+      _ => '成员',
     };
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
+        backgroundColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
         child: Icon(Icons.person, color: Theme.of(context).primaryColor),
       ),
-      title: Text(member.userInfo?.nickname ?? member.nickname ?? '\u672a\u77e5\u6210\u5458'),
+      title: Text(member.userInfo?.nickname ?? member.nickname ?? '未知成员'),
       subtitle: Text(
-        [roleLabel, if (member.isMute == true) '\u5df2\u88ab\u7981\u8a00'].join(' | '),
+        [roleLabel, if (member.isMute == true) '已被禁言'].join(' | '),
       ),
       trailing: canManage && member.role != 2
           ? PopupMenuButton<String>(
@@ -1328,26 +1352,26 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     value: 'admin',
                     child: Text(
                       member.role == 2
-                          ? '取消\u7ba1\u7406\u5458'
-                          : '\u8bbe\u4e3a\u7ba1\u7406\u5458',
+                          ? '取消管理员'
+                          : '设为管理员',
                     ),
                   ),
                 PopupMenuItem(
                   value: 'mute',
                   child: Text(
                     (member.isMute ?? false)
-                        ? '\u89e3\u9664\u7981\u8a00'
-                        : '\u8bbe\u7f6e\u7981\u8a00',
+                        ? '解除禁言'
+                        : '设置禁言',
                   ),
                 ),
                 if (isOwner && member.role != 1)
                   const PopupMenuItem(
                     value: 'transfer',
-                    child: Text('\u8f6c\u8ba9\u7fa4\u4e3b'),
+                    child: Text('转让群主'),
                   ),
                 const PopupMenuItem(
                   value: 'remove',
-                  child: Text('\u79fb\u9664\u6210\u5458'),
+                  child: Text('移除成员'),
                 ),
               ],
             )
@@ -1370,7 +1394,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     final canReviewJoinRequests = currentRole != null && currentRole <= 2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('\u7fa4\u7ec4\u8be6\u60c5')),
+      appBar: AppBar(title: const Text('群组详情')),
       body: _isRefreshing
           ? Center(
               child: CircularProgressIndicator(
@@ -1389,7 +1413,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   ),
                 )
               : group == null
-                  ? const Center(child: Text('\u6682\u65e0\u7fa4\u7ec4\u4fe1\u606f'))
+                  ? const Center(child: Text('暂无群组信息'))
                   : RefreshIndicator(
                       onRefresh: _loadGroupData,
                       child: ListView(
@@ -1422,7 +1446,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  '\u6210\u5458\u5217\u8868',
+                                  '成员列表',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
@@ -1434,7 +1458,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                                   const Padding(
                                     padding: EdgeInsets.symmetric(vertical: 12),
                                     child: Text(
-                                      '\u6682\u65e0\u6210\u5458',
+                                      '暂无成员',
                                       style: TextStyle(color: Color(0xFF9E9E9E)),
                                     ),
                                   )

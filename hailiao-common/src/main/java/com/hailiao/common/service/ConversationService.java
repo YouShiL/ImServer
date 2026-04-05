@@ -22,7 +22,7 @@ public class ConversationService {
     @Transactional
     public void setTop(Long userId, Long targetId, Integer type, Boolean isTop) {
         Conversation conversation = conversationRepository.findByUserIdAndTargetIdAndType(userId, targetId, type)
-                .orElseThrow(() -> new RuntimeException("\u4f1a\u8bdd\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("会话不存在"));
         conversation.setIsTop(isTop);
         conversation.setUpdatedAt(new Date());
         conversationRepository.save(conversation);
@@ -31,7 +31,7 @@ public class ConversationService {
     @Transactional
     public void setMute(Long userId, Long targetId, Integer type, Boolean isMute) {
         Conversation conversation = conversationRepository.findByUserIdAndTargetIdAndType(userId, targetId, type)
-                .orElseThrow(() -> new RuntimeException("\u4f1a\u8bdd\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("会话不存在"));
         conversation.setIsMute(isMute);
         conversation.setUpdatedAt(new Date());
         conversationRepository.save(conversation);
@@ -40,7 +40,7 @@ public class ConversationService {
     @Transactional
     public void deleteConversation(Long userId, Long targetId, Integer type) {
         Conversation conversation = conversationRepository.findByUserIdAndTargetIdAndType(userId, targetId, type)
-                .orElseThrow(() -> new RuntimeException("\u4f1a\u8bdd\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("会话不存在"));
         conversationRepository.delete(conversation);
     }
 

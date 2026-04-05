@@ -61,43 +61,43 @@ public class ContentAuditController {
 
     private String getContentTypeLabel(Integer contentType) {
         if (contentType == null) {
-            return "\u6587\u672c";
+            return "文本";
         }
         switch (contentType) {
             case 2:
-                return "\u56fe\u7247";
+                return "图片";
             case 3:
-                return "\u8bed\u97f3";
+                return "语音";
             case 4:
-                return "\u89c6\u9891";
+                return "视频";
             case 5:
-                return "\u6587\u4ef6";
+                return "文件";
             case 6:
-                return "\u4f4d\u7f6e";
+                return "位置";
             default:
-                return "\u6587\u672c";
+                return "文本";
         }
     }
 
     private String getResultLabel(Integer result) {
         if (result == null) {
-            return "\u5f85\u5904\u7406";
+            return "待处理";
         }
         switch (result) {
             case 1:
-                return "\u901a\u8fc7";
+                return "通过";
             case 2:
-                return "\u62e6\u622a";
+                return "拦截";
             default:
-                return "\u5f85\u5904\u7406";
+                return "待处理";
         }
     }
 
     private String getStatusLabel(Integer status) {
         if (status == null || status == 0) {
-            return "\u5f85\u5ba1\u6838";
+            return "待审核";
         }
-        return "\u5df2\u5b8c\u6210";
+        return "已完成";
     }
 
     private String getFinalResultLabel(ContentAudit audit) {
@@ -107,6 +107,6 @@ public class ContentAuditController {
         if (audit.getAiResult() != null) {
             return getResultLabel(audit.getAiResult());
         }
-        return "\u5f85\u5904\u7406";
+        return "待处理";
     }
 }

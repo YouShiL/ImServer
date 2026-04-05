@@ -1,0 +1,212 @@
+Launching lib\main.dart on 2406ERN9CC in debug mode...
+Running Gradle task 'assembleDebug'...                          
+Running Gradle task 'assembleDebug'...                             11.7s
+√ Built build\app\outputs\flutter-apk\app-debug.apk
+Installing build\app\outputs\flutter-apk\app-debug.apk...           6.2s
+D/FlutterJNI(13523): Beginning load of flutter...
+D/FlutterJNI(13523): flutter (null) was loaded normally!
+I/flutter (13523): [IMPORTANT:flutter/shell/platform/android/android_context_vk_impeller.cc(62)] Using the Impeller rendering backend (Vulkan).
+Syncing files to device 2406ERN9CC...                               83ms
+
+Flutter run key commands.
+r Hot reload. 
+R Hot restart.
+h List all available interactive commands.
+d Detach (terminate "flutter run" but leave application running).
+c Clear the screen
+q Quit (terminate the application on the device).
+
+A Dart VM Service on 2406ERN9CC is available at: http://127.0.0.1:1734/0IgoTuaYBsw=/
+The Flutter DevTools debugger and profiler on 2406ERN9CC is available at: http://127.0.0.1:1734/0IgoTuaYBsw=/devtools/?uri=ws://127.0.0.1:1734/0IgoTuaYBsw=/ws
+I/Choreographer(13523): Skipped 266 frames!  The application may be doing too much work on its main thread.
+W/libc    (13523): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+W/hailiao_flutter(13523): type=1400 audit(0.0:3183): avc:  denied  { read } for  name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=421 scontext=u:r:untrusted_app:s0:c55,c257,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.example.hailiao_flutter
+I/AdrenoGLES-0(13523): QUALCOMM build                   : 64bab644ca, I204cbc9b5e
+I/AdrenoGLES-0(13523): Build Date                       : 11/20/23
+I/AdrenoGLES-0(13523): OpenGL ES Shader Compiler Version: EV031.36.08.26
+I/AdrenoGLES-0(13523): Local Branch                     : 
+I/AdrenoGLES-0(13523): Remote Branch                    : refs/tags/AU_LINUX_ANDROID_LA.VENDOR.1.0.11.00.00.766.892
+I/AdrenoGLES-0(13523): Remote Branch                    : NONE
+I/AdrenoGLES-0(13523): Reconstruct Branch               : NOTHING
+I/AdrenoGLES-0(13523): Build Config                     : S P 12.1.1 AArch64
+I/AdrenoGLES-0(13523): Driver Path                      : /vendor/lib64/egl/libGLESv2_adreno.so
+I/AdrenoGLES-0(13523): Driver Version                   : 0615.77
+I/AdrenoGLES-0(13523): PFP: 0x016ee206, ME: 0x00000000
+D/VRI[MainActivity](13523): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4393 android.view.ViewRootImpl.doTraversal:3017 android.view.ViewRootImpl$TraversalRunnable.run:10350 android.view.Choreographer$CallbackRecord.run:1609 android.view.Choreographer$CallbackRecord.run:1618 
+D/SurfaceView(13523): UPDATE null, mIsCastMode = false
+W/libc    (13523): Access denied finding property "vendor.display.enable_optimal_refresh_rate"
+W/hailiao_flutter(13523): type=1400 audit(0.0:3184): avc:  denied  { read } for  name="u:object_r:vendor_display_prop:s0" dev="tmpfs" ino=421 scontext=u:r:untrusted_app:s0:c55,c257,c512,c768 tcontext=u:object_r:vendor_display_prop:s0 tclass=file permissive=0 app=com.example.hailiao_flutter
+E/qdgralloc(13523): GetSize: Unrecognized pixel format: 0x38
+E/Gralloc4(13523): isSupported(1, 1, 56, 1, ...) failed with 5
+E/OpenGLRenderer(13523): Unable to match the desired swap behavior.
+E/GraphicBufferAllocator(13523): Failed to allocate (4 x 4) layerCount 1 format 56 usage b00: 5
+E/AHardwareBuffer(13523): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(13523): GetSize: Unrecognized pixel format: 0x3b
+E/Gralloc4(13523): isSupported(1, 1, 59, 1, ...) failed with 5
+E/GraphicBufferAllocator(13523): Failed to allocate (4 x 4) layerCount 1 format 59 usage b00: 5
+E/AHardwareBuffer(13523): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(13523): GetSize: Unrecognized pixel format: 0x38
+E/Gralloc4(13523): isSupported(1, 1, 56, 1, ...) failed with 5
+E/GraphicBufferAllocator(13523): Failed to allocate (4 x 4) layerCount 1 format 56 usage b00: 5
+E/AHardwareBuffer(13523): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+E/qdgralloc(13523): GetSize: Unrecognized pixel format: 0x3b
+E/Gralloc4(13523): isSupported(1, 1, 59, 1, ...) failed with 5
+E/GraphicBufferAllocator(13523): Failed to allocate (4 x 4) layerCount 1 format 59 usage b00: 5
+E/AHardwareBuffer(13523): GraphicBuffer(w=4, h=4, lc=1) failed (Unknown error -5), handle=0x0
+W/qdgralloc(13523): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(13523): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(13523): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(13523): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/qdgralloc(13523): getInterlacedFlag: getMetaData returned -22, defaulting to interlaced_flag = 0
+W/Looper  (13523): PerfMonitor doFrame : time=127ms vsyncFrame=36326 latency=2227ms procState=-1 historyMsgCount=4 (msgIndex=1 wall=324ms seq=3 late=13ms h=android.app.ActivityThread$H w=110) (msgIndex=2 wall=1077ms seq=4 late=328ms h=android.app.ActivityThread$H w=159)
+E/LB      (13523): fail to open file: No such file or directory
+E/LB      (13523): fail to open node: No such file or directory
+I/Choreographer(13523): Skipped 43 frames!  The application may be doing too much work on its main thread.
+D/VRI[MainActivity](13523): vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4393 android.view.ViewRootImpl.doTraversal:3017 android.view.ViewRootImpl$TraversalRunnable.run:10350 android.view.Choreographer$CallbackRecord.run:1609 android.view.Choreographer$CallbackRecord.run:1618 
+D/SurfaceView(13523): UPDATE Surface(name=SurfaceView[com.example.hailiao_flutter/com.example.hailiao_flutter.MainActivity]#1008)/@0xd862b56, mIsProjectionMode = false
+D/VRI[MainActivity](13523): vri.Setup new sync=wmsSync-VRI[MainActivity]#1
+D/OpenGLRenderer(13523): makeCurrent grContext:0xb400007079294da0 reset mTextureAvailable
+D/hailiao_flutter(13523): MiuiProcessManagerServiceStub setSchedFifo
+I/MiuiProcessManagerImpl(13523): setSchedFifo pid:13523, mode:3
+D/VRI[MainActivity](13523): vri.reportDrawFinished
+W/Looper  (13523): PerfMonitor doFrame : time=25ms vsyncFrame=36370 latency=907ms procState=-1 historyMsgCount=13 (msgIndex=1 wall=127ms seq=7 late=2227ms h=android.view.Choreographer$FrameHandler c=android.view.Choreographer$FrameDisplayEventReceiver)
+I/OpenGLRenderer(13523): Davey! duration=932ms; Flags=1, FrameTimelineVsyncId=312074, IntendedVsync=9764363776327, Vsync=9765259609646, InputEventId=0, HandleInputStart=9765270757939, AnimationStart=9765270763773, PerformTraversalsStart=9765270771012, DrawStart=9765287336585, FrameDeadline=9764375442994, FrameInterval=9765270145491, FrameStartTime=20833333, FlingPosition=0, SyncQueued=9765288742002, SyncStart=9765288877991, IssueDrawCommandsStart=9765290863356, SwapBuffers=9765293502939, FrameCompleted=9765296441377, DequeueBufferDuration=454323, QueueBufferDuration=271615, GpuCompleted=9765296441377, SwapBuffersCompleted=9765294395022, DisplayPresentTime=0, CommandSubmissionCompleted=9765293502939, 
+I/HandWritingStubImpl(13523): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+W/MirrorManager(13523): this model don't Support
+I/ImeTracker(13523): com.example.hailiao_flutter:4e0d91c5: onRequestShow at ORIGIN_CLIENT_SHOW_SOFT_INPUT reason SHOW_SOFT_INPUT
+I/HandWritingStubImpl(13523): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+D/InputMethodManager(13523): showSoftInput() view=io.flutter.embedding.android.FlutterView{3069260 VFE...... .F....ID 0,0-1080,2416 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/AssistStructure(13523): Flattened final assist data: 452 bytes, containing 1 windows, 3 views
+D/InsetsController(13523): show(ime(), fromIme=true)
+I/ImeTracker(13523): com.example.hailiao_flutter:4e0d91c5: onShown
+
+══╡ EXCEPTION CAUGHT BY RENDERING LIBRARY ╞═════════════════════════════════════════════════════════
+The following assertion was thrown during layout:
+A RenderFlex overflowed by 37 pixels on the bottom.
+
+The relevant error-causing widget was:
+  Column
+  Column:file:///E:/IM/ImServer/hailiao_flutter/lib/widgets/common/auth_page_scaffold.dart:24:14
+
+To inspect this widget in Flutter DevTools, visit:
+http://127.0.0.1:1734/0IgoTuaYBsw=/devtools//#/inspector?uri=http%3A%2F%2F127.0.0.1%3A1734%2F0IgoTuaYBsw%3D%2F&inspectorRef=inspector-0
+
+The overflowing RenderFlex has an orientation of Axis.vertical.
+The edge of the RenderFlex that is overflowing has been marked in the rendering with a yellow and
+black striped pattern. This is usually caused by the contents being too big for the RenderFlex.
+Consider applying a flex factor (e.g. using an Expanded widget) to force the children of the
+RenderFlex to fit within the available space instead of being sized to their natural size.
+This is considered an error condition because it indicates that there is content that cannot be
+seen. If the content is legitimately bigger than the available space, consider clipping it with a
+ClipRect widget before putting it in the flex, or using a scrollable container rather than a Flex,
+like a ListView.
+The specific RenderFlex in question is: RenderFlex#dc464 relayoutBoundary=up4 OVERFLOWING:
+  needs compositing
+  creator: Column ← Padding ← Expanded ← Column ← MediaQuery ← Padding ← SafeArea ←
+    KeyedSubtree-[GlobalKey#da177] ← _BodyBuilder ← MediaQuery ← LayoutId-[<_ScaffoldSlot.body>] ←
+    CustomMultiChildLayout ← ⋯
+  parentData: offset=Offset(24.0, 0.0) (can use size)
+  constraints: BoxConstraints(0.0<=w<=344.7, h=492.7)
+  size: Size(344.7, 492.7)
+  direction: vertical
+  mainAxisAlignment: start
+  mainAxisSize: max
+  crossAxisAlignment: center
+  verticalDirection: down
+  spacing: 0.0
+◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤◢◤
+════════════════════════════════════════════════════════════════════════════════════════════════════
+
+D/ProfileInstaller(13523): Installing profile for com.example.hailiao_flutter
+I/hailiao_flutter(13523): ProcessProfilingInfo new_methods=3562 is saved saved_to_disk=1 resolve_classes_delay=8000
+I/hailiao_flutter(13523): This is non sticky GC, maxfree is 33554432 minfree is 8388608
+W/hailiao_flutter(13523): ApkAssets: Deleting an ApkAssets object '<empty> and /product/app/MiuiContentCatcherMIUI15/MiuiContentCatcherMIUI15.apk' with 1 weak references
+W/hailiao_flutter(13523): ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/priv-app/RtMiCloudSDK/RtMiCloudSDK.apk' with 1 weak references
+W/hailiao_flutter(13523): ApkAssets: Deleting an ApkAssets object '<empty> and /system_ext/app/miuisystem/miuisystem.apk' with 1 weak references
+W/hailiao_flutter(13523): ApkAssets: Deleting an ApkAssets object '<empty> and /data/app/~~g9TzTsW36kI7IMCoF-8ScQ==/com.baidu.searchbox-Bq_KzxkHVY38q8cLgmYjjg==/base.apk' with 1 weak references
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+I/ImeTracker(13523): com.example.hailiao_flutter:69b3c512: onRequestShow at ORIGIN_CLIENT_SHOW_SOFT_INPUT reason SHOW_SOFT_INPUT
+D/InputMethodManager(13523): showSoftInput() view=io.flutter.embedding.android.FlutterView{3069260 VFE...... .F...... 0,0-1080,2416 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+I/HandWritingStubImpl(13523): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+I/HandWritingStubImpl(13523): refreshLastKeyboardType: 1
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+I/AssistStructure(13523): Flattened final assist data: 452 bytes, containing 1 windows, 3 views
+W/WindowOnBackDispatcher(13523): sendCancelIfRunning: isInProgress=falsecallback=ImeCallback=ImeOnBackInvokedCallback@93470353 Callback=android.window.IOnBackInvokedCallback$Stub$Proxy@a90a489
+I/ImeTracker(13523): com.example.hailiao_flutter:e6ac9fc6: onRequestHide at ORIGIN_CLIENT_HIDE_SOFT_INPUT reason HIDE_SOFT_INPUT_BY_INSETS_API
+I/ImeTracker(13523): com.example.hailiao_flutter:e6ac9fc6: onFailed at PHASE_CLIENT_VIEW_SERVED
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+I/ImeTracker(13523): com.example.hailiao_flutter:2cab7713: onRequestHide at ORIGIN_CLIENT_HIDE_SOFT_INPUT reason HIDE_SOFT_INPUT_BY_INSETS_API
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+I/ImeTracker(13523): com.example.hailiao_flutter:2cab7713: onCancelled at PHASE_CLIENT_APPLY_ANIMATION
+I/ImeTracker(13523): com.example.hailiao_flutter:8107a05b: onRequestShow at ORIGIN_CLIENT_SHOW_SOFT_INPUT reason SHOW_SOFT_INPUT
+D/InputMethodManager(13523): showSoftInput() view=io.flutter.embedding.android.FlutterView{3069260 VFE...... .F...... 0,0-1080,2416 #1 aid=1073741824} flags=0 reason=SHOW_SOFT_INPUT
+D/InsetsController(13523): show(ime(), fromIme=true)
+W/RenderInspector(13523): QueueBuffer time out on com.example.hailiao_flutter/com.example.hailiao_flutter.MainActivity, count=1, avg=13 ms, max=13 ms.
+W/RenderInspector(13523): QueueBuffer time out on com.example.hailiao_flutter/com.example.hailiao_flutter.MainActivity, count=1, avg=8 ms, max=8 ms.
+I/ImeTracker(13523): com.example.hailiao_flutter:8107a05b: onShown
+W/WindowOnBackDispatcher(13523): sendCancelIfRunning: isInProgress=falsecallback=ImeCallback=ImeOnBackInvokedCallback@145367407 Callback=android.window.IOnBackInvokedCallback$Stub$Proxy@2821e16
+I/ImeTracker(13523): com.example.hailiao_flutter:af0c201: onRequestHide at ORIGIN_CLIENT_HIDE_SOFT_INPUT reason HIDE_SOFT_INPUT_BY_INSETS_API
+I/ImeTracker(13523): com.example.hailiao_flutter:f18da882: onHidden
+I/HandWritingStubImpl(13523): getCurrentKeyboardType: 1
+D/TransportRuntime.CctTransportBackend(13523): Making request to: https://firebaselogging.googleapis.com/v0cc/log/batch?format=json_proto3
+I/DpmTcmClient(13523): RegisterTcmMonitor from: $Proxy3
+D/TrafficStats(13523): tagSocket(184) with statsTag=0xffffffff, statsUid=-1
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+D/TrafficStats(13523): tagSocket(167) with statsTag=0xffffffff, statsUid=-1
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+D/TrafficStats(13523): tagSocket(167) with statsTag=0xffffffff, statsUid=-1
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+D/TrafficStats(13523): tagSocket(167) with statsTag=0xffffffff, statsUid=-1
+W/JobService(13523): onNetworkChanged() not implemented in com.google.android.datatransport.runtime.scheduling.jobscheduling.JobInfoSchedulerService. Must override in a subclass.
+D/TrafficStats(13523): tagSocket(167) with statsTag=0xffffffff, statsUid=-1
+D/TrafficStats(13523): tagSocket(167) with statsTag=0xffffffff, statsUid=-1
+D/TrafficStats(13523): tagSocket(167) with statsTag=0xffffffff, statsUid=-1
+D/TrafficStats(13523): tagSocket(167) with statsTag=0xffffffff, statsUid=-1
+E/TransportRuntime.CctTransportBackend(13523): Couldn't encode request, returning with 400
+E/TransportRuntime.CctTransportBackend(13523): java.net.SocketTimeoutException: failed to connect to firebaselogging.googleapis.com/216.239.36.223 (port 443) from /10.125.241.251 (port 47386) after 30000ms
+E/TransportRuntime.CctTransportBackend(13523): 	at libcore.io.IoBridge.connectErrno(IoBridge.java:235)
+E/TransportRuntime.CctTransportBackend(13523): 	at libcore.io.IoBridge.connect(IoBridge.java:179)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:142)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:390)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:230)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:212)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:436)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.net.Socket.connect(Socket.java:646)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.Platform.connectSocket(Platform.java:182)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.io.RealConnection.connectSocket(RealConnection.java:145)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.io.RealConnection.connect(RealConnection.java:116)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.http.StreamAllocation.findConnection(StreamAllocation.java:186)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.http.StreamAllocation.findHealthyConnection(StreamAllocation.java:128)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.http.StreamAllocation.newStream(StreamAllocation.java:97)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.http.HttpEngine.connect(HttpEngine.java:289)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.http.HttpEngine.sendRequest(HttpEngine.java:232)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.huc.HttpURLConnectionImpl.execute(HttpURLConnectionImpl.java:465)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.huc.HttpURLConnectionImpl.connect(HttpURLConnectionImpl.java:131)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.huc.HttpURLConnectionImpl.getOutputStream(HttpURLConnectionImpl.java:262)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.huc.DelegatingHttpsURLConnection.getOutputStream(DelegatingHttpsURLConnection.java:219)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.android.okhttp.internal.huc.HttpsURLConnectionImpl.getOutputStream(HttpsURLConnectionImpl.java:30)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.cct.CctTransportBackend.doSend(CctTransportBackend.java:304)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.cct.CctTransportBackend.access$lambda$0(Unknown Source:0)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.cct.CctTransportBackend$$Lambda$1.apply(Unknown Source:4)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.runtime.retries.Retries.retry(Retries.java:54)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.cct.CctTransportBackend.send(CctTransportBackend.java:373)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.runtime.scheduling.jobscheduling.Uploader.logAndUpdateState(Uploader.java:121)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.runtime.scheduling.jobscheduling.Uploader.lambda$upload$1(Uploader.java:88)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.runtime.scheduling.jobscheduling.Uploader$$Lambda$1.run(Unknown Source:8)
+E/TransportRuntime.CctTransportBackend(13523): 	at com.google.android.datatransport.runtime.SafeLoggingExecutor$SafeLoggingRunnable.run(SafeLoggingExecutor.java:47)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1251)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:668)
+E/TransportRuntime.CctTransportBackend(13523): 	at java.lang.Thread.run(Thread.java:1012)
+D/ContentCatcher_injector(13523): Interceptor : notifyActivityPause: com.example.hailiao_flutter@com.example.hailiao_flutter.MainActivity@140858111
+D/ContentCatcher_catcher(13523): CatcherHolder : mCatcherList size: 0
+D/ContentCatcher_injector(13523): Interceptor : notifyActivityStop: com.example.hailiao_flutter@com.example.hailiao_flutter.MainActivity@140858111
+D/ContentCatcher_catcher(13523): CatcherHolder : mCatcherList size: 0
+Lost connection to device.

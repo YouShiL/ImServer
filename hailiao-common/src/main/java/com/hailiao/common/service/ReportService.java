@@ -29,7 +29,7 @@ public class ReportService {
 
     public Report getReportById(Long id) {
         return reportRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u4e3e\u62a5\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("举报不存在"));
     }
 
     public Page<Report> getReportList(Integer status, Integer targetType, Long handlerId, Pageable pageable) {

@@ -38,11 +38,11 @@ public class GroupMemberController {
             if (group.getJoinType() != null && group.getJoinType() != 0) {
                 String message = request != null ? (String) request.get("message") : null;
                 groupJoinRequestService.submitJoinRequest(groupId, userId, message);
-                return ResponseEntity.ok(ResponseDTO.success("\u5165\u7fa4\u7533\u8bf7\u5df2\u63d0\u4ea4"));
+                return ResponseEntity.ok(ResponseDTO.success("入群申请已提交"));
             }
 
             groupMemberService.joinGroup(groupId, userId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u52a0\u5165\u7fa4\u7ec4"));
+            return ResponseEntity.ok(ResponseDTO.success("已加入群组"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -54,7 +54,7 @@ public class GroupMemberController {
             @PathVariable Long groupId) {
         try {
             groupMemberService.leaveGroup(groupId, userId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u9000\u51fa\u7fa4\u7ec4"));
+            return ResponseEntity.ok(ResponseDTO.success("已退出群组"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -67,7 +67,7 @@ public class GroupMemberController {
             @PathVariable Long targetUserId) {
         try {
             groupMemberService.kickMember(groupId, targetUserId, operatorId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u79fb\u9664\u6210\u5458"));
+            return ResponseEntity.ok(ResponseDTO.success("已移除成员"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -80,7 +80,7 @@ public class GroupMemberController {
             @PathVariable Long targetUserId) {
         try {
             groupMemberService.setGroupAdmin(groupId, targetUserId, operatorId);
-            return ResponseEntity.ok(ResponseDTO.success("\u8bbe\u7f6e\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("设置成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -93,7 +93,7 @@ public class GroupMemberController {
             @PathVariable Long targetUserId) {
         try {
             groupMemberService.removeGroupAdmin(groupId, targetUserId, operatorId);
-            return ResponseEntity.ok(ResponseDTO.success("\u8bbe\u7f6e\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("设置成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -106,7 +106,7 @@ public class GroupMemberController {
             @PathVariable Long targetUserId) {
         try {
             groupMemberService.transferOwnership(groupId, targetUserId, operatorId);
-            return ResponseEntity.ok(ResponseDTO.success("\u8f6c\u8ba9\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("转让成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -120,7 +120,7 @@ public class GroupMemberController {
             @RequestParam(required = false) Integer minutes) {
         try {
             groupMemberService.muteMember(groupId, targetUserId, operatorId, minutes);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u7981\u8a00"));
+            return ResponseEntity.ok(ResponseDTO.success("已禁言"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -133,7 +133,7 @@ public class GroupMemberController {
             @PathVariable Long targetUserId) {
         try {
             groupMemberService.unmuteMember(groupId, targetUserId, operatorId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u89e3\u9664\u7981\u8a00"));
+            return ResponseEntity.ok(ResponseDTO.success("已解除禁言"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -146,7 +146,7 @@ public class GroupMemberController {
             @RequestParam boolean mute) {
         try {
             groupMemberService.muteAll(groupId, operatorId, mute);
-            return ResponseEntity.ok(ResponseDTO.success("\u8bbe\u7f6e\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("设置成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -159,7 +159,7 @@ public class GroupMemberController {
             @RequestParam String notice) {
         try {
             groupMemberService.updateGroupNotice(groupId, operatorId, notice);
-            return ResponseEntity.ok(ResponseDTO.success("\u8bbe\u7f6e\u6210\u529f"));
+            return ResponseEntity.ok(ResponseDTO.success("设置成功"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }

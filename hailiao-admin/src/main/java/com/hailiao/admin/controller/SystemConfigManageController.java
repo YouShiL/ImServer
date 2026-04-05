@@ -93,7 +93,7 @@ public class SystemConfigManageController {
     public ResponseEntity<?> deleteConfig(@PathVariable Long configId) {
         try {
             systemConfigService.deleteConfig(configId);
-            return ResponseEntity.ok("\u5220\u9664\u6210\u529f");
+            return ResponseEntity.ok("删除成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -126,7 +126,7 @@ public class SystemConfigManageController {
         item.put("configValue", config.getConfigValue());
         item.put("description", config.getDescription());
         item.put("category", config.getCategory());
-        item.put("categoryLabel", config.getCategory() == null || config.getCategory().trim().isEmpty() ? "\u672a\u5206\u7c7b" : config.getCategory());
+        item.put("categoryLabel", config.getCategory() == null || config.getCategory().trim().isEmpty() ? "未分类" : config.getCategory());
         item.put("updatedBy", config.getUpdatedBy());
         item.put("updatedAt", config.getUpdatedAt());
         return item;

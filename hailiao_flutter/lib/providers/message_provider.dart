@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:hailiao_flutter/models/conversation_dto.dart';
 import 'package:hailiao_flutter/models/file_upload_result_dto.dart';
 import 'package:hailiao_flutter/models/message_dto.dart';
@@ -248,6 +248,210 @@ class MessageProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  void receiveIncomingMessage(
+    MessageDTO message, {
+    int? currentUserId,
+    bool notify = true,
+  }) {
+    _insertMessage(message);
+    upsertConversationFromMessage(
+      message,
+      currentUserId: currentUserId,
+      increaseUnread: _shouldIncreaseUnread(
+        message,
+        currentUserId: currentUserId,
+      ),
+      notify: notify,
+    );
+  }
+
+  void receiveIncomingMessages(
+    List<MessageDTO> messages, {
+    int? currentUserId,
+    bool notify = true,
+  }) {
+    if (messages.isEmpty) {
+      return;
+    }
+
+    _mergeMessages(messages);
+    for (final message in messages) {
+      upsertConversationFromMessage(
+        message,
+        currentUserId: currentUserId,
+        increaseUnread: _shouldIncreaseUnread(
+          message,
+          currentUserId: currentUserId,
+        ),
+        notify: false,
+      );
+    }
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  bool applyMessageStatusUpdate({
+    required int messageId,
+    int? status,
+    bool? isRead,
+    bool? isRecalled,
+    bool? isEdited,
+    String? content,
+    bool notify = true,
+  }) {
+    final updated = _updateMessageById(
+      messageId,
+      (current) => MessageDTO(
+        id: current.id,
+        msgId: current.msgId,
+        fromUserId: current.fromUserId,
+        toUserId: current.toUserId,
+        groupId: current.groupId,
+        content: content ?? current.content,
+        msgType: current.msgType,
+        subType: current.subType,
+        extra: current.extra,
+        isRead: isRead ?? current.isRead,
+        isRecalled: isRecalled ?? current.isRecalled,
+        isDeleted: current.isDeleted,
+        replyToMsgId: current.replyToMsgId,
+        forwardFromMsgId: current.forwardFromMsgId,
+        forwardFromUserId: current.forwardFromUserId,
+        isEdited: isEdited ?? current.isEdited,
+        status: status ?? current.status,
+        createdAt: current.createdAt,
+        fromUserInfo: current.fromUserInfo,
+      ),
+    );
+    if (!updated) {
+      return false;
+    }
+
+    final updatedMessage = _messages[_findMessageIndexById(messageId)!];
+    upsertConversationFromMessage(
+      updatedMessage,
+      increaseUnread: false,
+      notify: false,
+    );
+    if (notify) {
+      notifyListeners();
+    }
+    return true;
+  }
+
+  bool applyMessageSendResult({
+    required int localMessageId,
+    int? serverMessageId,
+    required int status,
+    String? content,
+    bool notify = true,
+  }) {
+    final updated = _updateMessageById(
+      localMessageId,
+      (current) => MessageDTO(
+        id: serverMessageId ?? current.id,
+        msgId: current.msgId,
+        fromUserId: current.fromUserId,
+        toUserId: current.toUserId,
+        groupId: current.groupId,
+        content: content ?? current.content,
+        msgType: current.msgType,
+        subType: current.subType,
+        extra: current.extra,
+        isRead: current.isRead,
+        isRecalled: current.isRecalled,
+        isDeleted: current.isDeleted,
+        replyToMsgId: current.replyToMsgId,
+        forwardFromMsgId: current.forwardFromMsgId,
+        forwardFromUserId: current.forwardFromUserId,
+        isEdited: current.isEdited,
+        status: status,
+        createdAt: current.createdAt,
+        fromUserInfo: current.fromUserInfo,
+      ),
+    );
+    if (!updated) {
+      return false;
+    }
+
+    final resolvedId = serverMessageId ?? localMessageId;
+    final index = _findMessageIndexById(resolvedId);
+    if (index != null) {
+      upsertConversationFromMessage(
+        _messages[index],
+        increaseUnread: false,
+        notify: false,
+      );
+    }
+    if (notify) {
+      notifyListeners();
+    }
+    return true;
+  }
+
+  void upsertConversationFromMessage(
+    MessageDTO message, {
+    int? currentUserId,
+    bool increaseUnread = true,
+    bool notify = true,
+  }) {
+    _updateConversationPreviewFromMessage(
+      message,
+      currentUserId: currentUserId,
+      increaseUnread: increaseUnread,
+    );
+    _sortConversationsInternal();
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void refreshConversationPreview({
+    required int targetId,
+    required int type,
+    bool notify = true,
+  }) {
+    final conversationIndex = _findConversationIndex(targetId, type);
+    if (conversationIndex == null) {
+      return;
+    }
+
+    MessageDTO? latestMessage;
+    for (final message in _messages.reversed) {
+      if (_messageBelongsToConversation(message, targetId, type)) {
+        latestMessage = message;
+        break;
+      }
+    }
+
+    if (latestMessage == null) {
+      return;
+    }
+
+    _updateConversationPreviewFromMessage(
+      latestMessage,
+      increaseUnread: false,
+    );
+    _sortConversationsInternal();
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void updateConversationUnread({
+    required int targetId,
+    required int type,
+    required int unreadCount,
+    bool notify = true,
+  }) {
+    _setConversationUnread(targetId, type, unreadCount);
+    _sortConversationsInternal();
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
   String _draftKey(int? targetId, int? type) => '${type ?? 0}-${targetId ?? 0}';
 
   String? getDraft(int? targetId, int? type) {
@@ -279,7 +483,7 @@ class MessageProvider extends ChangeNotifier {
         _conversations = data;
         _sortConversations();
       },
-      fallbackError: '加载会话列表失败，请稍后重试。',
+      fallbackError: 'Failed to load conversations.',
     );
   }
 
@@ -293,7 +497,7 @@ class MessageProvider extends ChangeNotifier {
           _messages = [..._messages, ...data];
         }
       },
-      fallbackError: '加载消息失败，请稍后重试。',
+      fallbackError: 'Failed to load messages.',
     );
   }
 
@@ -307,7 +511,7 @@ class MessageProvider extends ChangeNotifier {
           _messages = [..._messages, ...data];
         }
       },
-      fallbackError: '加载消息失败，请稍后重试。',
+      fallbackError: 'Failed to load messages.',
     );
   }
 
@@ -318,7 +522,7 @@ class MessageProvider extends ChangeNotifier {
   ) async {
     return _sendMessageTask(
       task: () => _api.sendPrivateMessage(toUserId, content, msgType),
-      fallbackError: '发送消息失败，请稍后重试。',
+      fallbackError: 'Failed to send message.',
     );
   }
 
@@ -329,7 +533,7 @@ class MessageProvider extends ChangeNotifier {
   ) async {
     return _sendMessageTask(
       task: () => _api.sendGroupMessage(groupId, content, msgType),
-      fallbackError: '发送消息失败，请稍后重试。',
+      fallbackError: 'Failed to send message.',
     );
   }
 
@@ -349,7 +553,7 @@ class MessageProvider extends ChangeNotifier {
       await loadConversations();
       return true;
     } catch (_) {
-      _error = '撤回消息失败，请稍后重试。';
+      _error = 'Failed to recall message.';
       return false;
     } finally {
       _finishLoading();
@@ -371,7 +575,7 @@ class MessageProvider extends ChangeNotifier {
         content: content,
         msgType: msgType,
       ),
-      fallbackError: '发送回复失败。',
+      fallbackError: 'Failed to send reply.',
     );
   }
 
@@ -391,7 +595,7 @@ class MessageProvider extends ChangeNotifier {
       await loadConversations();
       return true;
     } catch (_) {
-      _error = '编辑消息失败。';
+      _error = 'Failed to edit message.';
       return false;
     } finally {
       _finishLoading();
@@ -417,7 +621,7 @@ class MessageProvider extends ChangeNotifier {
       _error = response.message;
       return false;
     } catch (_) {
-      _error = '转发消息失败。';
+      _error = 'Failed to forward message.';
       return false;
     } finally {
       _finishLoading();
@@ -480,7 +684,7 @@ class MessageProvider extends ChangeNotifier {
 
       return true;
     } catch (_) {
-      _error = '更新会话设置失败。';
+      _error = 'Failed to update conversation settings.';
       return false;
     } finally {
       _finishLoading();
@@ -502,7 +706,7 @@ class MessageProvider extends ChangeNotifier {
           .toList();
       return true;
     } catch (_) {
-      _error = '删除会话失败。';
+      _error = 'Failed to delete conversation.';
       return false;
     } finally {
       _finishLoading();
@@ -523,6 +727,306 @@ class MessageProvider extends ChangeNotifier {
         .where((message) => message.id == null || !ids.contains(message.id))
         .toList();
     notifyListeners();
+  }
+
+  void _insertMessage(MessageDTO message) {
+    final existingIndex = _findMessageIndexById(message.id);
+    if (existingIndex != null) {
+      _messages[existingIndex] = message;
+      return;
+    }
+
+    _messages = [..._messages, message];
+  }
+
+  void _mergeMessages(List<MessageDTO> messages) {
+    final originalOrder = <MessageDTO, int>{};
+    for (var i = 0; i < _messages.length; i++) {
+      originalOrder[_messages[i]] = i;
+    }
+
+    for (final message in messages) {
+      _insertMessage(message);
+    }
+
+    final mergedOrder = <MessageDTO, int>{};
+    for (var i = 0; i < _messages.length; i++) {
+      mergedOrder[_messages[i]] = i;
+    }
+
+    _messages = List<MessageDTO>.from(_messages)
+      ..sort((a, b) {
+        final aTime = a.createdAt;
+        final bTime = b.createdAt;
+        final canCompare = aTime != null &&
+            aTime.isNotEmpty &&
+            bTime != null &&
+            bTime.isNotEmpty;
+        if (canCompare) {
+          final timeCompare = aTime.compareTo(bTime);
+          if (timeCompare != 0) {
+            return timeCompare;
+          }
+        }
+
+        final aIndex = originalOrder[a] ?? mergedOrder[a] ?? 0;
+        final bIndex = originalOrder[b] ?? mergedOrder[b] ?? 0;
+        return aIndex.compareTo(bIndex);
+      });
+  }
+
+  bool _updateMessageById(
+    int messageId,
+    MessageDTO Function(MessageDTO current) updater,
+  ) {
+    final index = _findMessageIndexById(messageId);
+    if (index == null) {
+      return false;
+    }
+
+    _messages[index] = updater(_messages[index]);
+    return true;
+  }
+
+  int? _findMessageIndexById(int? messageId) {
+    if (messageId == null) {
+      return null;
+    }
+
+    final index = _messages.indexWhere((message) => message.id == messageId);
+    return index == -1 ? null : index;
+  }
+
+  void _sortConversationsInternal() {
+    _sortConversations();
+  }
+
+  int? _findConversationIndex(int targetId, int type) {
+    final index = _conversations.indexWhere(
+      (conversation) =>
+          conversation.targetId == targetId && (conversation.type ?? 1) == type,
+    );
+    return index == -1 ? null : index;
+  }
+
+  void _updateConversationPreviewFromMessage(
+    MessageDTO message, {
+    int? currentUserId,
+    required bool increaseUnread,
+  }) {
+    final type = _resolveConversationType(message);
+    final targetId = _resolveConversationTargetId(
+      message,
+      currentUserId: currentUserId,
+    );
+    if (targetId == null) {
+      return;
+    }
+
+    final index = _findConversationIndex(targetId, type);
+    final previewText = _messagePreviewText(message);
+
+    if (index == null) {
+      _conversations = [
+        ..._conversations,
+        ConversationDTO(
+          targetId: targetId,
+          type: type,
+          name: _resolveConversationName(
+            message,
+            currentUserId: currentUserId,
+          ),
+          avatar: _resolveConversationAvatar(
+            message,
+            currentUserId: currentUserId,
+          ),
+          lastMessage: previewText,
+          lastMessageTime: message.createdAt,
+          unreadCount: increaseUnread ? 1 : 0,
+          draft: null,
+        ),
+      ];
+      return;
+    }
+
+    final current = _conversations[index];
+    _conversations[index] = ConversationDTO(
+      id: current.id,
+      userId: current.userId,
+      targetId: current.targetId,
+      type: current.type,
+      name: (current.name?.trim().isNotEmpty == true)
+          ? current.name
+          : (_resolveConversationName(
+              message,
+              currentUserId: currentUserId,
+            ) ??
+              current.name),
+      avatar: current.avatar ??
+          _resolveConversationAvatar(
+            message,
+            currentUserId: currentUserId,
+          ),
+      lastMessage: previewText.isNotEmpty ? previewText : current.lastMessage,
+      lastMessageTime: (message.createdAt?.isNotEmpty == true)
+          ? message.createdAt
+          : current.lastMessageTime,
+      unreadCount: current.unreadCount,
+      isTop: current.isTop,
+      isMute: current.isMute,
+      draft: current.draft,
+      isDeleted: current.isDeleted,
+    );
+
+    if (increaseUnread) {
+      _incrementConversationUnread(targetId, type);
+    }
+  }
+
+  void _setConversationUnread(int targetId, int type, int unreadCount) {
+    final index = _findConversationIndex(targetId, type);
+    if (index == null) {
+      return;
+    }
+
+    final current = _conversations[index];
+    _conversations[index] = ConversationDTO(
+      id: current.id,
+      userId: current.userId,
+      targetId: current.targetId,
+      type: current.type,
+      name: current.name,
+      avatar: current.avatar,
+      lastMessage: current.lastMessage,
+      lastMessageTime: current.lastMessageTime,
+      unreadCount: unreadCount < 0 ? 0 : unreadCount,
+      isTop: current.isTop,
+      isMute: current.isMute,
+      draft: current.draft,
+      isDeleted: current.isDeleted,
+    );
+  }
+
+  void _incrementConversationUnread(
+    int targetId,
+    int type, {
+    int delta = 1,
+  }) {
+    final index = _findConversationIndex(targetId, type);
+    if (index == null) {
+      return;
+    }
+
+    final current = _conversations[index];
+    _setConversationUnread(
+      targetId,
+      type,
+      (current.unreadCount ?? 0) + delta,
+    );
+  }
+
+  int _resolveConversationType(MessageDTO message) {
+    return message.groupId != null ? 2 : 1;
+  }
+
+  int? _resolveConversationTargetId(
+    MessageDTO message, {
+    int? currentUserId,
+  }) {
+    if (message.groupId != null) {
+      return message.groupId;
+    }
+
+    if (currentUserId != null) {
+      if (message.fromUserId == currentUserId) {
+        return message.toUserId;
+      }
+      if (message.toUserId == currentUserId) {
+        return message.fromUserId;
+      }
+    }
+
+    if (message.toUserId == null) {
+      return message.fromUserId;
+    }
+    if (message.fromUserId == null) {
+      return message.toUserId;
+    }
+    return message.toUserId;
+  }
+
+  String? _resolveConversationName(
+    MessageDTO message, {
+    int? currentUserId,
+  }) {
+    if (_resolveConversationType(message) != 1) {
+      return null;
+    }
+
+    final isPeerInfo =
+        currentUserId != null && message.fromUserId != currentUserId;
+    if (isPeerInfo) {
+      return message.fromUserInfo?.nickname;
+    }
+    return null;
+  }
+
+  String? _resolveConversationAvatar(
+    MessageDTO message, {
+    int? currentUserId,
+  }) {
+    if (_resolveConversationType(message) != 1) {
+      return null;
+    }
+
+    final isPeerInfo =
+        currentUserId != null && message.fromUserId != currentUserId;
+    if (isPeerInfo) {
+      return message.fromUserInfo?.avatar;
+    }
+    return null;
+  }
+
+  bool _shouldIncreaseUnread(
+    MessageDTO message, {
+    int? currentUserId,
+  }) {
+    if (_resolveConversationType(message) != 1) {
+      return false;
+    }
+    if (currentUserId == null) {
+      return false;
+    }
+    return message.fromUserId != null &&
+        message.fromUserId != currentUserId &&
+        message.toUserId == currentUserId;
+  }
+
+  bool _messageBelongsToConversation(MessageDTO message, int targetId, int type) {
+    if (type == 2) {
+      return message.groupId == targetId;
+    }
+
+    return message.groupId == null &&
+        (message.toUserId == targetId || message.fromUserId == targetId);
+  }
+
+  String _messagePreviewText(MessageDTO message) {
+    if (message.isRecalled == true) {
+      return 'Message recalled';
+    }
+
+    switch (message.msgType ?? 1) {
+      case 2:
+        return '[Image]';
+      case 3:
+        return '[Audio]';
+      case 4:
+        return '[Video]';
+      default:
+        final text = (message.content ?? '').trim();
+        return text.isEmpty ? '[Message]' : text;
+    }
   }
 
   void _sortConversations() {
@@ -572,8 +1076,8 @@ class MessageProvider extends ChangeNotifier {
         fileUrl,
         isGroup: isGroup,
       ),
-      uploadError: '上传图片失败。',
-      sendError: '发送图片失败。',
+      uploadError: 'Failed to upload image.',
+      sendError: 'Failed to send image.',
     );
   }
 
@@ -591,8 +1095,8 @@ class MessageProvider extends ChangeNotifier {
         0,
         isGroup: isGroup,
       ),
-      uploadError: '上传视频失败。',
-      sendError: '发送视频失败。',
+      uploadError: 'Failed to upload video.',
+      sendError: 'Failed to send video.',
     );
   }
 
@@ -610,8 +1114,8 @@ class MessageProvider extends ChangeNotifier {
         duration,
         isGroup: isGroup,
       ),
-      uploadError: '上传音频失败。',
-      sendError: '发送音频失败。',
+      uploadError: 'Failed to upload audio.',
+      sendError: 'Failed to send audio.',
     );
   }
 

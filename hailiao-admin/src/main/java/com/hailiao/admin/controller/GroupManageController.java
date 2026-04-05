@@ -106,7 +106,7 @@ public class GroupManageController {
         try {
             Boolean isMute = request.get("isMute");
             groupChatService.setGroupMute(groupId, isMute);
-            return ResponseEntity.ok("\u8bbe\u7f6e\u6210\u529f");
+            return ResponseEntity.ok("设置成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -169,11 +169,11 @@ public class GroupManageController {
         item.put("status", group.getStatus());
         item.put("statusLabel", getGroupStatusLabel(group.getStatus()));
         item.put("isMute", group.getIsMute());
-        item.put("muteLabel", Boolean.TRUE.equals(group.getIsMute()) ? "\u5df2\u7981\u8a00" : "\u672a\u7981\u8a00");
+        item.put("muteLabel", Boolean.TRUE.equals(group.getIsMute()) ? "已禁言" : "未禁言");
         item.put("muteAll", group.getMuteAll());
-        item.put("muteAllLabel", Boolean.TRUE.equals(group.getMuteAll()) ? "\u5168\u5458\u7981\u8a00" : "\u672a\u5f00\u542f");
+        item.put("muteAllLabel", Boolean.TRUE.equals(group.getMuteAll()) ? "全员禁言" : "未开启");
         item.put("allowMemberInvite", group.getAllowMemberInvite());
-        item.put("allowMemberInviteLabel", Boolean.TRUE.equals(group.getAllowMemberInvite()) ? "\u5141\u8bb8\u6210\u5458\u9080\u8bf7" : "\u4ec5\u7ba1\u7406\u5458\u53ef\u9080\u8bf7");
+        item.put("allowMemberInviteLabel", Boolean.TRUE.equals(group.getAllowMemberInvite()) ? "允许成员邀请" : "仅管理员可邀请");
         item.put("joinType", group.getJoinType());
         item.put("joinTypeLabel", getJoinTypeLabel(group.getJoinType()));
         item.put("createdAt", group.getCreatedAt());
@@ -183,21 +183,21 @@ public class GroupManageController {
 
     private String getJoinTypeLabel(Integer joinType) {
         if (joinType == null || joinType == 1) {
-            return "\u76f4\u63a5\u52a0\u5165";
+            return "直接加入";
         }
         if (joinType == 2) {
-            return "\u9700\u8981\u9a8c\u8bc1";
+            return "需要验证";
         }
-        return "\u672a\u77e5";
+        return "未知";
     }
 
     private String getGroupStatusLabel(Integer status) {
         if (status == null || status == 1) {
-            return "\u6b63\u5e38";
+            return "正常";
         }
         if (status == 0) {
-            return "\u5df2\u7981\u7528";
+            return "已禁用";
         }
-        return "\u672a\u77e5";
+        return "未知";
     }
 }

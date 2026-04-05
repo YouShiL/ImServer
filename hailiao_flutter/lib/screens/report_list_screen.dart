@@ -25,18 +25,24 @@ class _ReportListScreenState extends State<ReportListScreen> {
     if (value == null || value.isEmpty) {
       return '-';
     }
-    final normalized = value.replaceFirst('T', ' ').split('.').first;
-    return normalized.length >= 16 ? normalized.substring(0, 16) : normalized;
+    final normalized = value.replaceFirst('T', ' ').split('.').first.trim();
+    if (normalized.length >= 19) {
+      return normalized.substring(0, 19);
+    }
+    if (normalized.length == 16) {
+      return '$normalized:00';
+    }
+    return normalized;
   }
 
   Widget _buildReportTile(ReportDTO report) {
-    final statusText = report.statusLabel ?? '\u5f85\u5904\u7406';
+    final statusText = report.statusLabel ?? '待处理';
     final statusColor = switch (report.status) {
       1 => const Color(0xFF2E7D32),
       2 => const Color(0xFFC62828),
       _ => const Color(0xFFEF6C00),
     };
-    final targetText = report.targetTypeLabel ?? '\u7528\u6237';
+    final targetText = report.targetTypeLabel ?? '用户';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -78,32 +84,32 @@ class _ReportListScreenState extends State<ReportListScreen> {
           ),
           const SizedBox(height: 10),
           Text(
-            '\u4e3e\u62a5\u539f\u56e0\uff1a${report.reason ?? '-'}',
+            '举报原因：${report.reason ?? '-'}',
             style: const TextStyle(color: Color(0xFF333333)),
           ),
           if ((report.evidence ?? '').isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              '\u8865\u5145\u8bf4\u660e\uff1a${report.evidence!}',
+              '补充说明：${report.evidence!}',
               style: const TextStyle(color: Color(0xFF666666), fontSize: 13),
             ),
           ],
           if ((report.handleResult ?? '').isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(
-              '\u5904\u7406\u7ed3\u679c\uff1a${report.handleResult!}',
+              '处理结果：${report.handleResult!}',
               style: const TextStyle(color: Color(0xFF666666), fontSize: 13),
             ),
           ],
           const SizedBox(height: 6),
           Text(
-            '\u63d0\u4ea4\u65f6\u95f4\uff1a${_formatTime(report.createdAt)}',
+            '提交时间：${_formatTime(report.createdAt)}',
             style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 12),
           ),
           if ((report.handledAt ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
-              '\u5904\u7406\u65f6\u95f4\uff1a${_formatTime(report.handledAt)}',
+              '处理时间：${_formatTime(report.handledAt)}',
               style: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 12),
             ),
           ],
@@ -117,7 +123,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
     final provider = context.watch<ReportProvider>();
     final reports = provider.reports;
     return Scaffold(
-      appBar: AppBar(title: const Text('\u6211\u7684\u4e3e\u62a5')),
+      appBar: AppBar(title: const Text('我的举报')),
       body: provider.isLoading
           ? Center(
               child: CircularProgressIndicator(
@@ -138,7 +144,7 @@ class _ReportListScreenState extends State<ReportListScreen> {
               : reports.isEmpty
                   ? const Center(
                       child: Text(
-                        '\u6682\u65e0\u4e3e\u62a5\u8bb0\u5f55',
+                        '暂无举报记录',
                         style: TextStyle(color: Color(0xFF9E9E9E)),
                       ),
                     )

@@ -28,12 +28,12 @@ public class UserService {
     @Transactional
     public User register(User user) {
         if (userRepository.existsByPhone(user.getPhone())) {
-            throw new RuntimeException("\u624b\u673a\u53f7\u5df2\u6ce8\u518c");
+            throw new RuntimeException("手机号已注册");
         }
 
         user.setUserId(generateUserId());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setNickname(user.getNickname() != null ? user.getNickname() : "\u7528\u6237" + user.getUserId());
+        user.setNickname(user.getNickname() != null ? user.getNickname() : "用户" + user.getUserId());
         user.setAvatar("");
         user.setGender(0);
         user.setOnlineStatus(0);
@@ -64,16 +64,16 @@ public class UserService {
     public User validateLogin(String phone, String password) {
         Optional<User> userOpt = userRepository.findByPhone(phone);
         if (!userOpt.isPresent()) {
-            throw new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728");
+            throw new RuntimeException("用户不存在");
         }
 
         User user = userOpt.get();
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new RuntimeException("\u5bc6\u7801\u9519\u8bef");
+            throw new RuntimeException("密码错误");
         }
 
         if (user.getStatus() == 0) {
-            throw new RuntimeException("\u8d26\u53f7\u5df2\u88ab\u7981\u7528");
+            throw new RuntimeException("账号已被禁用");
         }
 
         return user;
@@ -91,17 +91,17 @@ public class UserService {
 
     public User getUserById(Long id) {
         return userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
     }
 
     public User getUserByUserId(String userId) {
         return userRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
     }
 
     public User getUserByPhone(String phone) {
         return userRepository.findByPhone(phone)
-                .orElseThrow(() -> new RuntimeException("\u7528\u6237\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
     }
 
     @Transactional
@@ -150,7 +150,7 @@ public class UserService {
     public void changePassword(Long userId, String oldPassword, String newPassword) {
         User user = getUserById(userId);
         if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
-            throw new RuntimeException("\u539f\u5bc6\u7801\u9519\u8bef");
+            throw new RuntimeException("原密码错误");
         }
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setUpdatedAt(new Date());

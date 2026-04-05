@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:hailiao_flutter/im/im_event_bridge.dart';
 import 'package:hailiao_flutter/providers/auth_provider.dart';
 import 'package:hailiao_flutter/providers/blacklist_provider.dart';
 import 'package:hailiao_flutter/providers/content_audit_provider.dart';
@@ -21,8 +23,13 @@ import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final sourceHanSansLoader = FontLoader('Source Han Sans SC');
+  sourceHanSansLoader.addFont(
+    rootBundle.load('assets/fonts/SourceHanSansSC-Regular.otf'),
+  );
+  await sourceHanSansLoader.load();
   runApp(const MyApp());
 }
 
@@ -67,6 +74,44 @@ class _CheckAuthWidgetState extends State<CheckAuthWidget> {
   }
 }
 
+class _ImBridgeBinder extends StatefulWidget {
+  const _ImBridgeBinder({
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  State<_ImBridgeBinder> createState() => _ImBridgeBinderState();
+}
+
+class _ImBridgeBinderState extends State<_ImBridgeBinder> {
+  bool _bindScheduled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final authProvider = context.watch<AuthProvider>();
+    if (!authProvider.isAuthenticated || _bindScheduled) {
+      return;
+    }
+
+    _bindScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.read<ImEventBridge>().bind();
+      _bindScheduled = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -89,19 +134,19 @@ class MyApp extends StatelessWidget {
         color: Color(0xFF666666),
       ),
       titleLarge: const TextStyle(
-        fontFamily: 'Roboto',
+        fontFamily: 'Source Han Sans SC',
         fontSize: 20,
         fontWeight: FontWeight.bold,
         color: Color(0xFF333333),
       ),
       titleMedium: const TextStyle(
-        fontFamily: 'Roboto',
+        fontFamily: 'Source Han Sans SC',
         fontSize: 14,
         color: Color(0xFF666666),
       ),
-      labelLarge: const TextStyle(fontFamily: 'Roboto'),
-      labelMedium: const TextStyle(fontFamily: 'Roboto'),
-      labelSmall: const TextStyle(fontFamily: 'Roboto'),
+      labelLarge: const TextStyle(fontFamily: 'Source Han Sans SC'),
+      labelMedium: const TextStyle(fontFamily: 'Source Han Sans SC'),
+      labelSmall: const TextStyle(fontFamily: 'Source Han Sans SC'),
     );
 
     final theme = ThemeData(
@@ -160,6 +205,13 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MessageProvider()),
+        Provider<ImEventBridge>(
+          create: (context) => ImEventBridge(
+            authProvider: context.read<AuthProvider>(),
+            messageProvider: context.read<MessageProvider>(),
+          ),
+          dispose: (_, bridge) => bridge.dispose(),
+        ),
         ChangeNotifierProvider(create: (_) => FriendProvider()),
         ChangeNotifierProvider(create: (_) => GroupProvider()),
         ChangeNotifierProvider(create: (_) => BlacklistProvider()),
@@ -177,9 +229,10 @@ class MyApp extends StatelessWidget {
             }
           });
 
-          return MaterialApp(
+          return _ImBridgeBinder(
+            child: MaterialApp(
             navigatorKey: appNavigatorKey,
-            title: '海聊',
+              title: '嗨聊',
             debugShowCheckedModeBanner: false,
             theme: theme,
             initialRoute: '/checkAuth',
@@ -196,6 +249,7 @@ class MyApp extends StatelessWidget {
               '/security': (context) => const SecurityScreen(),
               '/user-detail': (context) => const UserDetailScreen(),
             },
+            ),
           );
         },
       ),

@@ -31,7 +31,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 鍚庡彴绠＄悊鍛樼鐞嗘帶鍒跺櫒銆? */
+ * 后台管理员管理控制器。
+ */
 @RestController
 @RequestMapping("/admin/admin")
 public class AdminManageController {
@@ -40,7 +41,8 @@ public class AdminManageController {
     private AdminUserService adminUserService;
 
     /**
-     * 鍒嗛〉鑾峰彇绠＄悊鍛樺垪琛ㄣ€?     */
+     * 分页获取管理员列表。
+     */
     @GetMapping("/list")
     public ResponseEntity<?> getAdminList(
             @RequestParam(required = false) String keyword,
@@ -59,7 +61,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鑾峰彇鍏ㄩ儴绠＄悊鍛樸€?     */
+     * 获取全部管理员。
+     */
     @GetMapping("/all")
     public ResponseEntity<?> getAllAdmins() {
         try {
@@ -74,7 +77,8 @@ public class AdminManageController {
     }
 
     /**
-     * 瀵煎嚭绠＄悊鍛樺垪琛ㄣ€?     */
+     * 导出管理员列表。
+     */
     @GetMapping("/export")
     public ResponseEntity<?> exportAdmins(
             @RequestParam(required = false) String keyword,
@@ -94,7 +98,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鏍规嵁 ID 鑾峰彇绠＄悊鍛樿鎯呫€?     */
+     * 根据 ID 获取管理员详情。
+     */
     @GetMapping("/{adminId}")
     public ResponseEntity<?> getAdminById(@PathVariable Long adminId) {
         try {
@@ -106,7 +111,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鍒涘缓绠＄悊鍛樸€?     */
+     * 创建管理员。
+     */
     @PostMapping
     public ResponseEntity<?> createAdmin(@RequestBody AdminUser adminUser, HttpServletRequest request) {
         try {
@@ -119,7 +125,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鏇存柊绠＄悊鍛樹俊鎭€?     */
+     * 更新管理员信息。
+     */
     @PutMapping("/{adminId}")
     public ResponseEntity<?> updateAdmin(
             @PathVariable Long adminId,
@@ -137,7 +144,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鏇存柊绠＄悊鍛樿鑹插拰鏉冮檺锛屽苟杩斿洖鏄惁褰卞搷褰撳墠鐧诲綍浼氳瘽銆?     */
+     * 更新管理员角色和权限，并返回是否影响当前登录会话。
+     */
     @PutMapping("/{adminId}/permissions")
     public ResponseEntity<?> updateAdminPermissions(
             @PathVariable Long adminId,
@@ -165,7 +173,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鍒犻櫎绠＄悊鍛樸€?     */
+     * 删除管理员。
+     */
     @DeleteMapping("/{adminId}")
     public ResponseEntity<?> deleteAdmin(
             @PathVariable Long adminId,
@@ -175,14 +184,15 @@ public class AdminManageController {
             AdminUser targetAdmin = adminUserService.getAdminUserById(adminId);
             attachAdminLogContext(request, targetAdmin, targetAdmin.getPermissions());
             adminUserService.deleteAdminUser(adminId, currentAdminId);
-            return ResponseEntity.ok("\u5220\u9664\u6210\u529f");
+            return ResponseEntity.ok("删除成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     /**
-     * 閲嶇疆绠＄悊鍛樺瘑鐮併€?     */
+     * 重置管理员密码。
+     */
     @PostMapping("/{adminId}/reset-password")
     public ResponseEntity<?> resetPassword(
             @PathVariable Long adminId,
@@ -193,14 +203,15 @@ public class AdminManageController {
             AdminUser targetAdmin = adminUserService.getAdminUserById(adminId);
             attachAdminLogContext(servletRequest, targetAdmin, null);
             adminUserService.resetPassword(adminId, newPassword);
-            return ResponseEntity.ok("\u5bc6\u7801\u91cd\u7f6e\u6210\u529f");
+            return ResponseEntity.ok("密码重置成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     /**
-     * 鑾峰彇绠＄悊鍛樼粺璁′俊鎭€?     */
+     * 获取管理员统计信息。
+     */
     @GetMapping("/stats")
     public ResponseEntity<?> getAdminStats() {
         try {
@@ -211,7 +222,8 @@ public class AdminManageController {
     }
 
     /**
-     * 棰勮瑙掕壊鍜屾潈闄愰厤缃殑鏈€缁堢敓鏁堢粨鏋溿€?     */
+     * 预览角色和权限配置的最终生效结果。
+     */
     @PostMapping("/permission-preview")
     public ResponseEntity<?> previewPermissions(@RequestBody Map<String, Object> request) {
         try {
@@ -230,7 +242,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鑾峰彇鍚庡彴鍙€夋潈闄愬垪琛ㄣ€?     */
+     * 获取后台可选权限列表。
+     */
     @GetMapping("/permission-options")
     public ResponseEntity<?> getPermissionOptions() {
         try {
@@ -241,7 +254,8 @@ public class AdminManageController {
     }
 
     /**
-     * 鑾峰彇鍚庡彴瑙掕壊妯℃澘鍒楄〃銆?     */
+     * 获取后台角色模板列表。
+     */
     @GetMapping("/role-options")
     public ResponseEntity<?> getRoleOptions() {
         try {
@@ -275,15 +289,15 @@ public class AdminManageController {
         StringBuilder builder = new StringBuilder();
         builder.append(csvRow(
                 "ID",
-                "\u7528\u6237\u540d",
-                "\u6635\u79f0",
-                "\u89d2\u8272",
-                "\u72b6\u6001",
-                "\u6743\u9650\u6458\u8981",
-                "\u6709\u6548\u6743\u9650\u6570",
-                "\u6700\u540e\u767b\u5f55\u65f6\u95f4",
-                "\u6700\u540e\u767b\u5f55IP",
-                "\u521b\u5efa\u65f6\u95f4"
+                "用户名",
+                "昵称",
+                "角色",
+                "状态",
+                "权限摘要",
+                "有效权限数",
+                "最后登录时间",
+                "最后登录IP",
+                "创建时间"
         ));
         for (AdminUser adminUser : admins) {
             Set<String> effectivePermissions = adminUserService.getEffectivePermissions(adminUser);
@@ -292,7 +306,7 @@ public class AdminManageController {
                     adminUser.getUsername(),
                     adminUser.getName(),
                     adminUserService.getRoleName(adminUser.getRole()),
-                    adminUser.getStatus() != null && adminUser.getStatus() == 1 ? "\u542f\u7528" : "\u7981\u7528",
+                    adminUser.getStatus() != null && adminUser.getStatus() == 1 ? "启用" : "禁用",
                     summarizePermissions(adminUser.getPermissions()),
                     valueOf(effectivePermissions.size()),
                     formatDate(adminUser.getLastLoginAt()),

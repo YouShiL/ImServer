@@ -16,19 +16,19 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/calls")
-@Tag(name = "\u97f3\u89c6\u9891\u901a\u8bdd", description = "\u97f3\u89c6\u9891\u901a\u8bdd\u76f8\u5173\u63a5\u53e3")
+@Tag(name = "音视频通话", description = "音视频通话相关接口")
 public class VideoCallController {
 
     @Autowired
     private VideoCallService videoCallService;
 
     @PostMapping("/initiate")
-    @Operation(summary = "\u53d1\u8d77\u901a\u8bdd", description = "\u53d1\u8d77\u97f3\u9891\u6216\u89c6\u9891\u901a\u8bdd")
+    @Operation(summary = "发起通话", description = "发起音频或视频通话")
     public ResponseEntity<ResponseDTO<VideoCall>> initiateCall(
-            @Parameter(description = "\u547c\u53eb\u65b9 ID") @RequestParam Long callerId,
-            @Parameter(description = "\u88ab\u547c\u53eb\u65b9 ID") @RequestParam Long calleeId,
-            @Parameter(description = "\u7fa4\u7ec4 ID\uff08\u53ef\u9009\uff09") @RequestParam(required = false) Long groupId,
-            @Parameter(description = "\u901a\u8bdd\u7c7b\u578b\uff1a1-\u97f3\u9891\uff0c2-\u89c6\u9891") @RequestParam Integer callType) {
+            @Parameter(description = "呼叫方 ID") @RequestParam Long callerId,
+            @Parameter(description = "被呼叫方 ID") @RequestParam Long calleeId,
+            @Parameter(description = "群组 ID（可选）") @RequestParam(required = false) Long groupId,
+            @Parameter(description = "通话类型：1-音频，2-视频") @RequestParam Integer callType) {
         try {
             VideoCall call = videoCallService.initiateCall(callerId, calleeId, groupId, callType);
             return ResponseEntity.ok(ResponseDTO.success(call));
@@ -38,10 +38,10 @@ public class VideoCallController {
     }
 
     @PostMapping("/{callId}/accept")
-    @Operation(summary = "\u63a5\u542c\u901a\u8bdd", description = "\u63a5\u542c\u6765\u7535")
+    @Operation(summary = "接听通话", description = "接听来电")
     public ResponseEntity<ResponseDTO<VideoCall>> acceptCall(
-            @Parameter(description = "\u901a\u8bdd ID") @PathVariable Long callId,
-            @Parameter(description = "\u7528\u6237 ID") @RequestParam Long userId) {
+            @Parameter(description = "通话 ID") @PathVariable Long callId,
+            @Parameter(description = "用户 ID") @RequestParam Long userId) {
         try {
             VideoCall call = videoCallService.acceptCall(callId, userId);
             return ResponseEntity.ok(ResponseDTO.success(call));
@@ -51,10 +51,10 @@ public class VideoCallController {
     }
 
     @PostMapping("/{callId}/reject")
-    @Operation(summary = "\u62d2\u7edd\u901a\u8bdd", description = "\u62d2\u7edd\u6765\u7535")
+    @Operation(summary = "拒绝通话", description = "拒绝来电")
     public ResponseEntity<ResponseDTO<VideoCall>> rejectCall(
-            @Parameter(description = "\u901a\u8bdd ID") @PathVariable Long callId,
-            @Parameter(description = "\u7528\u6237 ID") @RequestParam Long userId) {
+            @Parameter(description = "通话 ID") @PathVariable Long callId,
+            @Parameter(description = "用户 ID") @RequestParam Long userId) {
         try {
             VideoCall call = videoCallService.rejectCall(callId, userId);
             return ResponseEntity.ok(ResponseDTO.success(call));
@@ -64,11 +64,11 @@ public class VideoCallController {
     }
 
     @PostMapping("/{callId}/end")
-    @Operation(summary = "\u7ed3\u675f\u901a\u8bdd", description = "\u7ed3\u675f\u5f53\u524d\u901a\u8bdd")
+    @Operation(summary = "结束通话", description = "结束当前通话")
     public ResponseEntity<ResponseDTO<VideoCall>> endCall(
-            @Parameter(description = "\u901a\u8bdd ID") @PathVariable Long callId,
-            @Parameter(description = "\u7528\u6237 ID") @RequestParam Long userId,
-            @Parameter(description = "\u7ed3\u675f\u539f\u56e0") @RequestParam(required = false, defaultValue = "\u6b63\u5e38\u7ed3\u675f") String reason) {
+            @Parameter(description = "通话 ID") @PathVariable Long callId,
+            @Parameter(description = "用户 ID") @RequestParam Long userId,
+            @Parameter(description = "结束原因") @RequestParam(required = false, defaultValue = "正常结束") String reason) {
         try {
             VideoCall call = videoCallService.endCall(callId, userId, reason);
             return ResponseEntity.ok(ResponseDTO.success(call));
@@ -78,10 +78,10 @@ public class VideoCallController {
     }
 
     @PostMapping("/{callId}/cancel")
-    @Operation(summary = "\u53d6\u6d88\u901a\u8bdd", description = "\u53d6\u6d88\u5df2\u53d1\u8d77\u7684\u901a\u8bdd\u8bf7\u6c42")
+    @Operation(summary = "取消通话", description = "取消已发起的通话请求")
     public ResponseEntity<ResponseDTO<Void>> cancelCall(
-            @Parameter(description = "\u901a\u8bdd ID") @PathVariable Long callId,
-            @Parameter(description = "\u7528\u6237 ID") @RequestParam Long userId) {
+            @Parameter(description = "通话 ID") @PathVariable Long callId,
+            @Parameter(description = "用户 ID") @RequestParam Long userId) {
         try {
             videoCallService.cancelCall(callId, userId);
             return ResponseEntity.ok(ResponseDTO.success(null));
@@ -91,9 +91,9 @@ public class VideoCallController {
     }
 
     @GetMapping("/history/{userId}")
-    @Operation(summary = "\u83b7\u53d6\u901a\u8bdd\u5386\u53f2", description = "\u83b7\u53d6\u6307\u5b9a\u7528\u6237\u7684\u901a\u8bdd\u5386\u53f2")
+    @Operation(summary = "获取通话历史", description = "获取指定用户的通话历史")
     public ResponseEntity<ResponseDTO<List<VideoCall>>> getCallHistory(
-            @Parameter(description = "\u7528\u6237 ID") @PathVariable Long userId) {
+            @Parameter(description = "用户 ID") @PathVariable Long userId) {
         try {
             List<VideoCall> history = videoCallService.getCallHistory(userId);
             return ResponseEntity.ok(ResponseDTO.success(history));
@@ -103,9 +103,9 @@ public class VideoCallController {
     }
 
     @GetMapping("/{callId}")
-    @Operation(summary = "\u83b7\u53d6\u901a\u8bdd\u8be6\u60c5", description = "\u6839\u636e\u901a\u8bdd ID \u83b7\u53d6\u8be6\u60c5")
+    @Operation(summary = "获取通话详情", description = "根据通话 ID 获取详情")
     public ResponseEntity<ResponseDTO<VideoCall>> getCallById(
-            @Parameter(description = "\u901a\u8bdd ID") @PathVariable Long callId) {
+            @Parameter(description = "通话 ID") @PathVariable Long callId) {
         try {
             Optional<VideoCall> call = videoCallService.getCallById(callId);
             if (call.isPresent()) {
@@ -118,9 +118,9 @@ public class VideoCallController {
     }
 
     @GetMapping("/statistics/{userId}")
-    @Operation(summary = "\u83b7\u53d6\u901a\u8bdd\u7edf\u8ba1", description = "\u83b7\u53d6\u6307\u5b9a\u7528\u6237\u7684\u901a\u8bdd\u7edf\u8ba1\u6570\u636e")
+    @Operation(summary = "获取通话统计", description = "获取指定用户的通话统计数据")
     public ResponseEntity<ResponseDTO<Map<String, Object>>> getCallStatistics(
-            @Parameter(description = "\u7528\u6237 ID") @PathVariable Long userId) {
+            @Parameter(description = "用户 ID") @PathVariable Long userId) {
         try {
             Map<String, Object> stats = videoCallService.getCallStatistics(userId);
             return ResponseEntity.ok(ResponseDTO.success(stats));
@@ -130,11 +130,11 @@ public class VideoCallController {
     }
 
     @PostMapping("/{callId}/signal")
-    @Operation(summary = "\u53d1\u9001 WebRTC \u4fe1\u4ee4", description = "\u53d1\u9001 WebRTC \u534f\u5546\u4fe1\u4ee4\u6570\u636e")
+    @Operation(summary = "发送 WebRTC 信令", description = "发送 WebRTC 协商信令数据")
     public ResponseEntity<ResponseDTO<Void>> sendSignal(
-            @Parameter(description = "\u901a\u8bdd ID") @PathVariable Long callId,
-            @Parameter(description = "\u7528\u6237 ID") @RequestParam Long userId,
-            @Parameter(description = "\u4fe1\u4ee4\u7c7b\u578b") @RequestParam String signalType,
+            @Parameter(description = "通话 ID") @PathVariable Long callId,
+            @Parameter(description = "用户 ID") @RequestParam Long userId,
+            @Parameter(description = "信令类型") @RequestParam String signalType,
             @RequestBody Map<String, Object> signalData) {
         try {
             videoCallService.handleWebRTCSignal(callId, userId, signalType, signalData);

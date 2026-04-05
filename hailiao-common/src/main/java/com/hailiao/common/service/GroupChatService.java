@@ -42,7 +42,7 @@ public class GroupChatService {
         }
 
         GroupMember operator = groupMemberRepository.findByGroupIdAndUserId(group.getId(), operatorId)
-                .orElseThrow(() -> new RuntimeException("\u7fa4\u4e3b\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("群主不存在"));
 
         if (operator.getRole() != null && operator.getRole() <= 2) {
             return true;
@@ -60,7 +60,7 @@ public class GroupChatService {
         
         long groupCount = groupMemberRepository.countByUserId(ownerId);
         if (groupCount >= owner.getGroupLimit()) {
-            throw new RuntimeException("\u521b\u5efa\u7fa4\u7ec4\u6570\u91cf\u5df2\u8fbe\u4e0a\u9650");
+            throw new RuntimeException("创建群组数量已达上限");
         }
 
         GroupChat group = new GroupChat();
@@ -106,7 +106,7 @@ public class GroupChatService {
      */
     public GroupChat getGroupById(Long id) {
         return groupChatRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u7fa4\u7ec4\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("群组不存在"));
     }
 
     /**
@@ -114,7 +114,7 @@ public class GroupChatService {
      */
     public GroupChat getGroupByGroupId(String groupId) {
         return groupChatRepository.findByGroupId(groupId)
-                .orElseThrow(() -> new RuntimeException("\u7fa4\u7ec4\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("群组不存在"));
     }
 
     /**
@@ -129,16 +129,16 @@ public class GroupChatService {
     public GroupMember addGroupMember(Long groupId, Long userId, Integer role, Long operatorId) {
         GroupChat group = getGroupById(groupId);
         if (!canInviteMember(group, operatorId)) {
-            throw new RuntimeException("\u5f53\u524d\u7fa4\u7ec4\u4e0d\u5141\u8bb8\u666e\u901a\u6210\u5458\u9080\u8bf7\u65b0\u6210\u5458");
+            throw new RuntimeException("当前群组不允许普通成员邀请新成员");
         }
         
         if (groupMemberRepository.existsByGroupIdAndUserId(groupId, userId)) {
-            throw new RuntimeException("\u7528\u6237\u5df2\u5728\u7fa4\u7ec4\u4e2d");
+            throw new RuntimeException("用户已在群组中");
         }
 
         long memberCount = groupMemberRepository.countByGroupId(groupId);
         if (memberCount >= group.getMaxMemberCount()) {
-            throw new RuntimeException("\u7fa4\u7ec4\u6210\u5458\u5df2\u6ee1");
+            throw new RuntimeException("群组成员已满");
         }
 
         User user = userRepository.findById(userId).get();
@@ -165,7 +165,7 @@ public class GroupChatService {
     public void removeGroupMember(Long groupId, Long userId) {
         GroupChat group = getGroupById(groupId);
         GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new RuntimeException("\u6210\u5458\u4e0d\u5728\u7fa4\u7ec4\u4e2d"));
+                .orElseThrow(() -> new RuntimeException("成员不在群组中"));
 
         groupMemberRepository.delete(member);
 
@@ -182,7 +182,7 @@ public class GroupChatService {
     public void quitGroup(Long groupId, Long userId) {
         GroupChat group = getGroupById(groupId);
         if (group.getOwnerId().equals(userId)) {
-            throw new RuntimeException("\u7fa4\u4e3b\u4e0d\u80fd\u9000\u51fa\u7fa4\u7ec4");
+            throw new RuntimeException("群主不能退出群组");
         }
         removeGroupMember(groupId, userId);
     }
@@ -256,10 +256,10 @@ public class GroupChatService {
         GroupChat group = getGroupById(groupId);
         
         GroupMember newOwnerMember = groupMemberRepository.findByGroupIdAndUserId(groupId, newOwnerId)
-                .orElseThrow(() -> new RuntimeException("\u65b0\u7fa4\u4e3b\u4e0d\u5728\u7fa4\u7ec4\u4e2d"));
+                .orElseThrow(() -> new RuntimeException("新群主不在群组中"));
         
         GroupMember oldOwnerMember = groupMemberRepository.findByGroupIdAndUserId(groupId, group.getOwnerId())
-                .orElseThrow(() -> new RuntimeException("\u539f\u7fa4\u4e3b\u4e0d\u5728\u7fa4\u7ec4\u4e2d"));
+                .orElseThrow(() -> new RuntimeException("原群主不在群组中"));
 
         oldOwnerMember.setRole(3);
         newOwnerMember.setRole(1);
@@ -289,7 +289,7 @@ public class GroupChatService {
     @Transactional
     public void setMemberMute(Long groupId, Long userId, Boolean isMute) {
         GroupMember member = groupMemberRepository.findByGroupIdAndUserId(groupId, userId)
-                .orElseThrow(() -> new RuntimeException("\u6210\u5458\u4e0d\u5728\u7fa4\u7ec4\u4e2d"));
+                .orElseThrow(() -> new RuntimeException("成员不在群组中"));
         member.setIsMute(isMute);
         groupMemberRepository.save(member);
     }

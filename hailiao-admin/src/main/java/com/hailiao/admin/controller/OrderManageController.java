@@ -84,7 +84,7 @@ public class OrderManageController {
     public ResponseEntity<?> cancelOrder(@PathVariable Long orderId) {
         try {
             orderService.cancelOrder(orderId);
-            return ResponseEntity.ok("\u8ba2\u5355\u53d6\u6d88\u6210\u529f");
+            return ResponseEntity.ok("订单取消成功");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -105,8 +105,8 @@ public class OrderManageController {
             stats.put("unpaidOrders", unpaidOrders);
             stats.put("totalRevenue", orderService.getTotalRevenue());
             stats.put("summary", mapOf(
-                    "paidLabel", "\u5df2\u652f\u4ed8",
-                    "unpaidLabel", "\u672a\u652f\u4ed8",
+                    "paidLabel", "已支付",
+                    "unpaidLabel", "未支付",
                     "paidRatio", totalOrders == 0 ? "0.00%" : String.format("%.2f%%", (paidOrders * 100.0) / totalOrders)
             ));
             return ResponseEntity.ok(stats);
@@ -158,7 +158,7 @@ public class OrderManageController {
         item.put("payType", order.getPayType());
         item.put("payTypeLabel", getPayTypeLabel(order.getPayType()));
         item.put("payStatus", order.getPayStatus());
-        item.put("payStatusLabel", order.getPayStatus() != null && order.getPayStatus() == 1 ? "\u5df2\u652f\u4ed8" : "\u672a\u652f\u4ed8");
+        item.put("payStatusLabel", order.getPayStatus() != null && order.getPayStatus() == 1 ? "已支付" : "未支付");
         item.put("status", order.getStatus());
         item.put("statusLabel", getOrderStatusLabel(order.getStatus()));
         item.put("createdAt", order.getCreatedAt());
@@ -168,43 +168,43 @@ public class OrderManageController {
 
     private String getProductTypeLabel(Integer productType) {
         if (productType == null) {
-            return "\u672a\u77e5\u5546\u54c1";
+            return "未知商品";
         }
         switch (productType) {
             case 1:
                 return "VIP";
             case 2:
-                return "\u9773\u53f7";
+                return "靓号";
             default:
-                return "\u672a\u77e5\u5546\u54c1";
+                return "未知商品";
         }
     }
 
     private String getPayTypeLabel(Integer payType) {
         if (payType == null) {
-            return "\u672a\u77e5\u652f\u4ed8\u65b9\u5f0f";
+            return "未知支付方式";
         }
         switch (payType) {
             case 1:
-                return "\u5fae\u4fe1";
+                return "微信";
             case 2:
-                return "\u652f\u4ed8\u5b9d";
+                return "支付宝";
             default:
-                return "\u672a\u77e5\u652f\u4ed8\u65b9\u5f0f";
+                return "未知支付方式";
         }
     }
 
     private String getOrderStatusLabel(Integer status) {
         if (status == null || status == 0) {
-            return "\u5f85\u5904\u7406";
+            return "待处理";
         }
         if (status == 1) {
-            return "\u5df2\u5b8c\u6210";
+            return "已完成";
         }
         if (status == 2) {
-            return "\u5df2\u53d6\u6d88";
+            return "已取消";
         }
-        return "\u672a\u77e5";
+        return "未知";
     }
 
     private Map<String, Object> mapOf(Object... values) {

@@ -29,7 +29,7 @@ public class ContentAuditService {
 
     public ContentAudit getAuditById(Long id) {
         return contentAuditRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("\u5ba1\u6838\u8bb0\u5f55\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("审核记录不存在"));
     }
 
     public Page<ContentAudit> getAuditList(Integer status, Integer contentType, Long userId, Pageable pageable) {

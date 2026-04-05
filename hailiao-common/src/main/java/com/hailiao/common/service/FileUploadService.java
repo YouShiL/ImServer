@@ -100,7 +100,7 @@ public class FileUploadService {
             audit.setContent(buildUploadAuditContent(result));
             contentAuditService.createAudit(audit);
         } catch (Exception e) {
-            logger.warn("\u521b\u5efa\u4e0a\u4f20\u5185\u5bb9\u5ba1\u6838\u8bb0\u5f55\u5931\u8d25: {}", e.getMessage());
+            logger.warn("创建上传内容审核记录失败: {}", e.getMessage());
         }
     }
 
@@ -129,7 +129,7 @@ public class FileUploadService {
      */
     private void validateFile(MultipartFile file, String type) throws IOException {
         if (file.isEmpty()) {
-            throw new IOException("\u6587\u4ef6\u4e0d\u80fd\u4e3a\u7a7a");
+            throw new IOException("文件不能为空");
         }
 
         String extension = getFileExtension(file.getOriginalFilename()).toLowerCase();
@@ -138,37 +138,37 @@ public class FileUploadService {
         switch (type) {
             case "image":
                 if (!Arrays.asList(config.getAllowedImageTypes()).contains(extension)) {
-                    throw new IOException("\u4e0d\u652f\u6301\u7684\u56fe\u7247\u683c\u5f0f\uff0c\u4ec5\u652f\u6301: "
+                    throw new IOException("不支持的图片格式，仅支持: "
                             + String.join(", ", config.getAllowedImageTypes()));
                 }
                 if (fileSize > config.getImageMaxSize()) {
-                    throw new IOException("\u56fe\u7247\u5927\u5c0f\u8d85\u8fc7\u9650\u5236\uff0c\u6700\u5927\u5141\u8bb8: "
+                    throw new IOException("图片大小超过限制，最大允许: "
                             + formatFileSize(config.getImageMaxSize()));
                 }
                 break;
             case "video":
                 if (!Arrays.asList(config.getAllowedVideoTypes()).contains(extension)) {
-                    throw new IOException("\u4e0d\u652f\u6301\u7684\u89c6\u9891\u683c\u5f0f\uff0c\u4ec5\u652f\u6301: "
+                    throw new IOException("不支持的视频格式，仅支持: "
                             + String.join(", ", config.getAllowedVideoTypes()));
                 }
                 if (fileSize > config.getVideoMaxSize()) {
-                    throw new IOException("\u89c6\u9891\u5927\u5c0f\u8d85\u8fc7\u9650\u5236\uff0c\u6700\u5927\u5141\u8bb8: "
+                    throw new IOException("视频大小超过限制，最大允许: "
                             + formatFileSize(config.getVideoMaxSize()));
                 }
                 break;
             case "audio":
                 if (!Arrays.asList(config.getAllowedAudioTypes()).contains(extension)) {
-                    throw new IOException("\u4e0d\u652f\u6301\u7684\u97f3\u9891\u683c\u5f0f\uff0c\u4ec5\u652f\u6301: "
+                    throw new IOException("不支持的音频格式，仅支持: "
                             + String.join(", ", config.getAllowedAudioTypes()));
                 }
                 if (fileSize > config.getAudioMaxSize()) {
-                    throw new IOException("\u97f3\u9891\u5927\u5c0f\u8d85\u8fc7\u9650\u5236\uff0c\u6700\u5927\u5141\u8bb8: "
+                    throw new IOException("音频大小超过限制，最大允许: "
                             + formatFileSize(config.getAudioMaxSize()));
                 }
                 break;
             default:
                 if (fileSize > config.getMaxFileSize()) {
-                    throw new IOException("\u6587\u4ef6\u5927\u5c0f\u8d85\u8fc7\u9650\u5236\uff0c\u6700\u5927\u5141\u8bb8: "
+                    throw new IOException("文件大小超过限制，最大允许: "
                             + formatFileSize(config.getMaxFileSize()));
                 }
                 break;

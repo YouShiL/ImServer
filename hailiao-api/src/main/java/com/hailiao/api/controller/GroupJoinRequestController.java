@@ -67,7 +67,7 @@ public class GroupJoinRequestController {
             @PathVariable Long requestId) {
         try {
             groupJoinRequestService.approveRequest(requestId, userId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u540c\u610f\u5165\u7fa4\u7533\u8bf7"));
+            return ResponseEntity.ok(ResponseDTO.success("已同意入群申请"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -79,7 +79,7 @@ public class GroupJoinRequestController {
             @PathVariable Long requestId) {
         try {
             groupJoinRequestService.rejectRequest(requestId, userId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u62d2\u7edd\u5165\u7fa4\u7533\u8bf7"));
+            return ResponseEntity.ok(ResponseDTO.success("已拒绝入群申请"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }
@@ -91,7 +91,7 @@ public class GroupJoinRequestController {
             @PathVariable Long requestId) {
         try {
             groupJoinRequestService.withdrawRequest(requestId, userId);
-            return ResponseEntity.ok(ResponseDTO.success("\u5df2\u64a4\u56de\u5165\u7fa4\u7533\u8bf7"));
+            return ResponseEntity.ok(ResponseDTO.success("已撤回入群申请"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
         }

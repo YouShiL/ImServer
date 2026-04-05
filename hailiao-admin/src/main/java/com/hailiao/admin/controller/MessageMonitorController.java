@@ -87,34 +87,34 @@ public class MessageMonitorController {
         item.put("msgTypeLabel", getMsgTypeLabel(message.getMsgType()));
         item.put("content", message.getContent());
         item.put("status", message.getStatus());
-        item.put("statusLabel", message.getStatus() != null && message.getStatus() == 1 ? "\u6b63\u5e38" : "\u5f02\u5e38");
+        item.put("statusLabel", message.getStatus() != null && message.getStatus() == 1 ? "正常" : "异常");
         item.put("isRead", message.getIsRead());
-        item.put("readLabel", Boolean.TRUE.equals(message.getIsRead()) ? "\u5df2\u8bfb" : "\u672a\u8bfb");
+        item.put("readLabel", Boolean.TRUE.equals(message.getIsRead()) ? "已读" : "未读");
         item.put("isRecall", message.getIsRecall());
-        item.put("recallLabel", Boolean.TRUE.equals(message.getIsRecall()) ? "\u5df2\u64a4\u56de" : "\u672a\u64a4\u56de");
+        item.put("recallLabel", Boolean.TRUE.equals(message.getIsRecall()) ? "已撤回" : "未撤回");
         item.put("createdAt", message.getCreatedAt());
         return item;
     }
 
     private String getMsgTypeLabel(Integer msgType) {
         if (msgType == null) {
-            return "\u5168\u90e8\u7c7b\u578b";
+            return "全部类型";
         }
         switch (msgType) {
             case 1:
-                return "\u6587\u672c";
+                return "文本";
             case 2:
-                return "\u56fe\u7247";
+                return "图片";
             case 3:
-                return "\u97f3\u9891";
+                return "音频";
             case 4:
-                return "\u89c6\u9891";
+                return "视频";
             case 5:
-                return "\u6587\u4ef6";
+                return "文件";
             case 6:
-                return "\u4f4d\u7f6e";
+                return "位置";
             default:
-                return "\u672a\u77e5\u7c7b\u578b";
+                return "未知类型";
         }
     }
 

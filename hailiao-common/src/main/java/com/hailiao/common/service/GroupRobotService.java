@@ -64,7 +64,7 @@ public class GroupRobotService {
                         handleCommand(robot, command, message);
                         triggered = true;
                     } catch (Exception e) {
-                        logger.error("\u5904\u7406\u673a\u5668\u4eba\u6307\u4ee4\u5931\u8d25: robotId={}, command={}, error={}",
+                        logger.error("处理机器人指令失败: robotId={}, command={}, error={}",
                                 robot.getId(), command.getCommand(), e.getMessage(), e);
                     }
                 }
@@ -93,7 +93,7 @@ public class GroupRobotService {
                 responseContent = callExternalApi(robot, command, message);
                 break;
             default:
-                logger.warn("\u672a\u77e5\u7684\u54cd\u5e94\u7c7b\u578b: {}", command.getResponseType());
+                logger.warn("未知的响应类型: {}", command.getResponseType());
                 return;
         }
 
@@ -139,11 +139,11 @@ public class GroupRobotService {
             if (response.getStatusCode() == HttpStatus.OK) {
                 return response.getBody();
             } else {
-                logger.error("API \u8c03\u7528\u5931\u8d25: status={}", response.getStatusCode());
+                logger.error("API 调用失败: status={}", response.getStatusCode());
                 return null;
             }
         } catch (Exception e) {
-            logger.error("\u8c03\u7528\u5916\u90e8 API \u5931\u8d25: {}", e.getMessage(), e);
+            logger.error("调用外部 API 失败: {}", e.getMessage(), e);
             return null;
         }
     }
@@ -163,7 +163,7 @@ public class GroupRobotService {
         try {
             messageService.sendGroupMessage(-robot.getId(), groupId, content, msgType, null);
         } catch (Exception e) {
-            logger.error("\u53d1\u9001\u673a\u5668\u4eba\u6d88\u606f\u5931\u8d25: {}", e.getMessage(), e);
+            logger.error("发送机器人消息失败: {}", e.getMessage(), e);
         }
     }
 
@@ -206,7 +206,7 @@ public class GroupRobotService {
     @Transactional
     public GroupRobot setRobotEnabled(Long robotId, Boolean enabled) {
         GroupRobot robot = robotRepository.findById(robotId)
-                .orElseThrow(() -> new RuntimeException("\u673a\u5668\u4eba\u4e0d\u5b58\u5728"));
+                .orElseThrow(() -> new RuntimeException("机器人不存在"));
         robot.setIsEnabled(enabled);
         robot.setUpdatedAt(new Date());
         return robotRepository.save(robot);
