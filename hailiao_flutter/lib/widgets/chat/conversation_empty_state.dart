@@ -1,31 +1,68 @@
 import 'package:flutter/material.dart';
-import 'package:hailiao_flutter/theme/common_tokens.dart';
-import 'package:hailiao_flutter/widgets/common/empty_state_view.dart';
+import 'package:hailiao_flutter/theme/conversation_ui_tokens.dart';
 
 class ConversationEmptyState extends StatelessWidget {
   const ConversationEmptyState({
     super.key,
-    this.onExploreTap,
+    required this.icon,
+    required this.title,
+    this.detail,
+    this.action,
   });
 
-  final VoidCallback? onExploreTap;
+  final IconData icon;
+  final String title;
+  final String? detail;
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
-    return EmptyStateView(
-      icon: Icons.chat_bubble_outline_rounded,
-      title: '暂无会话',
-      detail: '新的聊天会显示在这里，你也可以先去添加好友或发起新的对话。',
-      action: onExploreTap == null
-          ? null
-          : TextButton.icon(
-              onPressed: onExploreTap,
-              icon: const Icon(Icons.person_add_alt_1_rounded),
-              label: const Text('添加好友'),
-              style: TextButton.styleFrom(
-                foregroundColor: CommonTokens.brandBlue,
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: <Widget>[
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: ConversationUiTokens.softSurface,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Icon(
+                icon,
+                size: 32,
+                color: ConversationUiTokens.subtleText,
               ),
             ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF374151),
+              ),
+            ),
+            if (detail != null && detail!.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                detail!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: ConversationUiTokens.mutedText,
+                ),
+              ),
+            ],
+            if (action != null) ...<Widget>[
+              const SizedBox(height: 16),
+              action!,
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
