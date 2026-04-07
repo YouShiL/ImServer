@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:hailiao_flutter/config/app_config.dart';
 import 'package:hailiao_flutter/models/auth_response_dto.dart';
@@ -22,6 +23,192 @@ import 'package:hailiao_flutter/models/user_session_dto.dart';
 class ApiService {
   /// 由 [AppConfig.apiBaseUrl] 提供（`APP_ENV` / `API_BASE_URL`），勿在此硬编码。
   static String get baseUrl => AppConfig.apiBaseUrl;
+
+  static int? _coerceInt(dynamic v) {
+    if (v == null) {
+      return null;
+    }
+    if (v is int) {
+      return v;
+    }
+    if (v is num) {
+      return v.toInt();
+    }
+    return int.tryParse(v.toString().trim());
+  }
+
+  static bool? _coerceBool(dynamic v) {
+    if (v == null) {
+      return null;
+    }
+    if (v is bool) {
+      return v;
+    }
+    if (v is num) {
+      return v != 0;
+    }
+    final s = v.toString().trim().toLowerCase();
+    if (s == 'true' || s == '1') {
+      return true;
+    }
+    if (s == 'false' || s == '0') {
+      return false;
+    }
+    return null;
+  }
+
+  /// Jackson 常见：`createdAt` 时间戳、`Long`→String、布尔 0/1、布尔字段名 `recalled`。
+  static Map<String, dynamic> _normalizeMessageJsonMap(Map<String, dynamic> raw) {
+    final m = Map<String, dynamic>.from(raw);
+    m['isRecalled'] ??= m['recalled'] ?? m['isRecall'];
+
+    if (m['msgId'] != null && m['msgId'] is! String) {
+      m['msgId'] = m['msgId'].toString();
+    }
+    if (m['extra'] != null && m['extra'] is! String) {
+      final Object? ex = m['extra'];
+      m['extra'] = (ex is Map || ex is List) ? jsonEncode(ex) : ex.toString();
+    }
+
+    for (final k in <String>[
+      'id',
+      'fromUserId',
+      'toUserId',
+      'groupId',
+      'msgType',
+      'subType',
+      'status',
+      'replyToMsgId',
+      'forwardFromMsgId',
+      'forwardFromUserId',
+    ]) {
+      if (m.containsKey(k)) {
+        m[k] = _coerceInt(m[k]);
+      }
+    }
+    for (final k in <String>['isRead', 'isRecalled', 'isDeleted', 'isEdited']) {
+      if (m.containsKey(k)) {
+        m[k] = _coerceBool(m[k]);
+      }
+    }
+
+    final ca = m['createdAt'];
+    if (ca is num) {
+      final v = ca.toInt();
+      final ms = v > 1000000000000 ? v : v * 1000;
+      m['createdAt'] = DateTime.fromMillisecondsSinceEpoch(ms).toIso8601String();
+    } else if (ca is String) {
+      final s = ca.trim();
+      if (s.isNotEmpty && int.tryParse(s) != null) {
+        final v = int.parse(s);
+        final ms = v > 1000000000000 ? v : v * 1000;
+        m['createdAt'] = DateTime.fromMillisecondsSinceEpoch(ms).toIso8601String();
+      }
+    }
+    if (m['content'] != null && m['content'] is! String) {
+      m['content'] = m['content'].toString();
+    }
+
+    final info = m['fromUserInfo'];
+    if (info is Map) {
+      final u = Map<String, dynamic>.from(info);
+      if (u.containsKey('id')) {
+        u['id'] = _coerceInt(u['id']);
+      }
+      for (final k in <String>[
+        'userId',
+        'phone',
+        'nickname',
+        'avatar',
+        'region',
+        'signature',
+        'birthday',
+        'background',
+        'prettyNumber',
+        'lastLoginIp',
+      ]) {
+        if (u.containsKey(k)) {
+          final v = u[k];
+          if (v != null && v is! String) {
+            u[k] = v.toString();
+          }
+        }
+      }
+      for (final k in <String>[
+        'gender',
+        'onlineStatus',
+        'friendLimit',
+        'groupLimit',
+        'groupMemberLimit',
+        'status',
+      ]) {
+        if (u.containsKey(k)) {
+          u[k] = _coerceInt(u[k]);
+        }
+      }
+      for (final k in <String>[
+        'isVip',
+        'isPrettyNumber',
+        'deviceLock',
+        'showOnlineStatus',
+        'showLastOnline',
+        'allowSearchByPhone',
+        'needFriendVerification',
+      ]) {
+        if (u.containsKey(k)) {
+          u[k] = _coerceBool(u[k]);
+        }
+      }
+      for (final k in <String>['createdAt', 'updatedAt', 'lastLoginAt']) {
+        final v = u[k];
+        if (v is num) {
+          final vi = v.toInt();
+          final ms = vi > 1000000000000 ? vi : vi * 1000;
+          u[k] = DateTime.fromMillisecondsSinceEpoch(ms).toIso8601String();
+        }
+      }
+      m['fromUserInfo'] = u;
+    }
+
+    return m;
+  }
+
+  /// Spring Data [Page] 等为 `{ content: [...] }`；逐项解析避免单条字段异常导致整页失败。
+  static List<MessageDTO> _parsePagedMessageList(Object? dataField) {
+      final List<dynamic> raw;
+    if (dataField is Map) {
+      final m = Map<String, dynamic>.from(dataField);
+      final c = m['content'] ?? m['records'] ?? m['list'];
+      raw = c is List ? c : const [];
+    } else if (dataField is List) {
+      raw = dataField;
+    } else {
+      raw = const [];
+    }
+    final out = <MessageDTO>[];
+    var skipped = 0;
+    for (final item in raw) {
+      if (item is! Map) {
+        skipped++;
+        continue;
+      }
+      try {
+        final normalized =
+            _normalizeMessageJsonMap(Map<String, dynamic>.from(item));
+        out.add(MessageDTO.fromJson(normalized));
+      } catch (e) {
+        skipped++;
+        debugPrint('[im.api] MessageDTO.fromJson skipped: $e');
+      }
+    }
+    if (skipped > 0 || (raw.isNotEmpty && out.isEmpty)) {
+      debugPrint('[im.api] message page: ok=${out.length} skipped=$skipped raw=${raw.length}');
+      if (raw.isNotEmpty && out.isEmpty && raw.first is Map) {
+        debugPrint('[im.api] first row keys: ${(raw.first as Map).keys.join(",")}');
+      }
+    }
+    return out;
+  }
 
   static String? _token;
   static Future<void> Function()? _unauthorizedHandler;
@@ -295,24 +482,34 @@ class ApiService {
   static Future<ResponseDTO<List<MessageDTO>>> getPrivateMessages(int toUserId, int page, int size) async {
     final backendPage = page > 0 ? page - 1 : 0;
     final response = await _request('/message/private/$toUserId?page=$backendPage&size=$size');
-    final json = jsonDecode(response.body);
-    final normalizedJson = Map<String, dynamic>.from(json);
-    normalizedJson['data'] = (json['data']?['content'] ?? []) as List<dynamic>;
-    return ResponseDTO.fromJson(
-      normalizedJson,
-      (data) => (data as List).map((item) => MessageDTO.fromJson(item as Map<String, dynamic>)).toList(),
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final code = (json['code'] as num).toInt();
+    final list = code == 200 ? _parsePagedMessageList(json['data']) : null;
+    if (kDebugMode && list != null) {
+      final sample = list
+          .map((m) => '${m.id}:${m.fromUserId}->${m.toUserId}')
+          .take(4)
+          .join(', ');
+      debugPrint(
+        '[im.api] private peer=$toUserId uiPage=$page backendPage=$backendPage n=${list.length} sample=[$sample]',
+      );
+    }
+    return ResponseDTO<List<MessageDTO>>(
+      code: code,
+      message: json['message'] as String? ?? '',
+      data: list,
     );
   }
 
   static Future<ResponseDTO<List<MessageDTO>>> getGroupMessages(int groupId, int page, int size) async {
     final backendPage = page > 0 ? page - 1 : 0;
     final response = await _request('/message/group/$groupId?page=$backendPage&size=$size');
-    final json = jsonDecode(response.body);
-    final normalizedJson = Map<String, dynamic>.from(json);
-    normalizedJson['data'] = (json['data']?['content'] ?? []) as List<dynamic>;
-    return ResponseDTO.fromJson(
-      normalizedJson,
-      (data) => (data as List).map((item) => MessageDTO.fromJson(item as Map<String, dynamic>)).toList(),
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    final code = (json['code'] as num).toInt();
+    return ResponseDTO<List<MessageDTO>>(
+      code: code,
+      message: json['message'] as String? ?? '',
+      data: code == 200 ? _parsePagedMessageList(json['data']) : null,
     );
   }
 

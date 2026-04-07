@@ -17,6 +17,15 @@ import java.util.Optional;
 public interface MessageRepository extends JpaRepository<Message, Long>, JpaSpecificationExecutor<Message> {
     Optional<Message> findByMsgId(String msgId);
     Page<Message> findByFromUserIdAndToUserIdOrderByCreatedAtDesc(Long fromUserId, Long toUserId, Pageable pageable);
+
+    /**
+     * 私聊双方完整历史。仅用收发双方配对筛选：群消息入库时一般不带对端 toUserId，
+     * 不会与 (me↔peer) 同时成立，故避免依赖 groupId 以免历史脏数据把对方消息整类过滤掉。
+     */
+    @Query("SELECT m FROM Message m WHERE " +
+           "(m.fromUserId = :me AND m.toUserId = :peer) OR " +
+           "(m.fromUserId = :peer AND (m.toUserId = :me OR m.toUserId IS NULL))")
+    Page<Message> findPrivateConversationBetween(@Param("me") Long me, @Param("peer") Long peer, Pageable pageable);
     Page<Message> findByGroupIdOrderByCreatedAtDesc(Long groupId, Pageable pageable);
     List<Message> findByFromUserIdAndToUserIdAndCreatedAtAfter(Long fromUserId, Long toUserId, Date createdAt);
     List<Message> findByGroupIdAndCreatedAtAfter(Long groupId, Date createdAt);

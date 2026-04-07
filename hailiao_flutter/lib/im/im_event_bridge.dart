@@ -123,7 +123,10 @@ class ImEventBridge {
       return;
     }
 
-    final message = _mapper.mapIncomingMessage(rawEvent);
+    final message = _mapper.mapIncomingMessage(
+      rawEvent,
+      currentUserId: _currentUserId,
+    );
     if (message == null) {
       return;
     }
@@ -150,7 +153,10 @@ class ImEventBridge {
       return;
     }
 
-    final messages = _mapper.mapIncomingMessages(rawEvent);
+    final messages = _mapper.mapIncomingMessages(
+      rawEvent,
+      currentUserId: _currentUserId,
+    );
     if (messages.isEmpty) {
       return;
     }
@@ -174,7 +180,10 @@ class ImEventBridge {
       fromUserId: _currentUserId,
     );
     if (!applied) {
-      final refreshed = _mapper.mapIncomingMessage(rawEvent);
+      final refreshed = _mapper.mapIncomingMessage(
+        rawEvent,
+        currentUserId: _currentUserId,
+      );
       if (refreshed != null) {
         _messageProvider.receiveIncomingMessage(
           refreshed,

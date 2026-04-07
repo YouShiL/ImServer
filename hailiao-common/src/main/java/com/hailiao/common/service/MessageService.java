@@ -184,7 +184,7 @@ public class MessageService {
      * 获取私聊消息记录。
      */
     public Page<Message> getPrivateMessages(Long fromUserId, Long toUserId, Pageable pageable) {
-        return messageRepository.findByFromUserIdAndToUserIdOrderByCreatedAtDesc(fromUserId, toUserId, pageable);
+        return messageRepository.findPrivateConversationBetween(fromUserId, toUserId, pageable);
     }
 
     /**

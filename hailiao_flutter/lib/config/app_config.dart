@@ -12,7 +12,7 @@
 /// （Android 模拟器访问本机常用 `10.0.2.2`。）
 ///
 /// **WuKong IM（TCP）地址** 为 `host:port`，与各环境一同切换；也可：  
-/// `flutter run --dart-define=IM_TCP_ADDR=10.0.2.2:5200`
+/// `flutter run --dart-define=IM_TCP_ADDR=10.0.2.2:5100`
 library;
 
 enum AppEnvironment {
@@ -47,12 +47,13 @@ const String _testApiBaseUrl = 'http://127.0.0.1:8082/api';
 const String _prodApiBaseUrl = 'https://api.yourdomain.com/api';
 
 // ---------------------------------------------------------------------------
-// WuKongIM TCP 连接地址（`host:port`）。端口须与 WuKongIM 服务端 `wk.yaml` 中
-// 客户端接入端口一致（常见默认 5200，请按实际部署修改）。
+// WuKongIM：Flutter SDK [Options.addr] 走 **TCP**（启动日志里的「TCP Client」端口，
+// v2.2.x 默认多为 5100）；5200 一般是 **WebSocket**，勿与 TCP 混用。
+// 以服务端启动时打印的「TCP Client: tcp://0.0.0.0:xxxx」为准，或用 --dart-define=IM_TCP_ADDR=host:port。
 // ---------------------------------------------------------------------------
-const String _devImTcpAddr = '192.168.2.3:5200';
-const String _testImTcpAddr = '127.0.0.1:5200';
-const String _prodImTcpAddr = 'im.yourdomain.com:5200';
+const String _devImTcpAddr = '192.168.2.3:5100';
+const String _testImTcpAddr = '127.0.0.1:5100';
+const String _prodImTcpAddr = 'im.yourdomain.com:5100';
 
 /// 全局可读的应用环境配置（惰性解析一次）。
 abstract final class AppConfig {

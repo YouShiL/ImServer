@@ -500,7 +500,12 @@ class MessageProvider extends ChangeNotifier {
     if (m.status != 2) {
       return null;
     }
-    if (!_messageBelongsToConversation(m, targetId, type)) {
+    if (!_messageBelongsToConversation(
+      m,
+      targetId,
+      type,
+      currentUserId: fromUserId,
+    )) {
       return null;
     }
     final text = (m.content ?? '').trim();
@@ -554,7 +559,12 @@ class MessageProvider extends ChangeNotifier {
     if (m.status != 2) {
       return null;
     }
-    if (!_messageBelongsToConversation(m, targetId, type)) {
+    if (!_messageBelongsToConversation(
+      m,
+      targetId,
+      type,
+      currentUserId: fromUserId,
+    )) {
       return null;
     }
     final path = (m.content ?? '').trim();
@@ -829,9 +839,16 @@ class MessageProvider extends ChangeNotifier {
       return;
     }
 
+    final int? ownerUserId = _conversations[conversationIndex].userId;
+
     MessageDTO? latestMessage;
     for (final message in _messages.reversed) {
-      if (_messageBelongsToConversation(message, targetId, type)) {
+      if (_messageBelongsToConversation(
+            message,
+            targetId,
+            type,
+            currentUserId: ownerUserId,
+          )) {
         latestMessage = message;
         break;
       }
@@ -928,7 +945,12 @@ class MessageProvider extends ChangeNotifier {
     );
   }
 
-  Future<void> loadPrivateMessages(int toUserId, int page, int size) async {
+  Future<void> loadPrivateMessages(
+    int toUserId,
+    int page,
+    int size, {
+    int? viewerUserId,
+  }) async {
     await _runListTask<MessageDTO>(
       task: () => _api.getPrivateMessages(toUserId, page, size),
       onSuccess: (data) {
@@ -937,6 +959,12 @@ class MessageProvider extends ChangeNotifier {
             data,
             conversationTargetId: toUserId,
             conversationType: 1,
+            viewerUserId: viewerUserId,
+          );
+          _debugLogPrivateHistoryMerged(
+            peerId: toUserId,
+            viewerUserId: viewerUserId,
+            serverSample: data,
           );
         } else {
           final chunk = data.map(_normalizeServerMessage).toList();
@@ -967,6 +995,7 @@ class MessageProvider extends ChangeNotifier {
             data,
             conversationTargetId: groupId,
             conversationType: 2,
+            viewerUserId: null,
           );
         } else {
           final chunk = data.map(_normalizeServerMessage).toList();
@@ -1001,12 +1030,13 @@ class MessageProvider extends ChangeNotifier {
 
   MessageDTO _normalizeServerMessage(MessageDTO raw) {
     final at = ChatDateFormat.display(raw.createdAt) ?? raw.createdAt;
+    final int? gid = raw.groupId;
     return MessageDTO(
       id: raw.id,
       msgId: raw.msgId,
       fromUserId: raw.fromUserId,
       toUserId: raw.toUserId,
-      groupId: raw.groupId,
+      groupId: gid == null || gid == 0 ? null : gid,
       content: raw.content,
       msgType: raw.msgType,
       subType: raw.subType,
@@ -1529,28 +1559,48 @@ class MessageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 进入聊天页时调用：去掉其他会话的缓存行，仅保留本会话未同步到服务端的本地行（负 [MessageDTO.id]），
-  /// 避免退出再进或切换会话后发送失败/发送中的气泡消失。
-  void retainEphemeralMessagesForChat(int targetId, int type) {
+  /// 进入聊天页时调用：只保留当前会话在内存中的行（含推送/乐观写入已带正 [MessageDTO.id] 的消息），
+  /// 去掉其他会话缓存，避免串会话；负 id 的本地行仍会在下方与远端第 1 页合并。
+  void retainEphemeralMessagesForChat(
+    int targetId,
+    int type, {
+    int? currentUserId,
+  }) {
+    final int before = _messages.length;
     _messages = _messages
         .where(
-          (m) =>
-              m.id != null &&
-              m.id! < 0 &&
-              _messageBelongsToConversation(m, targetId, type),
+          (m) => _messageBelongsToConversation(
+            m,
+            targetId,
+            type,
+            currentUserId: currentUserId,
+          ),
         )
         .toList();
+    _debugLogRetainPrivate(
+      type: type,
+      targetId: targetId,
+      currentUserId: currentUserId,
+      before: before,
+      after: _messages.length,
+    );
     notifyListeners();
   }
 
-  /// 与远端第 1 页历史合并仍保留在内存中的本地行（发送中、发送失败）。
+  /// 与远端第 1 页历史合并仍保留在内存中的行：
+  /// - 负 id：发送中/失败等本地行；
+  /// - 正 id：本会话已在内存中、但第 1 页尚未返回的行（例如推送早于 REST 一致）。
   /// 接口分页多为「最新在前」，此处统一为升序：旧消息在上、最新在下。
   List<MessageDTO> _mergeHistoryPage1WithPreservedLocals(
     List<MessageDTO> serverPage, {
     required int conversationTargetId,
     required int conversationType,
+    int? viewerUserId,
   }) {
-    final preserved = _messages
+    final serverNorm = serverPage.map(_normalizeServerMessage).toList();
+    final serverIds = serverNorm.map((m) => m.id).whereType<int>().toSet();
+
+    final preservedLocals = _messages
         .where(
           (m) =>
               m.id != null &&
@@ -1559,12 +1609,31 @@ class MessageProvider extends ChangeNotifier {
                 m,
                 conversationTargetId,
                 conversationType,
+                currentUserId: viewerUserId,
               ),
         )
         .toList();
 
-    final serverNorm = serverPage.map(_normalizeServerMessage).toList();
-    final combined = [...serverNorm, ...preserved];
+    final preservedSyncedNotInPage = _messages
+        .where(
+          (m) =>
+              m.id != null &&
+              m.id! > 0 &&
+              _messageBelongsToConversation(
+                m,
+                conversationTargetId,
+                conversationType,
+                currentUserId: viewerUserId,
+              ) &&
+              !serverIds.contains(m.id),
+        )
+        .toList();
+
+    final combined = [
+      ...serverNorm,
+      ...preservedLocals,
+      ...preservedSyncedNotInPage,
+    ];
     if (combined.isEmpty) {
       return combined;
     }
@@ -2142,77 +2211,10 @@ class MessageProvider extends ChangeNotifier {
       return _hasConfirmedOwnTextDuplicateForEcho(incoming, currentUserId);
     }
 
-    final tIn = ChatDateFormat.parseToMillis(incoming.createdAt);
-    final int? gIn = incoming.groupId;
-
-    if (gIn != null) {
-      for (var i = _messages.length - 1;
-          i >= 0 && i >= _messages.length - 20;
-          i--) {
-        final m = _messages[i];
-        if (m.fromUserId != currentUserId) {
-          continue;
-        }
-        if (m.groupId != gIn) {
-          continue;
-        }
-        if ((m.msgType ?? 1) != 1) {
-          continue;
-        }
-        if ((m.content ?? '').trim() != inc) {
-          continue;
-        }
-        if (m.id == null || m.id! <= 0) {
-          continue;
-        }
-        if ((m.status ?? 1) != 1) {
-          continue;
-        }
-        final tM = ChatDateFormat.parseToMillis(m.createdAt);
-        if (tIn != null &&
-            tM != null &&
-            (tIn - tM).abs() > 12000) {
-          continue;
-        }
-        return true;
-      }
-      return false;
-    }
-
-    final peer = incoming.toUserId;
-    if (peer == null) {
-      return false;
-    }
-    for (var i = _messages.length - 1;
-        i >= 0 && i >= _messages.length - 20;
-        i--) {
-      final m = _messages[i];
-      if (m.fromUserId != currentUserId) {
-        continue;
-      }
-      if (m.toUserId != peer) {
-        continue;
-      }
-      if ((m.msgType ?? 1) != 1) {
-        continue;
-      }
-      if ((m.content ?? '').trim() != inc) {
-        continue;
-      }
-      if (m.id == null || m.id! <= 0) {
-        continue;
-      }
-      if ((m.status ?? 1) != 1) {
-        continue;
-      }
-      final tM = ChatDateFormat.parseToMillis(m.createdAt);
-      if (tIn != null &&
-          tM != null &&
-          (tIn - tM).abs() > 12000) {
-        continue;
-      }
-      return true;
-    }
+    /// 不可对「对方发来的文本」做「与己方已确认 outgoing 同文案则丢弃」：
+    /// 私聊 IM 映射里 [MessageDTO.toUserId] 常为 channel 对方 id，与 outgoing 的 toUserId 重合，
+    /// 正常回复（如「好的」）会与历史己方消息撞文案，导致 Android 等依赖 IM 的路径整类丢 incoming。
+    /// 误标己方的 IM 回显应优先由 [_tryMergeMisattributedOutgoingEcho] 合并。
     return false;
   }
 
@@ -2222,6 +2224,11 @@ class MessageProvider extends ChangeNotifier {
     MessageDTO incoming,
     int currentUserId,
   ) {
+    final int? from = incoming.fromUserId;
+    if (from != null && from != currentUserId) {
+      /// 对方发来的合法媒体勿因 URL/路径与我方历史相同而整段丢弃。
+      return false;
+    }
     final mt = incoming.msgType ?? 1;
     if (mt < 2 || mt > 4) {
       return false;
@@ -2518,15 +2525,17 @@ class MessageProvider extends ChangeNotifier {
   }
 
   int _resolveConversationType(MessageDTO message) {
-    return message.groupId != null ? 2 : 1;
+    final int? g = message.groupId;
+    return (g != null && g != 0) ? 2 : 1;
   }
 
   int? _resolveConversationTargetId(
     MessageDTO message, {
     int? currentUserId,
   }) {
-    if (message.groupId != null) {
-      return message.groupId;
+    final int? g = message.groupId;
+    if (g != null && g != 0) {
+      return g;
     }
 
     if (currentUserId != null) {
@@ -2598,13 +2607,96 @@ class MessageProvider extends ChangeNotifier {
         message.toUserId == currentUserId;
   }
 
-  bool _messageBelongsToConversation(MessageDTO message, int targetId, int type) {
+  /// [currentUserId] 为会话所属用户（通常为当前登录用户）时，私聊采用双方参与判定，避免仅按单边 peer 误判。
+  bool _messageBelongsToConversation(
+    MessageDTO message,
+    int targetId,
+    int type, {
+    int? currentUserId,
+  }) {
     if (type == 2) {
       return message.groupId == targetId;
     }
 
-    return message.groupId == null &&
-        (message.toUserId == targetId || message.fromUserId == targetId);
+    if (!_looksLikePrivatePayload(message)) {
+      return false;
+    }
+
+    if (currentUserId != null) {
+      final int? f = message.fromUserId;
+      final int? t = message.toUserId;
+      if (f == currentUserId && t == targetId) {
+        return true;
+      }
+      if (f == targetId && t == currentUserId) {
+        return true;
+      }
+      if (t == null && f == targetId) {
+        return true;
+      }
+      if (f == null && t == targetId) {
+        return true;
+      }
+      return false;
+    }
+
+    return message.toUserId == targetId || message.fromUserId == targetId;
+  }
+
+  bool _looksLikePrivatePayload(MessageDTO message) {
+    final int? g = message.groupId;
+    return g == null || g == 0;
+  }
+
+  void _debugLogRetainPrivate({
+    required int type,
+    required int targetId,
+    required int? currentUserId,
+    required int before,
+    required int after,
+  }) {
+    if (!kDebugMode || type != 1) {
+      return;
+    }
+    debugPrint(
+      '[im.chat] retain peer=$targetId viewer=$currentUserId msgs $before->$after',
+    );
+  }
+
+  void _debugLogPrivateHistoryMerged({
+    required int peerId,
+    required int? viewerUserId,
+    required List<MessageDTO> serverSample,
+  }) {
+    if (!kDebugMode) {
+      return;
+    }
+    int incomingish = 0;
+    int outgoingish = 0;
+    for (final m in serverSample) {
+      final f = m.fromUserId;
+      if (viewerUserId != null && f != null && f != viewerUserId) {
+        incomingish++;
+      } else if (viewerUserId != null && f == viewerUserId) {
+        outgoingish++;
+      }
+    }
+    debugPrint(
+      '[im.chat] page1 merged peer=$peerId viewer=$viewerUserId '
+      'server=${serverSample.length} (srv~in:$incomingish out:$outgoingish)',
+    );
+    var n = 0;
+    for (final m in serverSample) {
+      if (n >= 4) {
+        break;
+      }
+      final mine =
+          viewerUserId != null && m.fromUserId != null && m.fromUserId == viewerUserId;
+      debugPrint(
+        '[im.chat]  srv#$n id=${m.id} from=${m.fromUserId} to=${m.toUserId} g=${m.groupId} mine=$mine',
+      );
+      n++;
+    }
   }
 
   String _messagePreviewText(MessageDTO message) {

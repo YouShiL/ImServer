@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hailiao_flutter/im/im_event_bridge.dart';
@@ -184,8 +185,17 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadingHistory = false;
     _historyBoundaryIndex = null;
 
+    final int? viewerId = context.read<AuthProvider>().messagingUserId;
+    if (kDebugMode && _type == 1) {
+      debugPrint('[im.chat] open private peer=$_targetId viewer=$viewerId');
+    }
+
     final provider = context.read<MessageProvider>();
-    provider.retainEphemeralMessagesForChat(_targetId!, _type!);
+    provider.retainEphemeralMessagesForChat(
+      _targetId!,
+      _type!,
+      currentUserId: viewerId,
+    );
     await provider.loadConversations();
     _hydrateConversationMeta(provider.conversations);
     _restoreDraft(provider.conversations);
@@ -257,9 +267,15 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final provider = context.read<MessageProvider>();
     final int beforeCount = provider.messages.length;
+    final int? viewerId = context.read<AuthProvider>().messagingUserId;
 
     if (_type == 1) {
-      await provider.loadPrivateMessages(_targetId!, page, _pageSize);
+      await provider.loadPrivateMessages(
+        _targetId!,
+        page,
+        _pageSize,
+        viewerUserId: viewerId,
+      );
     } else {
       await provider.loadGroupMessages(_targetId!, page, _pageSize);
     }
@@ -270,6 +286,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final int afterCount = provider.messages.length;
     final int loadedCount = reset ? afterCount : (afterCount - beforeCount);
+
+    final String? loadErr = provider.error;
+    if (loadErr != null && loadErr.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('加载消息失败：$loadErr'),
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      });
+    }
 
     setState(() {
       _currentPage = page;

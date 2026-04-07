@@ -10,7 +10,10 @@ import 'package:wukongimfluttersdk/type/const.dart';
 class ImEventMapper {
   const ImEventMapper();
 
-  MessageDTO? mapIncomingMessage(Object? rawEvent) {
+  MessageDTO? mapIncomingMessage(
+    Object? rawEvent, {
+    int? currentUserId,
+  }) {
     if (rawEvent is! WKMsg) {
       return null;
     }
@@ -19,13 +22,25 @@ class ImEventMapper {
     final targetId = _parseInt(rawEvent.channelID);
     final isGroup = channelType != WKChannelType.personal;
     final content = _resolveContent(rawEvent);
+    final int? fromUid = _parseInt(rawEvent.fromUID);
+
+    /// 私聊 channelID 一般为会话对方；对方发来的行 [toUserId] 应对齐 REST（收件人为当前用户）。
+    int? privateToUserId;
+    if (!isGroup) {
+      if (currentUserId != null && fromUid != null) {
+        privateToUserId =
+            fromUid == currentUserId ? targetId : currentUserId;
+      } else {
+        privateToUserId = targetId;
+      }
+    }
 
     return MessageDTO(
       id: _parseInt(rawEvent.messageID) ??
           _parseInt(rawEvent.clientSeq) ??
           rawEvent.messageSeq,
-      fromUserId: _parseInt(rawEvent.fromUID),
-      toUserId: isGroup ? null : targetId,
+      fromUserId: fromUid,
+      toUserId: isGroup ? null : privateToUserId,
       groupId: isGroup ? targetId : null,
       content: content,
       msgType: _mapContentType(rawEvent.contentType),
@@ -35,10 +50,13 @@ class ImEventMapper {
     );
   }
 
-  List<MessageDTO> mapIncomingMessages(Object? rawEvent) {
+  List<MessageDTO> mapIncomingMessages(
+    Object? rawEvent, {
+    int? currentUserId,
+  }) {
     if (rawEvent is List) {
       return rawEvent
-          .map(mapIncomingMessage)
+          .map((e) => mapIncomingMessage(e, currentUserId: currentUserId))
           .whereType<MessageDTO>()
           .toList(growable: false);
     }
