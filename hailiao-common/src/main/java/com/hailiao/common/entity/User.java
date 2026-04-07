@@ -45,6 +45,10 @@ public class User implements Serializable {
     @Column(name = "signature", length = 200)
     private String signature;
 
+    /** 生日，仅存日历日期字符串 yyyy-MM-dd，可为空。 */
+    @Column(name = "birthday", length = 10)
+    private String birthday;
+
     @Column(name = "background", length = 255)
     private String background;
 
@@ -128,6 +132,9 @@ public class User implements Serializable {
 
     public String getSignature() { return signature; }
     public void setSignature(String signature) { this.signature = signature; }
+
+    public String getBirthday() { return birthday; }
+    public void setBirthday(String birthday) { this.birthday = birthday; }
 
     public String getBackground() { return background; }
     public void setBackground(String background) { this.background = background; }

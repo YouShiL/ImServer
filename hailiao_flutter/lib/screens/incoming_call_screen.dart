@@ -38,7 +38,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
           : '新的来电',
       stage: CallStage.waiting,
       avatarUrl: widget.payload.avatarUrl,
-      subtitle: widget.payload.subtitle ?? _defaultSubtitle(widget.payload.callType),
+      subtitle: widget.payload.subtitle,
       isIncoming: true,
       isMuted: false,
       isSpeakerOn: false,
@@ -59,12 +59,6 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
       _provider.dispose();
     }
     super.dispose();
-  }
-
-  String _defaultSubtitle(CallMediaType? type) {
-    return (type ?? CallMediaType.audio) == CallMediaType.video
-        ? '邀请你进行视频通话'
-        : '邀请你进行语音通话';
   }
 
   void _handleStageChange() {
@@ -137,8 +131,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                         const SizedBox(height: CommonTokens.xl),
                         CallStatusHeader(
                           title: call.name,
-                          status: isVideo ? '视频来电' : '语音来电',
-                          subtitle: call.subtitle ?? _defaultSubtitle(call.callType),
+                          status: call.incomingPrimaryStatus,
+                          subtitle: call.incomingDetailSubtitle,
                           dark: isVideo,
                         ),
                         const Spacer(flex: 3),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:hailiao_flutter/config/app_config.dart';
 import 'package:hailiao_flutter/models/auth_response_dto.dart';
 import 'package:hailiao_flutter/models/blacklist_dto.dart';
 import 'package:hailiao_flutter/models/content_audit_dto.dart';
@@ -19,7 +20,9 @@ import 'package:hailiao_flutter/models/user_dto.dart';
 import 'package:hailiao_flutter/models/user_session_dto.dart';
 
 class ApiService {
-  static const String baseUrl = 'http://192.168.2.3:8082/api';
+  /// 由 [AppConfig.apiBaseUrl] 提供（`APP_ENV` / `API_BASE_URL`），勿在此硬编码。
+  static String get baseUrl => AppConfig.apiBaseUrl;
+
   static String? _token;
   static Future<void> Function()? _unauthorizedHandler;
 
@@ -847,6 +850,31 @@ class ApiService {
     return await _uploadFile('/upload/image', filePath);
   }
 
+  /// 与 [uploadImage] 同一服务端点，用于 Web 或仅有字节时的上传（如头像选择）。
+  static Future<ResponseDTO<FileUploadResultDTO>> uploadImageBytes(
+    List<int> bytes, {
+    String filename = 'image.jpg',
+  }) async {
+    final url = Uri.parse('$baseUrl/upload/image');
+    final request = http.MultipartRequest('POST', url);
+    if (_token != null) {
+      request.headers['Authorization'] = 'Bearer $_token';
+    }
+    final safeName = filename.trim().isEmpty ? 'image.jpg' : filename.trim();
+    request.files.add(
+      http.MultipartFile.fromBytes('file', bytes, filename: safeName),
+    );
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+    // 上传失败可能返回 401（配置/权限/网关等与登录态不同步），勿在此处触发全局下线；
+    // 真实会话失效仍由 JSON API 经 [_request] 统一处理。
+    final json = jsonDecode(response.body);
+    return ResponseDTO.fromJson(
+      json,
+      (data) => FileUploadResultDTO.fromJson(data as Map<String, dynamic>),
+    );
+  }
+
   static Future<ResponseDTO<FileUploadResultDTO>> uploadVideo(String filePath) async {
     return await _uploadFile('/upload/video', filePath);
   }
@@ -867,11 +895,9 @@ class ApiService {
     
     final streamedResponse = await request.send();
     final response = await http.Response.fromStream(streamedResponse);
-    if (response.statusCode == 401) {
-      await _handleUnauthorizedResponse(endpoint);
-    }
+    // 与 [uploadImageBytes] 相同： multipart 401 按业务失败解析，不当作全局未授权。
     final json = jsonDecode(response.body);
-    
+
     return ResponseDTO.fromJson(
       json,
       (data) => FileUploadResultDTO.fromJson(data as Map<String, dynamic>),

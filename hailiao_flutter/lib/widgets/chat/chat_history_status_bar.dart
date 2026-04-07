@@ -17,10 +17,8 @@ class ChatHistoryStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChatStatusBanner(
       icon: isLoading ? Icons.sync : Icons.history_rounded,
-      title: isLoading ? '正在加载更早消息' : (hasMore ? '可继续加载历史消息' : '历史消息已全部加载'),
-      subtitle: isLoading
-          ? '聊天记录会在此处按时间顺序继续补齐'
-          : (hasMore ? '点击继续向上加载更早的消息内容' : '已到达当前会话的最早消息位置'),
+      title: isLoading ? '加载更早消息…' : (hasMore ? '向上加载历史' : '已是最早消息'),
+      subtitle: isLoading ? null : (hasMore ? '点击右侧继续' : null),
       tone: ChatStatusBannerTone.neutral,
       compact: true,
       trailing: isLoading
@@ -31,8 +29,13 @@ class ChatHistoryStatusBar extends StatelessWidget {
             )
           : hasMore
               ? TextButton(
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   onPressed: onLoadMore,
-                  child: const Text('加载更多'),
+                  child: const Text('加载'),
                 )
               : null,
     );

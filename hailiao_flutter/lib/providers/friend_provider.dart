@@ -206,6 +206,7 @@ class FriendProvider extends ChangeNotifier {
       if (response.isSuccess) {
         _friends.removeWhere((friend) => friend.friendId == friendId);
         _isLoading = false;
+        // 会话列表 / 聊天顶栏 / 资料卡等同源 watch 本 Provider，需此处刷新。
         notifyListeners();
         return true;
       }

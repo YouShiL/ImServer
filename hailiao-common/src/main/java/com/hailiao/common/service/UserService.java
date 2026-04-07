@@ -1,6 +1,7 @@
 package com.hailiao.common.service;
 
 import com.hailiao.common.entity.User;
+import com.hailiao.common.model.UserProfilePatchFlags;
 import com.hailiao.common.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -11,11 +12,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.criteria.Predicate;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
+import java.util.function.Consumer;
 
 @Service
 public class UserService {
@@ -104,6 +108,10 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("用户不存在"));
     }
 
+    /**
+     * 兼容管理端等历史调用：仅当请求体中某字段反序列化为非 null 时才覆盖且不支持「按空串清空」语义。
+     * 不处理 {@code birthday}（避免旧客户端误清；管理端需改生日请单独扩展接口）。
+     */
     @Transactional
     public User updateUser(User user) {
         User existingUser = getUserById(user.getId());
@@ -144,6 +152,84 @@ public class UserService {
 
         existingUser.setUpdatedAt(new Date());
         return userRepository.save(existingUser);
+    }
+
+    /**
+     * App 端资料 PATCH：见 {@link UserProfilePatchFlags} 各字段 presence；未标记的键不修改。
+     */
+    @Transactional
+    public User updateUserProfileForApp(User user, UserProfilePatchFlags patch) {
+        User existingUser = getUserById(user.getId());
+
+        if (patch.isNickname()) {
+            String n = user.getNickname();
+            if (n == null || n.trim().isEmpty()) {
+                throw new RuntimeException("昵称不能为空");
+            }
+            existingUser.setNickname(n.trim());
+        }
+        if (patch.isAvatar()) {
+            applyClearableString(existingUser::setAvatar, user.getAvatar());
+        }
+        if (patch.isSignature()) {
+            applyClearableString(existingUser::setSignature, user.getSignature());
+        }
+        if (patch.isRegion()) {
+            applyClearableString(existingUser::setRegion, user.getRegion());
+        }
+        if (patch.isGender()) {
+            existingUser.setGender(user.getGender());
+        }
+        if (patch.isBirthday()) {
+            applyBirthday(existingUser, user.getBirthday());
+        }
+
+        if (user.getBackground() != null) {
+            existingUser.setBackground(user.getBackground());
+        }
+        if (user.getShowOnlineStatus() != null) {
+            existingUser.setShowOnlineStatus(user.getShowOnlineStatus());
+        }
+        if (user.getShowLastOnline() != null) {
+            existingUser.setShowLastOnline(user.getShowLastOnline());
+        }
+        if (user.getAllowSearchByPhone() != null) {
+            existingUser.setAllowSearchByPhone(user.getAllowSearchByPhone());
+        }
+        if (user.getNeedFriendVerification() != null) {
+            existingUser.setNeedFriendVerification(user.getNeedFriendVerification());
+        }
+        if (user.getDeviceLock() != null) {
+            existingUser.setDeviceLock(user.getDeviceLock());
+        }
+
+        existingUser.setUpdatedAt(new Date());
+        return userRepository.save(existingUser);
+    }
+
+    private static void applyClearableString(Consumer<String> setter, String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            setter.accept(null);
+        } else {
+            setter.accept(raw.trim());
+        }
+    }
+
+    /**
+     * 规则：{@code null} 或空白串表示清空；非空须为合法 yyyy-MM-dd（以 {@link LocalDate#parse} 校验）。
+     */
+    private void applyBirthday(User existingUser, String raw) {
+        if (raw == null || raw.trim().isEmpty()) {
+            existingUser.setBirthday(null);
+            return;
+        }
+        String t = raw.trim();
+        try {
+            LocalDate.parse(t);
+        } catch (DateTimeParseException ex) {
+            throw new RuntimeException("生日格式错误，请使用 yyyy-MM-dd");
+        }
+        existingUser.setBirthday(t);
     }
 
     @Transactional

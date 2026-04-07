@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hailiao_flutter/theme/common_tokens.dart';
+import 'package:hailiao_flutter/theme/ui_tokens.dart';
 
 class ConversationUiTokens {
   ConversationUiTokens._();
@@ -15,11 +16,11 @@ class ConversationUiTokens {
 
   static const Color searchBarBackground = CommonTokens.surfacePrimary;
   static const Color searchBarBorder = CommonTokens.hairlineColor;
-  static const Color searchBarFocusedBorder = CommonTokens.brandBlue;
+  static const Color searchBarFocusedBorder = UiTokens.primaryBlue;
   static const Color searchBarHintText = CommonTokens.textTertiary;
   static const Color searchBarIcon = CommonTokens.textSecondary;
   static const List<BoxShadow> searchBarShadow = CommonTokens.shadowNone;
-  static const double searchBarHeight = 44;
+  static const double searchBarHeight = ImDesignTokens.heightInput;
   static const double searchBarMaxWidth = 760;
 
   static const Color statsPanelBackground = CommonTokens.softSurface;
@@ -33,24 +34,26 @@ class ConversationUiTokens {
 
   static const Color itemTitleText = CommonTokens.textPrimary;
   static const Color itemPreviewText = CommonTokens.textSecondary;
-  static const Color itemTimeText = CommonTokens.textTertiary;
-  static const Color itemTimeUnreadText = CommonTokens.brandBlue;
+  static const Color itemTimeText = Color(0xFFB0B0B0);
+  static const Color itemTimeUnreadText = UiTokens.primaryBlue;
+  static const Color itemStatusIcon = Color(0xFFC8C8C8);
   static const Color avatarBackground = Color(0xFFEFF3FF);
   static const Color avatarHighlightBackground = CommonTokens.brandSoft;
   static const Color avatarText = CommonTokens.brandBlue;
-  static const double avatarSize = 48;
-  static const double avatarRadius = CommonTokens.mdRadius;
-  static const double contentMaxWidth = 860;
+  static const double avatarSize = 40;
+  static const double avatarRadius = 20;
+  /// 宽屏限制放宽，移动端接近全宽（扁平会话列表）。
+  static const double contentMaxWidth = 1600;
 
-  static const Color unreadBadgeBackground = CommonTokens.brandBlue;
-  static const Color unreadBadgeText = CommonTokens.textOnBrand;
-  static const double unreadBadgeMinSize = 20;
+  static const Color unreadBadgeBackground = Color(0xFFFF3B30);
+  static const Color unreadBadgeText = Color(0xFFFFFFFF);
+  static const double unreadBadgeMinSize = 17;
   static const EdgeInsets unreadBadgePadding = EdgeInsets.symmetric(
-    horizontal: 7,
-    vertical: 2,
+    horizontal: 5,
+    vertical: 1,
   );
 
-  static const Color draftText = CommonTokens.brandOrange;
+  static const Color draftText = Color(0xFF9E9E9E);
   static const Color draftBg = Color(0xFFFFF1E7);
   static const Color topText = Color(0xFF6D5EF6);
   static const Color topBg = Color(0xFFF0EDFF);

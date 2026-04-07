@@ -6,7 +6,10 @@ import com.hailiao.api.dto.SearchUserRequestDTO;
 import com.hailiao.api.dto.UpdateOnlineStatusRequestDTO;
 import com.hailiao.api.dto.UserDTO;
 import com.hailiao.common.entity.User;
+import com.hailiao.common.model.UserProfilePatchFlags;
 import com.hailiao.common.service.UserService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -28,6 +31,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Operation(summary = "Get current profile")
     @GetMapping("/profile")
@@ -66,10 +72,44 @@ public class UserController {
     @Operation(summary = "Update current profile")
     @PutMapping("/profile")
     public ResponseEntity<ResponseDTO<UserDTO>> updateProfile(@RequestAttribute("userId") Long userId,
-                                                              @RequestBody User user) {
+                                                              @RequestBody JsonNode root) {
         try {
+            User user = objectMapper.treeToValue(root, User.class);
             user.setId(userId);
-            User updatedUser = userService.updateUser(user);
+
+            UserProfilePatchFlags patch = new UserProfilePatchFlags(
+                    root.has("nickname"),
+                    root.has("avatar"),
+                    root.has("signature"),
+                    root.has("region"),
+                    root.has("birthday"),
+                    root.has("gender"));
+
+            if (patch.isNickname()) {
+                String n = user.getNickname();
+                if (n == null || n.trim().isEmpty()) {
+                    return ResponseEntity.badRequest().body(ResponseDTO.badRequest("昵称不能为空"));
+                }
+                user.setNickname(n.trim());
+            }
+
+            if (patch.isGender()) {
+                JsonNode g = root.get("gender");
+                int code;
+                if (g == null || g.isNull()) {
+                    code = 0;
+                } else if (!g.isNumber() || !g.isIntegralNumber()) {
+                    return ResponseEntity.badRequest().body(ResponseDTO.badRequest("性别参数错误"));
+                } else {
+                    code = g.asInt();
+                }
+                if (code != 0 && code != 1 && code != 2) {
+                    return ResponseEntity.badRequest().body(ResponseDTO.badRequest("性别参数错误，仅支持 0/1/2"));
+                }
+                user.setGender(code);
+            }
+
+            User updatedUser = userService.updateUserProfileForApp(user, patch);
             return ResponseEntity.ok(ResponseDTO.success(toUserDTO(updatedUser, false)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
@@ -151,6 +191,7 @@ public class UserController {
         userDTO.setGender(user.getGender());
         userDTO.setRegion(user.getRegion());
         userDTO.setSignature(user.getSignature());
+        userDTO.setBirthday(user.getBirthday());
         userDTO.setBackground(user.getBackground());
         userDTO.setOnlineStatus(user.getOnlineStatus());
         userDTO.setIsVip(user.getIsVip());

@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS `user` (
   `gender` INT(11) DEFAULT 0 COMMENT '性别: 0未知, 1男, 2女',
   `region` VARCHAR(100) DEFAULT NULL COMMENT '地区',
   `signature` VARCHAR(200) DEFAULT NULL COMMENT '个性签名',
+  `birthday` VARCHAR(10) DEFAULT NULL COMMENT '生日 yyyy-MM-dd',
   `background` VARCHAR(255) DEFAULT NULL COMMENT '个人主页背景图',
   `online_status` INT(11) DEFAULT 0 COMMENT '在线状态: 0离线, 1在线, 2忙碌, 3隐身',
   `is_vip` TINYINT(1) DEFAULT 0 COMMENT '是否VIP: 0否, 1是',

@@ -46,12 +46,12 @@ void main() {
     await tester.tap(find.byIcon(Icons.people_outline));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.textContaining('Alice').first);
+    await tester.tap(find.textContaining('Work friend').first);
     await tester.pumpAndSettle();
 
     expect(find.byType(UserDetailScreen), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.chat_bubble_outline));
+    await tester.tap(find.text('发消息'));
     await tester.pumpAndSettle();
 
     expect(find.byType(ChatScreen), findsOneWidget);

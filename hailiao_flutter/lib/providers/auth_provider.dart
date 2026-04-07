@@ -154,10 +154,16 @@ class AuthProvider extends ChangeNotifier {
     AuthStorage? storage,
     DeviceInfoProvider? deviceInfoProvider,
     bool autoLoadSavedToken = true,
+    UserDTO? sessionUser,
+    String? sessionToken,
   }) : _api = api ?? ApiAuthApi(),
        _storage = storage ?? SharedPrefsAuthStorage(),
        _deviceInfoProvider = deviceInfoProvider ?? DefaultDeviceInfoProvider() {
-    if (autoLoadSavedToken) {
+    if (sessionUser != null && sessionToken != null) {
+      _user = sessionUser;
+      _token = sessionToken;
+      ApiService.setToken(sessionToken);
+    } else if (autoLoadSavedToken) {
       _loadSavedToken();
     }
   }
@@ -177,6 +183,23 @@ class AuthProvider extends ChangeNotifier {
 
   UserDTO? get user => _user;
   String? get token => _token;
+
+  /// 聊天 / IM / 乐观消息使用的数值用户 id：优先 [UserDTO.id]，否则解析 [UserDTO.userId]（业务号多为数字串）。
+  int? get messagingUserId {
+    final UserDTO? u = _user;
+    if (u == null) {
+      return null;
+    }
+    if (u.id != null) {
+      return u.id;
+    }
+    final String s = (u.userId ?? '').trim();
+    if (s.isEmpty) {
+      return null;
+    }
+    return int.tryParse(s);
+  }
+
   bool get isLoading => _isLoading;
   String? get error => _error;
   String? get loginNotice => _loginNotice;

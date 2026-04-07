@@ -1,4 +1,5 @@
 import 'package:hailiao_flutter/models/message_dto.dart';
+import 'package:hailiao_flutter/theme/chat_date_format.dart';
 import 'package:wukongimfluttersdk/entity/msg.dart';
 import 'package:wukongimfluttersdk/model/wk_text_content.dart';
 import 'package:wukongimfluttersdk/type/const.dart';
@@ -20,7 +21,9 @@ class ImEventMapper {
     final content = _resolveContent(rawEvent);
 
     return MessageDTO(
-      id: _parseInt(rawEvent.messageID) ?? rawEvent.messageSeq,
+      id: _parseInt(rawEvent.messageID) ??
+          _parseInt(rawEvent.clientSeq) ??
+          rawEvent.messageSeq,
       fromUserId: _parseInt(rawEvent.fromUID),
       toUserId: isGroup ? null : targetId,
       groupId: isGroup ? targetId : null,
@@ -63,21 +66,27 @@ class ImEventMapper {
     return _parseInt(rawEvent.messageID) ?? rawEvent.messageSeq;
   }
 
+  /// App-layer [MessageDTO.msgType] (1 text, 2 image, 3 voice, 4 video).
+  int? mapAppMsgType(Object? rawEvent) {
+    if (rawEvent is! WKMsg) {
+      return null;
+    }
+    return _mapContentType(rawEvent.contentType);
+  }
+
   int mapSendSuccessStatus(Object? rawEvent) {
-    // Current app semantics in chat_screen.dart:
-    // 0 => sending
-    // non-zero => sent
-    // We map successful SDK refresh/ack events to 1 so the UI renders "已发送".
+    // 0 => sending, 1 => sent, 2 => failed (see chat UI).
+    if (rawEvent is! WKMsg) {
+      return 1;
+    }
+    if (rawEvent.status == WKSendMsgResult.sendLoading) {
+      return 0;
+    }
     return 1;
   }
 
   int mapSendFailureStatus(Object? rawEvent) {
-    // Current app semantics only distinguish:
-    // 0 => sending
-    // non-zero => sent
-    // There is no dedicated failure rendering path yet, so we conservatively
-    // map failure to 0 to avoid incorrectly showing "已发送".
-    return 0;
+    return WKSendMsgResult.sendFail;
   }
 
   String? mapUpdatedContent(Object? rawEvent) {
@@ -142,10 +151,16 @@ class ImEventMapper {
   }
 
   int _mapSdkStatus(int sdkStatus) {
-    // Current project semantics:
-    // 0 => sending
-    // non-zero => sent
-    return sdkStatus == WKSendMsgResult.sendLoading ? 0 : 1;
+    if (sdkStatus == WKSendMsgResult.sendLoading) {
+      return 0;
+    }
+    if (sdkStatus == WKSendMsgResult.sendFail ||
+        sdkStatus == WKSendMsgResult.noRelation ||
+        sdkStatus == WKSendMsgResult.blackList ||
+        sdkStatus == WKSendMsgResult.notOnWhiteList) {
+      return WKSendMsgResult.sendFail;
+    }
+    return 1;
   }
 
   int? _parseInt(dynamic value) {
@@ -194,6 +209,6 @@ class ImEventMapper {
     }
 
     final millis = value > 9999999999 ? value : value * 1000;
-    return DateTime.fromMillisecondsSinceEpoch(millis).toIso8601String();
+    return ChatDateFormat.fromMillis(millis);
   }
 }

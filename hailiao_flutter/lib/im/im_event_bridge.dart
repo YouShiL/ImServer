@@ -1,11 +1,14 @@
+import 'package:hailiao_flutter/config/app_config.dart';
 import 'package:hailiao_flutter/im/im_event_mapper.dart';
 import 'package:hailiao_flutter/providers/auth_provider.dart';
 import 'package:hailiao_flutter/providers/message_provider.dart';
 import 'package:hailiao_flutter/services/call_signal_bridge.dart';
 import 'package:wukongimfluttersdk/common/options.dart';
 import 'package:wukongimfluttersdk/entity/channel.dart';
+import 'package:wukongimfluttersdk/entity/msg.dart';
 import 'package:wukongimfluttersdk/model/wk_image_content.dart';
 import 'package:wukongimfluttersdk/model/wk_text_content.dart';
+import 'package:wukongimfluttersdk/model/wk_video_content.dart';
 import 'package:wukongimfluttersdk/model/wk_voice_content.dart';
 import 'package:wukongimfluttersdk/type/const.dart';
 import 'package:wukongimfluttersdk/wkim.dart';
@@ -32,25 +35,32 @@ class ImEventBridge {
   bool _isInsertedListenerRegistered = false;
   static const String _listenerKey = 'hailiao_im_bridge';
 
-  int? get _currentUserId => _authProvider.user?.id;
-  String? get _currentUid => _authProvider.user?.id?.toString();
+  int? get _currentUserId => _authProvider.messagingUserId;
+  String? get _currentUid => _currentUserId?.toString();
   String? get _currentToken => _authProvider.token;
 
   bool get isBound => _isBound;
 
-  void bind() {
+  /// Returns true when IM SDK setup/listeners/connect have been applied for
+  /// the current auth credentials. Returns false if uid/token are missing.
+  bool bind() {
     if (_isBound) {
-      return;
+      return true;
     }
 
     final uid = _currentUid;
     final token = _currentToken;
     if (uid == null || uid.isEmpty || token == null || token.isEmpty) {
-      return;
+      return false;
     }
 
     if (!_isSetup) {
-      WKIM.shared.setup(Options.newDefault(uid, token));
+      final opts = Options.newDefault(
+        uid,
+        token,
+        addr: AppConfig.imTcpAddr,
+      )..debug = AppConfig.imSdkDebug;
+      WKIM.shared.setup(opts);
       _isSetup = true;
     }
 
@@ -72,14 +82,24 @@ class ImEventBridge {
       onIncomingMessages(msgs);
     });
 
-    WKIM.shared.messageManager.addOnRefreshMsgListener(_listenerKey, (msg) {
-      // The public docs explicitly show this refresh hook. We reuse it as the
-      // minimal ack/message-refresh entry point for now.
+    WKIM.shared.messageManager.addOnRefreshMsgListener(_listenerKey, (WKMsg msg) {
+      // WuKongIM routes both send acks and send failures through refresh
+      // (updateSendResult / updateMsgStatusFail → setRefreshMsg). There is no
+      // separate failure listener; branch on [WKMsg.status].
+      final int s = msg.status;
+      if (s == WKSendMsgResult.sendFail ||
+          s == WKSendMsgResult.noRelation ||
+          s == WKSendMsgResult.blackList ||
+          s == WKSendMsgResult.notOnWhiteList) {
+        onSendFailure(msg);
+        return;
+      }
       onSendAck(msg);
     });
 
     WKIM.shared.connectionManager.connect();
     _isBound = true;
+    return true;
   }
 
   void unbind() {
@@ -144,7 +164,16 @@ class ImEventBridge {
   void onSendAck(Object? rawEvent) {
     final localMessageId = _mapper.mapLocalMessageId(rawEvent);
     final status = _mapper.mapSendSuccessStatus(rawEvent);
-    if (localMessageId == null) {
+    final hintMsgType = _mapper.mapAppMsgType(rawEvent);
+    final applied = _messageProvider.applyMessageSendResult(
+      localMessageId: localMessageId,
+      serverMessageId: _mapper.mapServerMessageId(rawEvent),
+      status: status,
+      content: _mapper.mapUpdatedContent(rawEvent),
+      hintMsgType: hintMsgType,
+      fromUserId: _currentUserId,
+    );
+    if (!applied) {
       final refreshed = _mapper.mapIncomingMessage(rawEvent);
       if (refreshed != null) {
         _messageProvider.receiveIncomingMessage(
@@ -152,27 +181,17 @@ class ImEventBridge {
           currentUserId: _currentUserId,
         );
       }
-      return;
     }
-
-    _messageProvider.applyMessageSendResult(
-      localMessageId: localMessageId,
-      serverMessageId: _mapper.mapServerMessageId(rawEvent),
-      status: status,
-      content: _mapper.mapUpdatedContent(rawEvent),
-    );
   }
 
   void onSendFailure(Object? rawEvent) {
-    final localMessageId = _mapper.mapLocalMessageId(rawEvent);
-    if (localMessageId == null) {
-      return;
-    }
-
     _messageProvider.applyMessageSendResult(
-      localMessageId: localMessageId,
+      localMessageId: _mapper.mapLocalMessageId(rawEvent),
+      serverMessageId: _mapper.mapServerMessageId(rawEvent),
       status: _mapper.mapSendFailureStatus(rawEvent),
       content: _mapper.mapUpdatedContent(rawEvent),
+      hintMsgType: _mapper.mapAppMsgType(rawEvent),
+      fromUserId: _currentUserId,
     );
   }
 
@@ -231,58 +250,117 @@ class ImEventBridge {
     );
   }
 
-  void sendTextMessage({
+  /// Sends text only after [bind] succeeds. Returns false if not ready or
+  /// text is empty (nothing sent).
+  bool sendTextMessage({
     required int targetId,
     required int type,
     required String text,
   }) {
     if (text.trim().isEmpty) {
-      return;
+      return false;
     }
 
-    _ensureReadyForSend();
+    if (!bind()) {
+      return false;
+    }
     final channel = _buildChannel(targetId: targetId, type: type);
     WKIM.shared.messageManager.sendMessage(
       WKTextContent(text.trim()),
       channel,
     );
+    return true;
   }
 
-  void sendImageMessage({
+  /// [remoteUrl] 优先：仅带已上传 OSS 的地址走 IM，避免再次传原文件。
+  /// 否则使用 [filePath] 作为本地路径（兼容未先走 REST 的场景）。
+  bool sendImageMessage({
     required int targetId,
     required int type,
-    required String filePath,
+    String? filePath,
+    String? remoteUrl,
   }) {
-    if (filePath.trim().isEmpty) {
-      return;
+    final url = remoteUrl?.trim() ?? '';
+    final local = filePath?.trim() ?? '';
+    if (url.isEmpty && local.isEmpty) {
+      return false;
     }
 
-    _ensureReadyForSend();
+    if (!bind()) {
+      return false;
+    }
     final channel = _buildChannel(targetId: targetId, type: type);
-    final content = WKImageContent(0, 0)..localPath = filePath;
+    final content = WKImageContent(0, 0);
+    if (url.isNotEmpty) {
+      content.url = url;
+      content.localPath = '';
+    } else {
+      content.localPath = local;
+    }
     WKIM.shared.messageManager.sendMessage(content, channel);
+    return true;
   }
 
-  void sendAudioMessage({
+  bool sendAudioMessage({
     required int targetId,
     required int type,
-    required String filePath,
     required int duration,
+    String? filePath,
+    String? remoteUrl,
   }) {
-    if (filePath.trim().isEmpty) {
-      return;
+    final url = remoteUrl?.trim() ?? '';
+    final local = filePath?.trim() ?? '';
+    if (url.isEmpty && local.isEmpty) {
+      return false;
     }
 
-    _ensureReadyForSend();
+    if (!bind()) {
+      return false;
+    }
     final channel = _buildChannel(targetId: targetId, type: type);
-    final content = WKVoiceContent(duration)..localPath = filePath;
+    final content = WKVoiceContent(duration);
+    if (url.isNotEmpty) {
+      content.url = url;
+      content.localPath = '';
+    } else {
+      content.localPath = local;
+    }
     WKIM.shared.messageManager.sendMessage(content, channel);
+    return true;
   }
 
-  void _ensureReadyForSend() {
-    if (!_isBound) {
-      bind();
+  bool sendVideoMessage({
+    required int targetId,
+    required int type,
+    int durationSeconds = 0,
+    String? filePath,
+    String? remoteUrl,
+    String coverUrl = '',
+  }) {
+    final url = remoteUrl?.trim() ?? '';
+    final local = filePath?.trim() ?? '';
+    if (url.isEmpty && local.isEmpty) {
+      return false;
     }
+
+    if (!bind()) {
+      return false;
+    }
+    final channel = _buildChannel(targetId: targetId, type: type);
+    final content = WKVideoContent()
+      ..second = durationSeconds;
+    final c = coverUrl.trim();
+    if (url.isNotEmpty) {
+      content.url = url;
+      content.localPath = '';
+      if (c.isNotEmpty) {
+        content.cover = c;
+      }
+    } else {
+      content.localPath = local;
+    }
+    WKIM.shared.messageManager.sendMessage(content, channel);
+    return true;
   }
 
   WKChannel _buildChannel({

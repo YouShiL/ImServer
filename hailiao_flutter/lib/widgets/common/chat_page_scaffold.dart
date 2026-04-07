@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:hailiao_flutter/theme/chat_ui_tokens.dart';
 import 'package:hailiao_flutter/widgets/common/call_incoming_listener.dart';
 
+/// 聊天页骨架：SafeArea(bottom: false) + Column([header], Expanded(body), [composer])。
+/// 键盘随 [resizeToAvoidBottomInset] 整体上移，不用 Stack 浮层盖在列表上。
 class ChatPageScaffold extends StatelessWidget {
   const ChatPageScaffold({
     super.key,
@@ -29,8 +31,10 @@ class ChatPageScaffold extends StatelessWidget {
           ];
     return CallIncomingListener(
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         backgroundColor: ChatUiTokens.pageBackground,
         body: SafeArea(
+          bottom: false,
           child: Column(
             children: <Widget>[
               ...headerChildren,

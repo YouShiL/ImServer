@@ -79,15 +79,18 @@ class VideoCallSurface extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: CommonTokens.lg),
-                  Text(
-                    title,
-                    textAlign: TextAlign.center,
-                    style: CallUiTokens.callTitleTextOnDark,
-                  ),
+                  if (title.trim().isNotEmpty)
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: CallUiTokens.callTitleTextOnDark,
+                    ),
                   if (status != null && status!.trim().isNotEmpty) ...<Widget>[
-                    const SizedBox(height: CommonTokens.xs),
+                    if (title.trim().isNotEmpty)
+                      const SizedBox(height: CommonTokens.xs),
                     Text(
                       status!,
+                      textAlign: TextAlign.center,
                       style: CallUiTokens.callStatusTextStyle.copyWith(
                         color: Colors.white.withValues(alpha: 0.96),
                       ),

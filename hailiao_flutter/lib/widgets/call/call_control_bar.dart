@@ -52,9 +52,6 @@ class CallControlBar extends StatelessWidget {
                   destructive: action.destructive,
                   enabled: action.enabled && action.onTap != null,
                   dark: dark,
-                  size: action.destructive && compact
-                      ? CallUiTokens.smallControlButtonSize
-                      : null,
                 ),
               )
               .toList(),

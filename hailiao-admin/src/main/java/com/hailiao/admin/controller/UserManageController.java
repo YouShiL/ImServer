@@ -167,6 +167,7 @@ public class UserManageController {
         item.put("userId", user.getUserId());
         item.put("phone", user.getPhone());
         item.put("nickname", user.getNickname());
+        item.put("birthday", user.getBirthday());
         item.put("gender", user.getGender());
         item.put("genderLabel", getGenderLabel(user.getGender()));
         item.put("onlineStatus", user.getOnlineStatus());

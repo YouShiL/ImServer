@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hailiao_flutter/im/im_event_bridge.dart';
 import 'package:hailiao_flutter/providers/auth_provider.dart';
@@ -10,10 +10,15 @@ import 'package:hailiao_flutter/providers/message_provider.dart';
 import 'package:hailiao_flutter/providers/report_provider.dart';
 import 'package:hailiao_flutter/screens/chat_screen.dart';
 import 'package:hailiao_flutter/screens/content_audit_list_screen.dart';
+import 'package:hailiao_flutter/screens/edit_profile_screen.dart';
 import 'package:hailiao_flutter/screens/group_detail_screen.dart';
 import 'package:hailiao_flutter/screens/group_list_screen.dart';
 import 'package:hailiao_flutter/screens/home_screen.dart';
+import 'package:hailiao_flutter/screens/auth/privacy_policy_screen.dart';
+import 'package:hailiao_flutter/screens/auth/user_agreement_screen.dart';
 import 'package:hailiao_flutter/screens/login_screen.dart';
+import 'package:hailiao_flutter/screens/privacy_settings_screen.dart';
+import 'package:hailiao_flutter/screens/qrcode_scanner_screen.dart';
 import 'package:hailiao_flutter/screens/report_list_screen.dart';
 import 'package:hailiao_flutter/screens/register_screen.dart';
 import 'package:hailiao_flutter/screens/security_screen.dart';
@@ -99,6 +104,10 @@ class _ImBridgeBinderState extends State<_ImBridgeBinder> {
     _bindScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
+        return;
+      }
+      if (!context.read<AuthProvider>().isAuthenticated) {
+        _bindScheduled = false;
         return;
       }
       context.read<ImEventBridge>().bind();
@@ -240,6 +249,8 @@ class MyApp extends StatelessWidget {
               '/checkAuth': (context) => const CheckAuthWidget(),
               '/login': (context) => const LoginScreen(),
               '/register': (context) => RegisterScreen(),
+              '/user-agreement': (context) => const UserAgreementScreen(),
+              '/privacy-policy': (context) => const PrivacyPolicyScreen(),
               '/home': (context) => const HomeScreen(),
               '/chat': (context) => ChatScreen(),
               '/groups': (context) => const GroupListScreen(),
@@ -247,7 +258,24 @@ class MyApp extends StatelessWidget {
               '/content-audit-list': (context) => const ContentAuditListScreen(),
               '/report-list': (context) => const ReportListScreen(),
               '/security': (context) => const SecurityScreen(),
+              '/privacy-settings': (context) => const PrivacySettingsScreen(),
               '/user-detail': (context) => const UserDetailScreen(),
+              '/edit-profile': (context) => const EditProfileScreen(),
+              '/qr-scan': (context) => QRCodeScannerScreen(
+                    title: '扫一扫',
+                    onScan: (code) {
+                      final preview =
+                          code.length > 80 ? '${code.substring(0, 80)}…' : code;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        final root = appNavigatorKey.currentContext;
+                        if (root != null && root.mounted) {
+                          ScaffoldMessenger.of(root).showSnackBar(
+                            SnackBar(content: Text('扫描结果：$preview')),
+                          );
+                        }
+                      });
+                    },
+                  ),
             },
             ),
           );

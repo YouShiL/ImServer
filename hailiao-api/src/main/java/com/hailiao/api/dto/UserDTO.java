@@ -31,6 +31,9 @@ public class UserDTO {
     @Schema(description = "个性签名", type = "String", example = "这是我的个性签名", title = "用户个性签名，最长100个字符")
     private String signature;
 
+    @Schema(description = "生日", type = "String", example = "1990-05-01", title = "yyyy-MM-dd，可为空")
+    private String birthday;
+
     @Schema(description = "聊天背景URL", type = "String", example = "https://example.com/background.jpg", title = "聊天背景图片地址")
     private String background;
 
@@ -104,6 +107,9 @@ public class UserDTO {
 
     public String getSignature() { return signature; }
     public void setSignature(String signature) { this.signature = signature; }
+
+    public String getBirthday() { return birthday; }
+    public void setBirthday(String birthday) { this.birthday = birthday; }
 
     public String getBackground() { return background; }
     public void setBackground(String background) { this.background = background; }

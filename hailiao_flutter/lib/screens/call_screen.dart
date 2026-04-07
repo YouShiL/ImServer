@@ -224,7 +224,7 @@ class _CallScreenState extends State<CallScreen> {
           CallStatusHeader(
             title: call.name,
             status: call.statusText,
-            subtitle: call.subtitle ?? call.helperText,
+            subtitle: call.headerSubtitle,
             duration: call.durationText,
           ),
           const Spacer(flex: 3),
@@ -273,7 +273,7 @@ class _CallScreenState extends State<CallScreen> {
           child: CallStatusHeader(
             title: call.name,
             status: call.statusText,
-            subtitle: call.subtitle ?? call.helperText,
+            subtitle: call.headerSubtitle,
             duration: call.durationText,
             dark: true,
           ),
@@ -284,12 +284,11 @@ class _CallScreenState extends State<CallScreen> {
             children: <Widget>[
               Positioned.fill(
                 child: VideoCallSurface(
-                  title: call.name,
-                  status: call.statusText,
-                  subtitle: call.subtitle ??
-                      (call.isConnected
-                          ? '画面与声音已连接'
-                          : (call.canAccept ? '等待你接听' : '等待对方接听')),
+                  title: '',
+                  status: null,
+                  subtitle: call.videoSurfaceHint.trim().isEmpty
+                      ? null
+                      : call.videoSurfaceHint,
                   icon: call.isCameraEnabled
                       ? Icons.videocam_outlined
                       : Icons.videocam_off_rounded,
@@ -351,7 +350,7 @@ class _CallScreenState extends State<CallScreen> {
       if (call.isConnected)
         CallControlAction(
           icon: call.isMuted ? Icons.mic_off_rounded : Icons.mic_none_rounded,
-          label: call.isMuted ? '麦克风已关闭' : '静音',
+          label: call.isMuted ? '已静音' : '静音',
           active: call.isMuted,
           enabled: !call.isEnded,
           onTap: call.isEnded ? null : call.toggleMute,
@@ -414,7 +413,7 @@ class _CallScreenState extends State<CallScreen> {
     return <CallControlAction>[
       CallControlAction(
         icon: call.isMuted ? Icons.mic_off_rounded : Icons.mic_none_rounded,
-        label: call.isMuted ? '静音中' : '麦克风',
+        label: call.isMuted ? '已静音' : '静音',
         active: call.isMuted,
         enabled: !call.isEnded,
         onTap: call.isEnded ? null : call.toggleMute,

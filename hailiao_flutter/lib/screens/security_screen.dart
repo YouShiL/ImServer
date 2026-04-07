@@ -5,7 +5,8 @@ import 'package:hailiao_flutter/theme/common_tokens.dart';
 import 'package:hailiao_flutter/theme/settings_ui_tokens.dart';
 import 'package:hailiao_flutter/widgets/common/app_empty_state.dart';
 import 'package:hailiao_flutter/widgets/common/app_list_item.dart';
-import 'package:hailiao_flutter/widgets/group/group_section_card.dart';
+import 'package:hailiao_flutter/widgets/common/wx_list_group.dart';
+import 'package:hailiao_flutter/widgets/common/wx_section_title.dart';
 import 'package:provider/provider.dart';
 
 class SecurityScreen extends StatefulWidget {
@@ -247,11 +248,17 @@ class _SecurityScreenState extends State<SecurityScreen> {
   }
 
   Widget _buildAccountSection(AuthProvider authProvider) {
-    return GroupSectionCard(
-      title: '账号与安全',
-      subtitle: '管理账号信息、设备保护和登录安全。',
-      child: Column(
-        children: <Widget>[
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const WxSectionTitle(
+          '账号与安全',
+          subtitle: '管理账号信息、设备保护和登录安全。',
+          padding: EdgeInsets.only(left: 4, right: 4, bottom: 8),
+        ),
+        WxListGroup(
+          child: Column(
+            children: <Widget>[
           AppListItem(
             leading: _settingIcon(Icons.person_outline_rounded),
             title: const Text('账号信息'),
@@ -278,17 +285,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
             ),
             showDivider: false,
           ),
-        ],
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildNotificationSection() {
-    return GroupSectionCard(
-      title: '消息通知',
-      subtitle: '调整提醒方式与通知展示形式。',
-      child: Column(
-        children: <Widget>[
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const WxSectionTitle(
+          '消息通知',
+          subtitle: '调整提醒方式与通知展示形式。',
+          padding: EdgeInsets.only(left: 4, right: 4, bottom: 8),
+        ),
+        WxListGroup(
+          child: Column(
+            children: <Widget>[
           AppListItem(
             leading: _settingIcon(Icons.notifications_active_outlined),
             title: const Text('新消息通知'),
@@ -313,17 +328,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
             onTap: () => _showComingSoon('预览显示'),
             showDivider: false,
           ),
-        ],
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPrivacySection() {
-    return GroupSectionCard(
-      title: '隐私',
-      subtitle: '管理联系人、黑名单与可见范围。',
-      child: Column(
-        children: <Widget>[
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const WxSectionTitle(
+          '隐私',
+          subtitle: '管理联系人、黑名单与可见范围。',
+          padding: EdgeInsets.only(left: 4, right: 4, bottom: 8),
+        ),
+        WxListGroup(
+          child: Column(
+            children: <Widget>[
           AppListItem(
             leading: _settingIcon(Icons.block_outlined),
             title: const Text('黑名单'),
@@ -348,17 +371,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
             onTap: () => _showComingSoon('安全与举报'),
             showDivider: false,
           ),
-        ],
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildGeneralSection() {
-    return GroupSectionCard(
-      title: '通用',
-      subtitle: '围绕聊天体验、显示效果和本地存储的常用设置。',
-      child: Column(
-        children: <Widget>[
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const WxSectionTitle(
+          '通用',
+          subtitle: '围绕聊天体验、显示效果和本地存储的常用设置。',
+          padding: EdgeInsets.only(left: 4, right: 4, bottom: 8),
+        ),
+        WxListGroup(
+          child: Column(
+            children: <Widget>[
           AppListItem(
             leading: _settingIcon(Icons.wallpaper_outlined),
             title: const Text('聊天背景'),
@@ -383,17 +414,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
             onTap: () => _showComingSoon('显示与语言'),
             showDivider: false,
           ),
-        ],
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildAboutSection(AuthProvider authProvider) {
-    return GroupSectionCard(
-      title: '关于与帮助',
-      subtitle: '查看版本信息、获取帮助和提交反馈。',
-      child: Column(
-        children: <Widget>[
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const WxSectionTitle(
+          '关于与帮助',
+          subtitle: '查看版本信息、获取帮助和提交反馈。',
+          padding: EdgeInsets.only(left: 4, right: 4, bottom: 8),
+        ),
+        WxListGroup(
+          child: Column(
+            children: <Widget>[
           AppListItem(
             leading: _settingIcon(Icons.info_outline_rounded),
             title: const Text('关于嗨聊'),
@@ -418,8 +457,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
             onTap: () => _showComingSoon('帮助中心'),
             showDivider: false,
           ),
-        ],
-      ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -429,80 +470,96 @@ class _SecurityScreenState extends State<SecurityScreen> {
           session.active == true && session.currentSession != true,
     );
 
-    return GroupSectionCard(
-      title: '登录设备',
-      subtitle: '查看当前账号在不同设备上的登录状态与最近活动。',
-      trailing: TextButton(
-        onPressed: hasOtherActiveSessions ? _terminateOtherSessions : null,
-        child: const Text('下线其他设备'),
-      ),
-      child: authProvider.sessions.isEmpty
-          ? const AppEmptyState(
-              icon: Icons.devices_other_outlined,
-              text: '暂无登录设备',
-              detail: '新的登录设备会显示在这里，你可以随时查看并管理。',
-            )
-          : Column(
-              children: authProvider.sessions
-                  .map((UserSessionDTO session) => _buildSessionTile(session))
-                  .toList(),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        WxSectionTitle(
+          '登录设备',
+          subtitle: '查看当前账号在不同设备上的登录状态与最近活动。',
+          trailing: TextButton(
+            onPressed: hasOtherActiveSessions ? _terminateOtherSessions : null,
+            child: const Text('下线其他设备'),
+          ),
+          padding: const EdgeInsets.only(left: 4, right: 4, bottom: 8),
+        ),
+        WxListGroup(
+          child: authProvider.sessions.isEmpty
+              ? const AppEmptyState(
+                  icon: Icons.devices_other_outlined,
+                  text: '暂无登录设备',
+                  detail: '新的登录设备会显示在这里，你可以随时查看并管理。',
+                )
+              : Column(
+                  children: authProvider.sessions
+                      .map((UserSessionDTO session) => _buildSessionTile(session))
+                      .toList(),
+                ),
+        ),
+      ],
     );
   }
 
   Widget _buildDangerSection() {
-    return GroupSectionCard(
-      title: '危险操作',
-      subtitle: '这些操作会影响当前账号状态或本地数据，请确认后继续。',
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            '退出登录后需要重新验证账号。清理缓存等更多能力会在后续版本逐步补充。',
-            style: SettingsUiTokens.sectionSubtitleText,
-          ),
-          const SizedBox(height: CommonTokens.md),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _showComingSoon('清理缓存'),
-              icon: const Icon(Icons.cleaning_services_outlined),
-              label: const Text('清理缓存'),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: CommonTokens.space16,
-                  vertical: CommonTokens.space12,
-                ),
-                side: const BorderSide(color: SettingsUiTokens.dangerBorder),
-                foregroundColor: SettingsUiTokens.dangerText,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(CommonTokens.radiusMd),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const WxSectionTitle(
+          '危险操作',
+          subtitle: '这些操作会影响当前账号状态或本地数据，请确认后继续。',
+          padding: EdgeInsets.only(left: 4, right: 4, bottom: 8),
+        ),
+        WxListGroup(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                '退出登录后需要重新验证账号。清理缓存等更多能力会在后续版本逐步补充。',
+                style: SettingsUiTokens.sectionSubtitleText,
+              ),
+              const SizedBox(height: CommonTokens.md),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _showComingSoon('清理缓存'),
+                  icon: const Icon(Icons.cleaning_services_outlined),
+                  label: const Text('清理缓存'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: CommonTokens.space16,
+                      vertical: CommonTokens.space12,
+                    ),
+                    side: const BorderSide(color: SettingsUiTokens.dangerBorder),
+                    foregroundColor: SettingsUiTokens.dangerText,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(CommonTokens.radiusMd),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          const SizedBox(height: CommonTokens.sm),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _logout,
-              icon: const Icon(Icons.logout_rounded),
-              label: const Text('退出登录'),
-              style: FilledButton.styleFrom(
-                backgroundColor: CommonTokens.danger,
-                foregroundColor: CommonTokens.textOnBrand,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: CommonTokens.space16,
-                  vertical: CommonTokens.space12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(CommonTokens.radiusMd),
+              const SizedBox(height: CommonTokens.sm),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _logout,
+                  icon: const Icon(Icons.logout_rounded),
+                  label: const Text('退出登录'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: CommonTokens.danger,
+                    foregroundColor: CommonTokens.textOnBrand,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: CommonTokens.space16,
+                      vertical: CommonTokens.space12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(CommonTokens.radiusMd),
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -511,8 +568,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
     final AuthProvider authProvider = context.watch<AuthProvider>();
 
     return Scaffold(
-      backgroundColor: SettingsUiTokens.pageBackground,
-      appBar: AppBar(title: const Text('设置')),
+      backgroundColor: CommonTokens.bgPrimary,
+      appBar: AppBar(
+        title: const Text('设置'),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: CommonTokens.bgPrimary,
+        foregroundColor: CommonTokens.textPrimary,
+        surfaceTintColor: Colors.transparent,
+      ),
       body: RefreshIndicator(
         onRefresh: authProvider.loadSessions,
         child: ListView(

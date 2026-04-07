@@ -67,6 +67,7 @@ com\hailiao\common\repository\MessageReadStatusRepository.class
 com\hailiao\common\repository\GroupMemberRepository.class
 com\hailiao\common\entity\RobotCommand.class
 com\hailiao\common\service\FileUploadService.class
+com\hailiao\common\model\UserProfilePatchFlags.class
 com\hailiao\common\dto\VideoMessageDTO.class
 com\hailiao\common\entity\GroupMember.class
 com\hailiao\common\service\StatisticsService.class

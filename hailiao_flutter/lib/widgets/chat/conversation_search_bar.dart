@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hailiao_flutter/theme/common_tokens.dart';
 import 'package:hailiao_flutter/theme/conversation_ui_tokens.dart';
+import 'package:hailiao_flutter/theme/ui_tokens.dart';
 
 class ConversationSearchBar extends StatelessWidget {
   const ConversationSearchBar({
@@ -24,74 +25,75 @@ class ConversationSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxWidth: ConversationUiTokens.searchBarMaxWidth,
+    return SizedBox(
+      height: ConversationUiTokens.searchBarHeight,
+      child: Container(
+        decoration: BoxDecoration(
+          color: ConversationUiTokens.searchBarBackground,
+          borderRadius: BorderRadius.circular(ImDesignTokens.radiusMd),
+          border: Border.all(color: UiTokens.lineSubtle),
+          boxShadow: ConversationUiTokens.searchBarShadow,
         ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: ConversationUiTokens.searchBarBackground,
-            borderRadius: BorderRadius.circular(CommonTokens.smRadius),
-            border: Border.all(color: ConversationUiTokens.searchBarBorder),
-            boxShadow: ConversationUiTokens.searchBarShadow,
-          ),
-          child: TextField(
-            controller: controller,
-            enabled: enabled,
-            style: CommonTokens.body,
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: CommonTokens.bodySmall.copyWith(
-                color: ConversationUiTokens.searchBarHintText,
+        alignment: Alignment.center,
+        child: TextField(
+          controller: controller,
+          enabled: enabled,
+          textAlignVertical: TextAlignVertical.center,
+          style: CommonTokens.body,
+          decoration: InputDecoration(
+            hintText: hintText,
+            hintStyle: CommonTokens.bodySmall.copyWith(
+              color: ConversationUiTokens.searchBarHintText,
+            ),
+            isDense: true,
+            filled: true,
+            fillColor: Colors.transparent,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: ImDesignTokens.spaceLg,
+              vertical: ImDesignTokens.spaceSm,
+            ),
+            prefixIcon: Padding(
+              padding: const EdgeInsetsDirectional.only(
+                start: ImDesignTokens.spaceSm,
               ),
-              isDense: true,
-              filled: true,
-              fillColor: Colors.transparent,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: CommonTokens.md,
-                vertical: CommonTokens.sm,
-              ),
-              prefixIcon: const Padding(
-                padding: EdgeInsetsDirectional.only(start: CommonTokens.xs),
-                child: Icon(
-                  Icons.search,
-                  size: 20,
-                  color: ConversationUiTokens.searchBarIcon,
-                ),
-              ),
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: ConversationUiTokens.searchBarHeight,
-                minHeight: ConversationUiTokens.searchBarHeight,
-              ),
-              suffixIcon: trailing ??
-                  (showClear
-                      ? IconButton(
-                          onPressed: onClear,
-                          icon: const Icon(
-                            Icons.close,
-                            size: 18,
-                            color: ConversationUiTokens.searchBarIcon,
-                          ),
-                        )
-                      : null),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(CommonTokens.smRadius),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(CommonTokens.smRadius),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(CommonTokens.smRadius),
-                borderSide: const BorderSide(
-                  color: ConversationUiTokens.searchBarFocusedBorder,
-                ),
+              child: Icon(
+                Icons.search,
+                size: ImDesignTokens.iconSm,
+                color: ConversationUiTokens.searchBarIcon,
               ),
             ),
-            onChanged: onChanged,
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: ConversationUiTokens.searchBarHeight,
+              minHeight: ConversationUiTokens.searchBarHeight,
+            ),
+            suffixIcon: trailing ??
+                (showClear
+                    ? IconButton(
+                        onPressed: onClear,
+                        icon: Icon(
+                          Icons.close,
+                          size: ImDesignTokens.iconSm,
+                          color: ConversationUiTokens.searchBarIcon,
+                        ),
+                      )
+                    : null),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(ImDesignTokens.radiusMd),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(ImDesignTokens.radiusMd),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(ImDesignTokens.radiusMd),
+              borderSide: const BorderSide(
+                color: ConversationUiTokens.searchBarFocusedBorder,
+                width: 1.5,
+              ),
+            ),
           ),
+          onChanged: onChanged,
         ),
       ),
     );

@@ -2,13 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hailiao_flutter/models/group_dto.dart';
 import 'package:hailiao_flutter/models/group_join_request_dto.dart';
-import 'package:hailiao_flutter/providers/group_provider.dart';
 import 'package:hailiao_flutter/screens/group_list_screen.dart';
+import 'package:hailiao_flutter/theme/empty_state_ux_strings.dart';
+import 'package:hailiao_flutter/theme/search_ux_strings.dart';
 
 import '../support/list_screen_test_fakes.dart';
 import '../support/screen_test_helpers.dart';
 
 void main() {
+  testWidgets('GroupListScreen 无群与无入群申请展示统一空态', (
+    WidgetTester tester,
+  ) async {
+    final provider = buildGroupListProvider();
+
+    await pumpGroupListScreenApp(
+      tester,
+      groupProvider: provider,
+      home: const GroupListScreen(),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.text(EmptyStateUxStrings.groupListEmptyTitle),
+      findsOneWidget,
+    );
+    expect(
+      find.text(EmptyStateUxStrings.groupListEmptyDetail),
+      findsOneWidget,
+    );
+    expect(
+      find.text(EmptyStateUxStrings.groupMyJoinRequestsEmptyTitle),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('GroupListScreen should render groups and join requests', (
     WidgetTester tester,
   ) async {
@@ -104,6 +132,42 @@ void main() {
 
     expect(find.byType(AlertDialog), findsOneWidget);
   });
+
+  testWidgets(
+    'GroupListScreen search group dialog uses SearchUx hint and empty validation',
+    (WidgetTester tester) async {
+      final provider = buildGroupListProvider();
+
+      await pumpGroupListScreenApp(
+        tester,
+        groupProvider: provider,
+        home: const GroupListScreen(),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      await tester.tap(find.byIcon(Icons.search));
+      await tester.pumpAndSettle();
+
+      final TextField field = tester.widget<TextField>(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byType(TextField),
+        ),
+      );
+      expect(field.decoration?.hintText, SearchUxStrings.hintGroupBusinessId);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.byIcon(Icons.search),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text(SearchUxStrings.errorGroupIdRequired), findsOneWidget);
+    },
+  );
 
   testWidgets('GroupListScreen should close search group dialog', (
     WidgetTester tester,
@@ -278,7 +342,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.text('\u7fa4\u7ec4\u5df2\u521b\u5efa'), findsOneWidget);
+      expect(find.text('\u7fa4\u804a\u5df2\u521b\u5efa'), findsOneWidget);
       expect(find.byType(AlertDialog), findsNothing);
       expect(find.text('\u6682\u65e0\u7fa4\u7ec4'), findsNothing);
       expect(find.textContaining('New Team'), findsOneWidget);
@@ -373,13 +437,12 @@ void main() {
     'GroupListScreen should keep created group after opening and closing search dialog',
     (WidgetTester tester,
   ) async {
-      final authProvider = buildDefaultScreenAuthProvider();
-      final groupProvider = GroupProvider(api: FakeGroupListApi(groups: const <GroupDTO>[]));
+      final groupProvider = buildGroupListProvider();
 
       await pumpGroupListScreenApp(
         tester,
-        authProvider: authProvider,
         groupProvider: groupProvider,
+        home: const GroupListScreen(),
         routes: buildTextRoutes(<String>['/group-detail']),
       );
 
@@ -417,13 +480,12 @@ void main() {
     'GroupListScreen should keep created group after reopening and closing create dialog',
     (WidgetTester tester,
   ) async {
-      final authProvider = buildDefaultScreenAuthProvider();
-      final groupProvider = GroupProvider(api: FakeGroupListApi(groups: const <GroupDTO>[]));
+      final groupProvider = buildGroupListProvider();
 
       await pumpGroupListScreenApp(
         tester,
-        authProvider: authProvider,
         groupProvider: groupProvider,
+        home: const GroupListScreen(),
         routes: buildTextRoutes(<String>['/group-detail']),
       );
 
@@ -461,13 +523,12 @@ void main() {
     'GroupListScreen should reopen create dialog with empty inputs after successful creation',
     (WidgetTester tester,
   ) async {
-      final authProvider = buildDefaultScreenAuthProvider();
-      final groupProvider = GroupProvider(api: FakeGroupListApi(groups: const <GroupDTO>[]));
+      final groupProvider = buildGroupListProvider();
 
       await pumpGroupListScreenApp(
         tester,
-        authProvider: authProvider,
         groupProvider: groupProvider,
+        home: const GroupListScreen(),
         routes: buildTextRoutes(<String>['/group-detail']),
       );
 

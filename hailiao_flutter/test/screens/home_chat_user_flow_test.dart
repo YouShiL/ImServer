@@ -43,9 +43,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
-    expect(find.textContaining('Alice'), findsWidgets);
+    expect(find.textContaining('Work friend'), findsWidgets);
 
-    await tester.tap(find.textContaining('Alice').first);
+    await tester.tap(find.textContaining('Work friend').first);
     await tester.pumpAndSettle();
 
     expect(find.byType(ChatScreen), findsOneWidget);
@@ -55,7 +55,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(UserDetailScreen), findsOneWidget);
-    expect(find.byIcon(Icons.chat_bubble_outline), findsOneWidget);
+    expect(find.text('发消息'), findsOneWidget);
     expect(find.byIcon(Icons.flag_outlined), findsOneWidget);
   });
 }

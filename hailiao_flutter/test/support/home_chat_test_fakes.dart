@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:hailiao_flutter/models/blacklist_dto.dart';
 import 'package:hailiao_flutter/models/conversation_dto.dart';
 import 'package:hailiao_flutter/models/file_upload_result_dto.dart';
@@ -95,13 +96,25 @@ class FakeHomeMessageApi implements MessageApi {
   FakeHomeMessageApi({
     List<ConversationDTO>? conversations,
     List<MessageDTO>? privateMessages,
+    List<MessageDTO>? groupMessages,
   }) : conversations = List<ConversationDTO>.from(
          conversations ?? <ConversationDTO>[],
        ),
-       privateMessages = privateMessages ?? <MessageDTO>[];
+       privateMessages = privateMessages ?? <MessageDTO>[],
+       groupMessages = groupMessages;
 
   final List<ConversationDTO> conversations;
   final List<MessageDTO> privateMessages;
+  final List<MessageDTO>? groupMessages;
+
+  /// 若为空则 [replyMessage] 仍抛出 [UnimplementedError]（与历史行为一致）。
+  Future<ResponseDTO<MessageDTO>> Function({
+    required int replyToMsgId,
+    int? toUserId,
+    int? groupId,
+    required String content,
+    int msgType,
+  })? replyMessageHandler;
 
   @override
   Future<ResponseDTO<List<ConversationDTO>>> getConversations() async {
@@ -162,8 +175,12 @@ class FakeHomeMessageApi implements MessageApi {
     int groupId,
     int page,
     int size,
-  ) {
-    throw UnimplementedError();
+  ) async {
+    return ResponseDTO<List<MessageDTO>>(
+      code: 200,
+      message: 'ok',
+      data: groupMessages ?? <MessageDTO>[],
+    );
   }
 
   @override
@@ -179,7 +196,17 @@ class FakeHomeMessageApi implements MessageApi {
     required String content,
     int msgType = 1,
   }) {
-    throw UnimplementedError();
+    final h = replyMessageHandler;
+    if (h == null) {
+      throw UnimplementedError();
+    }
+    return h(
+      replyToMsgId: replyToMsgId,
+      toUserId: toUserId,
+      groupId: groupId,
+      content: content,
+      msgType: msgType,
+    );
   }
 
   @override
@@ -311,6 +338,36 @@ class FakeChatBlacklistApi implements BlacklistApi {
   }
 }
 
+/// 指定 [blockedUserIds]，供聊天页拉黑态与 [BlacklistProvider.isBlocked] 断言。
+class FakeChatBlacklistApiWithBlocked implements BlacklistApi {
+  FakeChatBlacklistApiWithBlocked(this.blockedUserIds);
+
+  final Set<int> blockedUserIds;
+
+  @override
+  Future<ResponseDTO<BlacklistDTO>> addToBlacklist(int blockedUserId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<ResponseDTO<List<BlacklistDTO>>> getBlacklist() async {
+    return ResponseDTO<List<BlacklistDTO>>(
+      code: 200,
+      message: 'ok',
+      data: blockedUserIds
+          .map(
+            (int id) => BlacklistDTO(blockedUserId: id),
+          )
+          .toList(),
+    );
+  }
+
+  @override
+  Future<ResponseDTO<String>> removeFromBlacklist(int blockedUserId) {
+    throw UnimplementedError();
+  }
+}
+
 class FakeChatScreenApi implements ChatScreenApi {
   @override
   Future<ResponseDTO<Map<String, dynamic>>> getUserOnlineInfo(int userId) async {
@@ -349,7 +406,9 @@ class FakeChatScreenApi implements ChatScreenApi {
   }
 }
 
-Map<String, WidgetBuilder> buildHomeRoutes({bool includeUserDetail = false}) {
+Map<String, Widget Function(BuildContext)> buildHomeRoutes({
+  bool includeUserDetail = false,
+}) {
   final List<String> routes = <String>[
     '/security',
     '/report-list',
@@ -363,15 +422,19 @@ Map<String, WidgetBuilder> buildHomeRoutes({bool includeUserDetail = false}) {
   return buildTextRoutes(routes);
 }
 
-AuthProvider buildHomeAuthProvider({AuthApi? api}) {
+AuthProvider buildHomeAuthProvider({
+  AuthApi? api,
+  UserDTO? user,
+}) {
   return buildSignedInAuthProvider(
     api: api,
-    user: UserDTO(
-      id: 1,
-      userId: 'u1',
-      nickname: 'Owner',
-      phone: '13800000000',
-    ),
+    user: user ??
+        UserDTO(
+          id: 1,
+          userId: 'u1',
+          nickname: 'Owner',
+          phone: '13800000000',
+        ),
   );
 }
 
@@ -382,21 +445,37 @@ MessageProvider buildChatMessageProvider({
   int targetId = 2,
   int type = 1,
   List<MessageDTO>? privateMessages,
+  List<MessageDTO>? groupMessages,
+  Future<ResponseDTO<MessageDTO>> Function({
+    required int replyToMsgId,
+    int? toUserId,
+    int? groupId,
+    required String content,
+    int msgType,
+  })? replyMessageHandler,
 }) {
-  return MessageProvider(
-    api: FakeHomeMessageApi(
-      conversations: <ConversationDTO>[
-        buildConversation(
-          targetId: targetId,
-          type: type,
-          name: title,
-          lastMessage: lastMessage,
-          lastMessageTime: lastMessageTime,
-        ),
-      ],
-      privateMessages: privateMessages ?? <MessageDTO>[buildPrivateMessage()],
-    ),
-  );
+  final List<MessageDTO> private = privateMessages ??
+      (type == 1
+          ? <MessageDTO>[buildPrivateMessage()]
+          : <MessageDTO>[]);
+  final api = FakeHomeMessageApi(
+    conversations: <ConversationDTO>[
+      buildConversation(
+        targetId: targetId,
+        type: type,
+        name: title,
+        lastMessage: lastMessage,
+        lastMessageTime: lastMessageTime,
+      ),
+    ],
+    privateMessages: private,
+    groupMessages: groupMessages,
+  )..replyMessageHandler = replyMessageHandler;
+  return MessageProvider(api: api);
+}
+
+BlacklistProvider buildChatBlacklistProviderWithBlocked(Set<int> blockedUserIds) {
+  return BlacklistProvider(api: FakeChatBlacklistApiWithBlocked(blockedUserIds));
 }
 
 BlacklistProvider buildChatBlacklistProvider() {
@@ -407,6 +486,7 @@ ConversationDTO buildConversation({
   required int targetId,
   required int type,
   String? name,
+  String? avatar,
   String? lastMessage,
   String? lastMessageTime,
   int unreadCount = 0,
@@ -420,6 +500,7 @@ ConversationDTO buildConversation({
     targetId: targetId,
     type: type,
     name: name,
+    avatar: avatar,
     lastMessage: lastMessage,
     lastMessageTime: lastMessageTime,
     unreadCount: unreadCount,
@@ -436,6 +517,12 @@ MessageDTO buildPrivateMessage({
   String content = 'Hello there',
   int msgType = 1,
   String createdAt = '2026-03-31 12:00:00',
+  bool? isRead,
+  bool? isRecalled,
+  bool? isEdited,
+  int? status,
+  int? forwardFromMsgId,
+  int? replyToMsgId,
 }) {
   return MessageDTO(
     id: id,
@@ -444,6 +531,12 @@ MessageDTO buildPrivateMessage({
     content: content,
     msgType: msgType,
     createdAt: createdAt,
+    isRead: isRead,
+    isRecalled: isRecalled,
+    isEdited: isEdited,
+    status: status,
+    forwardFromMsgId: forwardFromMsgId,
+    replyToMsgId: replyToMsgId,
   );
 }
 

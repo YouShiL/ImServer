@@ -41,6 +41,7 @@ class CallProvider extends ChangeNotifier {
         _isCameraEnabled = isCameraEnabled,
         _isFrontCamera = isFrontCamera {
     if (_stage == CallStage.connected) {
+      _connectedThisSession = true;
       _connectedAt ??= DateTime.now().subtract(_duration);
       _startTimer();
     } else if (_stage == CallStage.calling || _stage == CallStage.waiting) {
@@ -127,6 +128,8 @@ class CallProvider extends ChangeNotifier {
   Timer? _timer;
   Timer? _pendingStageTimer;
   bool _isEnding = false;
+  /// True after this session has entered [CallStage.connected] at least once.
+  bool _connectedThisSession = false;
 
   CallMediaType get callType => _callType;
   String get name => _name;
@@ -146,33 +149,77 @@ class CallProvider extends ChangeNotifier {
   bool get canAccept =>
       _isIncoming && (_stage == CallStage.calling || _stage == CallStage.waiting);
 
-  String get statusText {
+  /// 语音 / 视频（用于来电说明、副标题等，与 [statusText] 主状态区分）。
+  String get mediaKindLabel => isVideo ? '视频通话' : '语音通话';
+
+  /// 来电页主状态行（与通话页 [statusText] 同一套语义，突出「来电」）。
+  String get incomingPrimaryStatus => '来电中';
+
+  /// 来电页第二行：媒体类型 + 邀请说明。
+  String get incomingDetailSubtitle {
+    final String invite = (_subtitle != null && _subtitle!.trim().isNotEmpty)
+        ? _subtitle!.trim()
+        : (isVideo ? '邀请你进行视频通话' : '邀请你进行语音通话');
+    return '$mediaKindLabel · $invite';
+  }
+
+  /// 通话页 / 来电页顶区副标题：优先业务 subtitle，否则用语义化辅助文案。
+  String get headerSubtitle {
+    if (_subtitle != null && _subtitle!.trim().isNotEmpty) {
+      return _subtitle!.trim();
+    }
+    return helperText;
+  }
+
+  /// 视频通话中部占位区的轻提示（顶栏已展示名字与主状态时尽量简短）。
+  String get videoSurfaceHint {
     switch (_stage) {
       case CallStage.calling:
-        return '正在呼叫…';
+        return '正在连接…';
       case CallStage.waiting:
-        return _isIncoming ? '等待接听' : '等待对方接听';
+        return canAccept ? '可在下方接听或拒绝' : '等待对方接听';
       case CallStage.connected:
-        return isVideo ? '视频通话中' : '语音通话中';
+        return '';
       case CallStage.declined:
-        return _isIncoming ? '已拒接来电' : '对方已拒接';
       case CallStage.ended:
-        return '通话已结束';
+        return '';
     }
   }
 
+  /// 统一主状态文案（来电页「状态」、通话页 [CallStatusHeader.status] 等共用）。
+  String get statusText {
+    switch (_stage) {
+      case CallStage.calling:
+        return '呼叫中';
+      case CallStage.waiting:
+        return _isIncoming ? '来电中' : '等待对方接听';
+      case CallStage.connected:
+        return '通话中';
+      case CallStage.declined:
+        return _isIncoming ? '已拒绝' : '对方已拒绝';
+      case CallStage.ended:
+        if (_connectedThisSession) {
+          return '已挂断';
+        }
+        return _isIncoming ? '未接听' : '已取消';
+    }
+  }
+
+  /// 辅助说明：避免与 [statusText] 重复同一句，仅作提示。
   String get helperText {
     switch (_stage) {
       case CallStage.calling:
-        return '正在建立连接';
+        return '正在连接对方…';
       case CallStage.waiting:
-        return _isIncoming ? '你可以选择接听或拒接' : '等待对方接听';
+        return _isIncoming
+            ? '可在下方接听或拒接'
+            : '请耐心等待对方接听';
       case CallStage.connected:
-        return isVideo ? '画面与声音已连接' : '通话已连接，保持安静环境会更清晰';
+        return isVideo ? '画面与声音已接通' : '语音已接通，安静环境听得更清晰';
       case CallStage.declined:
-        return _isIncoming ? '你已拒绝本次通话' : '你可以稍后再次发起通话';
+        return _isIncoming ? '已挂断来电' : '可稍后再试';
       case CallStage.ended:
-        return '本次通话已结束';
+        return '你可以关闭此页面';
     }
   }
 
@@ -259,6 +306,7 @@ class CallProvider extends ChangeNotifier {
       _setStageInternal(parsedStage);
       changed = true;
     } else if (_stage == CallStage.connected) {
+      _connectedThisSession = true;
       _connectedAt ??= DateTime.now().subtract(_duration);
       _startTimer();
     } else if (_stage == CallStage.calling || _stage == CallStage.waiting) {
@@ -273,6 +321,7 @@ class CallProvider extends ChangeNotifier {
     _isIncoming = false;
     _duration = Duration.zero;
     _connectedAt = null;
+    _connectedThisSession = false;
     _setStageInternal(CallStage.calling);
     notifyListeners();
   }
@@ -385,6 +434,7 @@ class CallProvider extends ChangeNotifier {
     _isEnding = false;
     _pendingStageTimer?.cancel();
     _stopTimer();
+    _connectedThisSession = stage == CallStage.connected;
     if (stage == CallStage.connected) {
       _connectedAt = DateTime.now();
       _startTimer();
@@ -397,6 +447,7 @@ class CallProvider extends ChangeNotifier {
   void _setStageInternal(CallStage nextStage) {
     _stage = nextStage;
     if (nextStage == CallStage.connected) {
+      _connectedThisSession = true;
       _pendingStageTimer?.cancel();
       _connectedAt ??= DateTime.now().subtract(_duration);
       _startTimer();

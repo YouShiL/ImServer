@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:hailiao_flutter/models/group_member_dto.dart';
+import 'package:hailiao_flutter/models/user_dto.dart';
 import 'package:hailiao_flutter/theme/group_ui_tokens.dart';
+import 'package:hailiao_flutter/utils/network_avatar_url.dart';
 import 'package:hailiao_flutter/widgets/common/badge_tag.dart';
+import 'package:hailiao_flutter/widgets/profile/profile_display_utils.dart';
 
 class GroupMemberPreviewStrip extends StatelessWidget {
   const GroupMemberPreviewStrip({
@@ -53,39 +56,81 @@ class _MemberAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String nickname =
-        member.userInfo?.nickname ?? member.nickname ?? '成员';
-    final String initial = nickname.isNotEmpty ? nickname.substring(0, 1) : '群';
+    final String title = ProfileDisplayTexts.groupMemberTitle(member);
+    final String initial = ProfileDisplayTexts.listAvatarInitial(title);
+    final String? avatarUrl =
+        httpOrHttpsAvatarUrlOrNull(member.userInfo?.avatar);
     final String role = switch (member.role) {
       1 => '群主',
       2 => '管理员',
       _ => '成员',
     };
 
+    void openUserDetail() {
+      if (member.userId == null) {
+        return;
+      }
+      final UserDTO? snapshot =
+          ProfileDisplayTexts.userDetailSnapshotFromGroupMember(member);
+      final Map<String, dynamic> args = <String, dynamic>{
+        'userId': member.userId,
+      };
+      if (snapshot != null) {
+        args['user'] = snapshot;
+      }
+      Navigator.pushNamed(context, '/user-detail', arguments: args);
+    }
+
+    Widget avatarFace;
+    if (avatarUrl != null) {
+      avatarFace = ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          avatarUrl,
+          width: GroupUiTokens.memberPreviewAvatarSize,
+          height: GroupUiTokens.memberPreviewAvatarSize,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) => Container(
+            width: GroupUiTokens.memberPreviewAvatarSize,
+            height: GroupUiTokens.memberPreviewAvatarSize,
+            color: GroupUiTokens.memberAvatarBackground,
+            alignment: Alignment.center,
+            child: _previewLetterAvatar(initial),
+          ),
+        ),
+      );
+    } else {
+      avatarFace = _previewLetterAvatar(initial);
+    }
+
     return SizedBox(
       width: 62,
       child: Column(
         children: <Widget>[
-          Container(
-            width: GroupUiTokens.memberPreviewAvatarSize,
-            height: GroupUiTokens.memberPreviewAvatarSize,
-            decoration: BoxDecoration(
-              color: GroupUiTokens.memberAvatarBackground,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: GroupUiTokens.memberAvatarBorder),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              initial,
-              style: GroupUiTokens.sectionTitleText.copyWith(
-                color: GroupUiTokens.memberAvatarText,
-                fontSize: 16,
+              onTap: member.userId == null ? null : openUserDetail,
+              child: Container(
+                width: GroupUiTokens.memberPreviewAvatarSize,
+                height: GroupUiTokens.memberPreviewAvatarSize,
+                decoration: BoxDecoration(
+                  color: avatarUrl == null
+                      ? GroupUiTokens.memberAvatarBackground
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: GroupUiTokens.memberAvatarBorder),
+                ),
+                clipBehavior: Clip.antiAlias,
+                alignment: Alignment.center,
+                child: avatarFace,
               ),
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            nickname,
+            title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GroupUiTokens.memberNameText,
@@ -100,6 +145,16 @@ class _MemberAvatar extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _previewLetterAvatar(String initial) {
+    return Text(
+      initial,
+      style: GroupUiTokens.sectionTitleText.copyWith(
+        color: GroupUiTokens.memberAvatarText,
+        fontSize: 16,
       ),
     );
   }

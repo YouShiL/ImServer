@@ -1,0 +1,45 @@
+# =============================================================================
+# 测试环境（profile = test）— API
+# =============================================================================
+# 默认指向本机独立库 hailiao_test；启动前设置 APP_ENV=test
+
+server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/hailiao_test?useUnicode=true&characterEncoding=utf-8&characterSetResults=utf8mb4&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: carmi2023_
+
+  redis:
+    host: localhost
+    port: 6379
+    database: 1
+    timeout: 6000ms
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    show-sql: ${JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: false
+
+logging:
+  level:
+    com.hailiao: INFO
+    org.springframework.security: INFO
+
+springfox:
+  documentation:
+    swagger-ui:
+      enabled: true
+
+oss:
+  endpoint: https://oss-cn-hangzhou.aliyuncs.com
+  access-key-id: your-access-key-id
+  access-key-secret: your-access-key-secret
+  bucket-name: hailiao-im
+  domain: https://hailiao-im.oss-cn-hangzhou.aliyuncs.com
+  prefix: hailiao

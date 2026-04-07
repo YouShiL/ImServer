@@ -1,9 +1,12 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hailiao_flutter/models/conversation_dto.dart';
 import 'package:hailiao_flutter/models/file_upload_result_dto.dart';
 import 'package:hailiao_flutter/models/message_dto.dart';
+import 'package:hailiao_flutter/models/user_dto.dart';
 import 'package:hailiao_flutter/models/response_dto.dart';
 import 'package:hailiao_flutter/services/api_service.dart';
+import 'package:hailiao_flutter/theme/chat_date_format.dart';
+import 'package:hailiao_flutter/widgets/profile/profile_display_utils.dart';
 
 abstract class MessageApi {
   Future<ResponseDTO<List<ConversationDTO>>> getConversations();
@@ -233,6 +236,19 @@ class ApiMessageApi implements MessageApi {
   }
 }
 
+/// Local retry payload for failed optimistic media sends (in-memory only).
+class MediaRetryParams {
+  const MediaRetryParams({
+    required this.path,
+    required this.msgType,
+    this.durationSeconds = 0,
+  });
+
+  final String path;
+  final int msgType;
+  final int durationSeconds;
+}
+
 class MessageProvider extends ChangeNotifier {
   MessageProvider({MessageApi? api}) : _api = api ?? ApiMessageApi();
 
@@ -248,17 +264,353 @@ class MessageProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  /// Monotonic negative ids for local optimistic rows (not persisted).
+  int _optimisticLocalIdSeq = 0;
+
+  int addOptimisticTextMessage({
+    required int targetId,
+    required int type,
+    required String content,
+    int? fromUserId,
+    int? replyToMsgId,
+  }) {
+    final trimmed = content.trim();
+    if (trimmed.isEmpty) {
+      return 0;
+    }
+
+    final failedIdx = _findFailedOptimisticText(
+      targetId: targetId,
+      type: type,
+      content: trimmed,
+      fromUserId: fromUserId,
+    );
+    if (failedIdx != null) {
+      final current = _messages[failedIdx];
+      final reused = MessageDTO(
+        id: current.id,
+        msgId: current.msgId,
+        fromUserId: current.fromUserId,
+        toUserId: current.toUserId,
+        groupId: current.groupId,
+        content: trimmed,
+        msgType: 1,
+        subType: current.subType,
+        extra: current.extra,
+        isRead: current.isRead,
+        isRecalled: current.isRecalled,
+        isDeleted: current.isDeleted,
+        replyToMsgId: current.replyToMsgId,
+        forwardFromMsgId: current.forwardFromMsgId,
+        forwardFromUserId: current.forwardFromUserId,
+        isEdited: current.isEdited,
+        status: 0,
+        createdAt: current.createdAt ??
+            ChatDateFormat.fromMillis(
+              DateTime.now().millisecondsSinceEpoch,
+            ),
+        fromUserInfo: current.fromUserInfo,
+      );
+      _messages[failedIdx] = reused;
+      upsertConversationFromMessage(
+        reused,
+        currentUserId: fromUserId,
+        increaseUnread: false,
+      );
+      refreshConversationPreview(targetId: targetId, type: type);
+      notifyListeners();
+      return current.id ?? 0;
+    }
+
+    final localId = --_optimisticLocalIdSeq;
+    final message = MessageDTO(
+      id: localId,
+      fromUserId: fromUserId,
+      toUserId: type == 1 ? targetId : null,
+      groupId: type == 2 ? targetId : null,
+      content: trimmed,
+      msgType: 1,
+      replyToMsgId: replyToMsgId,
+      status: 0,
+      createdAt:
+          ChatDateFormat.fromMillis(DateTime.now().millisecondsSinceEpoch),
+    );
+    _insertMessage(message, currentUserId: fromUserId);
+    upsertConversationFromMessage(
+      message,
+      currentUserId: fromUserId,
+      increaseUnread: false,
+    );
+    refreshConversationPreview(targetId: targetId, type: type);
+    notifyListeners();
+    return localId;
+  }
+
+  /// Optimistic image / audio / video (local path in [content]).
+  int addOptimisticMediaMessage({
+    required int targetId,
+    required int type,
+    required int msgType,
+    required String content,
+    int? fromUserId,
+    int durationSeconds = 0,
+  }) {
+    final trimmed = content.trim();
+    if (trimmed.isEmpty) {
+      return 0;
+    }
+    if (msgType < 2 || msgType > 4) {
+      return 0;
+    }
+
+    final failedIdx = _findFailedOptimisticMedia(
+      targetId: targetId,
+      type: type,
+      msgType: msgType,
+      content: trimmed,
+      fromUserId: fromUserId,
+    );
+    final String? extraDur = (msgType == 3 || msgType == 4) && durationSeconds > 0
+        ? 'dur:$durationSeconds'
+        : null;
+
+    if (failedIdx != null) {
+      final current = _messages[failedIdx];
+      final reused = MessageDTO(
+        id: current.id,
+        msgId: current.msgId,
+        fromUserId: current.fromUserId,
+        toUserId: current.toUserId,
+        groupId: current.groupId,
+        content: trimmed,
+        msgType: msgType,
+        subType: current.subType,
+        extra: extraDur ?? current.extra,
+        isRead: current.isRead,
+        isRecalled: current.isRecalled,
+        isDeleted: current.isDeleted,
+        replyToMsgId: current.replyToMsgId,
+        forwardFromMsgId: current.forwardFromMsgId,
+        forwardFromUserId: current.forwardFromUserId,
+        isEdited: current.isEdited,
+        status: 0,
+        createdAt: current.createdAt ??
+            ChatDateFormat.fromMillis(
+              DateTime.now().millisecondsSinceEpoch,
+            ),
+        fromUserInfo: current.fromUserInfo,
+      );
+      _messages[failedIdx] = reused;
+      upsertConversationFromMessage(
+        reused,
+        currentUserId: fromUserId,
+        increaseUnread: false,
+      );
+      refreshConversationPreview(targetId: targetId, type: type);
+      notifyListeners();
+      return current.id ?? 0;
+    }
+
+    final localId = --_optimisticLocalIdSeq;
+    final message = MessageDTO(
+      id: localId,
+      fromUserId: fromUserId,
+      toUserId: type == 1 ? targetId : null,
+      groupId: type == 2 ? targetId : null,
+      content: trimmed,
+      msgType: msgType,
+      extra: extraDur,
+      status: 0,
+      createdAt:
+          ChatDateFormat.fromMillis(DateTime.now().millisecondsSinceEpoch),
+    );
+    _insertMessage(message, currentUserId: fromUserId);
+    upsertConversationFromMessage(
+      message,
+      currentUserId: fromUserId,
+      increaseUnread: false,
+    );
+    refreshConversationPreview(targetId: targetId, type: type);
+    notifyListeners();
+    return localId;
+  }
+
+  void markOutgoingTextSendFailed(int messageId) {
+    if (messageId == 0) {
+      return;
+    }
+    final updated = _updateMessageById(
+      messageId,
+      (current) => MessageDTO(
+        id: current.id,
+        msgId: current.msgId,
+        fromUserId: current.fromUserId,
+        toUserId: current.toUserId,
+        groupId: current.groupId,
+        content: current.content,
+        msgType: current.msgType,
+        subType: current.subType,
+        extra: current.extra,
+        isRead: current.isRead,
+        isRecalled: current.isRecalled,
+        isDeleted: current.isDeleted,
+        replyToMsgId: current.replyToMsgId,
+        forwardFromMsgId: current.forwardFromMsgId,
+        forwardFromUserId: current.forwardFromUserId,
+        isEdited: current.isEdited,
+        status: 2,
+        createdAt: current.createdAt,
+        fromUserInfo: current.fromUserInfo,
+      ),
+    );
+    if (!updated) {
+      return;
+    }
+    final idx = _findMessageIndexById(messageId);
+    if (idx == null) {
+      return;
+    }
+    final m = _messages[idx];
+    final tid = _resolveConversationTargetId(m, currentUserId: m.fromUserId);
+    final typ = _resolveConversationType(m);
+    if (tid != null) {
+      refreshConversationPreview(targetId: tid, type: typ);
+    } else {
+      upsertConversationFromMessage(m, increaseUnread: false);
+    }
+  }
+
+  String? prepareRetryFailedTextMessage({
+    required int messageId,
+    required int targetId,
+    required int type,
+    required int fromUserId,
+  }) {
+    final idx = _findMessageIndexById(messageId);
+    if (idx == null) {
+      return null;
+    }
+    final m = _messages[idx];
+    if (m.fromUserId != fromUserId) {
+      return null;
+    }
+    if ((m.msgType ?? 1) != 1) {
+      return null;
+    }
+    if (m.status != 2) {
+      return null;
+    }
+    if (!_messageBelongsToConversation(m, targetId, type)) {
+      return null;
+    }
+    final text = (m.content ?? '').trim();
+    if (text.isEmpty) {
+      return null;
+    }
+
+    _messages[idx] = MessageDTO(
+      id: m.id,
+      msgId: m.msgId,
+      fromUserId: m.fromUserId,
+      toUserId: m.toUserId,
+      groupId: m.groupId,
+      content: m.content,
+      msgType: m.msgType,
+      subType: m.subType,
+      extra: m.extra,
+      isRead: m.isRead,
+      isRecalled: m.isRecalled,
+      isDeleted: m.isDeleted,
+      replyToMsgId: m.replyToMsgId,
+      forwardFromMsgId: m.forwardFromMsgId,
+      forwardFromUserId: m.forwardFromUserId,
+      isEdited: m.isEdited,
+      status: 0,
+      createdAt: m.createdAt,
+      fromUserInfo: m.fromUserInfo,
+    );
+    refreshConversationPreview(targetId: targetId, type: type);
+    return text;
+  }
+
+  MediaRetryParams? prepareRetryFailedMediaMessage({
+    required int messageId,
+    required int targetId,
+    required int type,
+    required int fromUserId,
+  }) {
+    final idx = _findMessageIndexById(messageId);
+    if (idx == null) {
+      return null;
+    }
+    final m = _messages[idx];
+    if (m.fromUserId != fromUserId) {
+      return null;
+    }
+    final mt = m.msgType ?? 1;
+    if (mt < 2 || mt > 4) {
+      return null;
+    }
+    if (m.status != 2) {
+      return null;
+    }
+    if (!_messageBelongsToConversation(m, targetId, type)) {
+      return null;
+    }
+    final path = (m.content ?? '').trim();
+    if (path.isEmpty) {
+      return null;
+    }
+    var durationSeconds = 0;
+    final ex = (m.extra ?? '').trim();
+    if (ex.startsWith('dur:')) {
+      durationSeconds = int.tryParse(ex.substring(4)) ?? 0;
+    }
+
+    _messages[idx] = MessageDTO(
+      id: m.id,
+      msgId: m.msgId,
+      fromUserId: m.fromUserId,
+      toUserId: m.toUserId,
+      groupId: m.groupId,
+      content: m.content,
+      msgType: m.msgType,
+      subType: m.subType,
+      extra: m.extra,
+      isRead: m.isRead,
+      isRecalled: m.isRecalled,
+      isDeleted: m.isDeleted,
+      replyToMsgId: m.replyToMsgId,
+      forwardFromMsgId: m.forwardFromMsgId,
+      forwardFromUserId: m.forwardFromUserId,
+      isEdited: m.isEdited,
+      status: 0,
+      createdAt: m.createdAt,
+      fromUserInfo: m.fromUserInfo,
+    );
+    refreshConversationPreview(targetId: targetId, type: type);
+    notifyListeners();
+    return MediaRetryParams(
+      path: path,
+      msgType: mt,
+      durationSeconds: durationSeconds,
+    );
+  }
+
   void receiveIncomingMessage(
     MessageDTO message, {
     int? currentUserId,
     bool notify = true,
   }) {
-    _insertMessage(message);
+    final preview = _insertMessage(message, currentUserId: currentUserId);
+    if (preview == null) {
+      return;
+    }
     upsertConversationFromMessage(
-      message,
+      preview,
       currentUserId: currentUserId,
       increaseUnread: _shouldIncreaseUnread(
-        message,
+        preview,
         currentUserId: currentUserId,
       ),
       notify: notify,
@@ -274,13 +626,16 @@ class MessageProvider extends ChangeNotifier {
       return;
     }
 
-    _mergeMessages(messages);
-    for (final message in messages) {
+    final previews = _mergeMessages(messages, currentUserId: currentUserId);
+    for (final preview in previews) {
+      if (preview == null) {
+        continue;
+      }
       upsertConversationFromMessage(
-        message,
+        preview,
         currentUserId: currentUserId,
         increaseUnread: _shouldIncreaseUnread(
-          message,
+          preview,
           currentUserId: currentUserId,
         ),
         notify: false,
@@ -341,16 +696,21 @@ class MessageProvider extends ChangeNotifier {
   }
 
   bool applyMessageSendResult({
-    required int localMessageId,
+    int? localMessageId,
     int? serverMessageId,
     required int status,
     String? content,
+    int? hintMsgType,
+    int? fromUserId,
     bool notify = true,
   }) {
-    final updated = _updateMessageById(
-      localMessageId,
-      (current) => MessageDTO(
-        id: serverMessageId ?? current.id,
+    MessageDTO applySendResult(MessageDTO current) {
+      final nextId = serverMessageId ??
+          ((current.id != null && current.id! > 0)
+              ? current.id
+              : (localMessageId ?? current.id));
+      return MessageDTO(
+        id: nextId,
         msgId: current.msgId,
         fromUserId: current.fromUserId,
         toUserId: current.toUserId,
@@ -369,20 +729,72 @@ class MessageProvider extends ChangeNotifier {
         status: status,
         createdAt: current.createdAt,
         fromUserInfo: current.fromUserInfo,
-      ),
-    );
+      );
+    }
+
+    var updated = false;
+    if (localMessageId != null) {
+      updated = _updateMessageById(localMessageId, applySendResult);
+    }
     if (!updated) {
-      return false;
+      var fallbackIdx = _findPendingOptimisticForSendResult(
+        content: content,
+        hintMsgType: hintMsgType,
+        fromUserId: fromUserId,
+      );
+      if (fallbackIdx == null) {
+        if (status == 1 &&
+            (hintMsgType ?? 1) == 1 &&
+            _swallowNearDuplicateSendAck(
+              content: content,
+              fromUserId: fromUserId,
+            )) {
+          if (notify) {
+            notifyListeners();
+          }
+          return true;
+        }
+        if (status == 1 &&
+            _isAppMediaMsgType(hintMsgType) &&
+            _swallowNearDuplicateMediaSendAck(
+              content: content,
+              hintMsgType: hintMsgType,
+              fromUserId: fromUserId,
+            )) {
+          if (notify) {
+            notifyListeners();
+          }
+          return true;
+        }
+        if (notify) {
+          notifyListeners();
+        }
+        return false;
+      }
+      _messages[fallbackIdx] = applySendResult(_messages[fallbackIdx]);
+      updated = true;
     }
 
     final resolvedId = serverMessageId ?? localMessageId;
-    final index = _findMessageIndexById(resolvedId);
-    if (index != null) {
+    var syncIndex =
+        resolvedId != null ? _findMessageIndexById(resolvedId) : null;
+    syncIndex ??=
+        serverMessageId != null ? _findMessageIndexById(serverMessageId) : null;
+    if (syncIndex != null) {
+      final synced = _messages[syncIndex];
       upsertConversationFromMessage(
-        _messages[index],
+        synced,
         increaseUnread: false,
         notify: false,
       );
+      final tid = _resolveConversationTargetId(
+        synced,
+        currentUserId: synced.fromUserId,
+      );
+      final typ = _resolveConversationType(synced);
+      if (tid != null) {
+        refreshConversationPreview(targetId: tid, type: typ, notify: false);
+      }
     }
     if (notify) {
       notifyListeners();
@@ -463,6 +875,7 @@ class MessageProvider extends ChangeNotifier {
     final trimmed = value.trim();
     if (trimmed.isEmpty) {
       _drafts.remove(key);
+      _syncConversationDraftField(targetId, type, null);
     } else {
       _drafts[key] = value;
     }
@@ -472,8 +885,36 @@ class MessageProvider extends ChangeNotifier {
 
   void clearDraft(int? targetId, int? type) {
     _drafts.remove(_draftKey(targetId, type));
+    _syncConversationDraftField(targetId, type, null);
     _sortConversations();
     notifyListeners();
+  }
+
+  /// 仅更新内存列表中的 [ConversationDTO.draft]，避免清空本地草稿后仍回落到滞后字段。
+  void _syncConversationDraftField(int? targetId, int? type, String? draft) {
+    if (targetId == null || type == null) {
+      return;
+    }
+    final index = _findConversationIndex(targetId, type);
+    if (index == null) {
+      return;
+    }
+    final current = _conversations[index];
+    _conversations[index] = ConversationDTO(
+      id: current.id,
+      userId: current.userId,
+      targetId: current.targetId,
+      type: current.type,
+      name: current.name,
+      avatar: current.avatar,
+      lastMessage: current.lastMessage,
+      lastMessageTime: current.lastMessageTime,
+      unreadCount: current.unreadCount,
+      isTop: current.isTop,
+      isMute: current.isMute,
+      draft: draft,
+      isDeleted: current.isDeleted,
+    );
   }
 
   Future<void> loadConversations() async {
@@ -492,9 +933,25 @@ class MessageProvider extends ChangeNotifier {
       task: () => _api.getPrivateMessages(toUserId, page, size),
       onSuccess: (data) {
         if (page == 1) {
-          _messages = data;
+          _messages = _mergeHistoryPage1WithPreservedLocals(
+            data,
+            conversationTargetId: toUserId,
+            conversationType: 1,
+          );
         } else {
-          _messages = [..._messages, ...data];
+          final chunk = data.map(_normalizeServerMessage).toList();
+          final tie = <MessageDTO, int>{};
+          for (var i = 0; i < chunk.length; i++) {
+            tie[chunk[i]] = i;
+          }
+          chunk.sort((a, b) {
+            final c = _compareMessagesForSort(a, b);
+            if (c != 0) {
+              return c;
+            }
+            return (tie[a] ?? 0).compareTo(tie[b] ?? 0);
+          });
+          _messages = [...chunk, ..._messages];
         }
       },
       fallbackError: 'Failed to load messages.',
@@ -506,9 +963,25 @@ class MessageProvider extends ChangeNotifier {
       task: () => _api.getGroupMessages(groupId, page, size),
       onSuccess: (data) {
         if (page == 1) {
-          _messages = data;
+          _messages = _mergeHistoryPage1WithPreservedLocals(
+            data,
+            conversationTargetId: groupId,
+            conversationType: 2,
+          );
         } else {
-          _messages = [..._messages, ...data];
+          final chunk = data.map(_normalizeServerMessage).toList();
+          final tie = <MessageDTO, int>{};
+          for (var i = 0; i < chunk.length; i++) {
+            tie[chunk[i]] = i;
+          }
+          chunk.sort((a, b) {
+            final c = _compareMessagesForSort(a, b);
+            if (c != 0) {
+              return c;
+            }
+            return (tie[a] ?? 0).compareTo(tie[b] ?? 0);
+          });
+          _messages = [...chunk, ..._messages];
         }
       },
       fallbackError: 'Failed to load messages.',
@@ -526,6 +999,88 @@ class MessageProvider extends ChangeNotifier {
     );
   }
 
+  MessageDTO _normalizeServerMessage(MessageDTO raw) {
+    final at = ChatDateFormat.display(raw.createdAt) ?? raw.createdAt;
+    return MessageDTO(
+      id: raw.id,
+      msgId: raw.msgId,
+      fromUserId: raw.fromUserId,
+      toUserId: raw.toUserId,
+      groupId: raw.groupId,
+      content: raw.content,
+      msgType: raw.msgType,
+      subType: raw.subType,
+      extra: raw.extra,
+      isRead: raw.isRead,
+      isRecalled: raw.isRecalled,
+      isDeleted: raw.isDeleted,
+      replyToMsgId: raw.replyToMsgId,
+      forwardFromMsgId: raw.forwardFromMsgId,
+      forwardFromUserId: raw.forwardFromUserId,
+      isEdited: raw.isEdited,
+      status: raw.status ?? 1,
+      createdAt: at,
+      fromUserInfo: raw.fromUserInfo,
+    );
+  }
+
+  /// REST 成功后供 IM 携带的媒体 URL（优先用落库后的 content）。
+  String? _urlForImAfterRest(MessageDTO merged, String uploadedUrl) {
+    final fromServer = merged.content?.trim();
+    if (fromServer != null && fromServer.isNotEmpty) {
+      return fromServer;
+    }
+    final fb = uploadedUrl.trim();
+    return fb.isNotEmpty ? fb : null;
+  }
+
+  void _applySentMessage(
+    MessageDTO merged, {
+    int? optimisticLocalId,
+  }) {
+    if (optimisticLocalId != null && optimisticLocalId != 0) {
+      final replaced =
+          _updateMessageById(optimisticLocalId, (_) => merged);
+      if (!replaced) {
+        _messages = [..._messages, merged];
+      }
+    } else {
+      _messages = [..._messages, merged];
+    }
+  }
+
+  /// 私聊文本：先落库 REST（与会话历史一致），再交由调用方决定是否补发 IM。
+  Future<bool> sendPrivateTextMessage(
+    int toUserId,
+    String content,
+    int msgType, {
+    int? optimisticLocalId,
+  }) async {
+    _startLoading();
+    try {
+      final response = await _api.sendPrivateMessage(toUserId, content, msgType);
+      if (response.isSuccess && response.data != null) {
+        final merged = _normalizeServerMessage(response.data as MessageDTO);
+        _applySentMessage(merged, optimisticLocalId: optimisticLocalId);
+        await loadConversations();
+        return true;
+      }
+      _error = response.message;
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return false;
+    } catch (_) {
+      _error = 'Failed to send message.';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return false;
+    } finally {
+      _finishLoading();
+    }
+  }
+
   Future<bool> sendGroupMessage(
     int groupId,
     String content,
@@ -537,6 +1092,186 @@ class MessageProvider extends ChangeNotifier {
     );
   }
 
+  /// 群聊文本：先 REST 落库（与 getGroupMessages 一致），再由调用方补发 IM。
+  Future<bool> sendGroupTextMessage(
+    int groupId,
+    String content,
+    int msgType, {
+    int? optimisticLocalId,
+  }) async {
+    _startLoading();
+    try {
+      final response =
+          await _api.sendGroupMessage(groupId, content, msgType);
+      if (response.isSuccess && response.data != null) {
+        final merged = _normalizeServerMessage(response.data as MessageDTO);
+        _applySentMessage(merged, optimisticLocalId: optimisticLocalId);
+        await loadConversations();
+        return true;
+      }
+      _error = response.message;
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return false;
+    } catch (_) {
+      _error = 'Failed to send message.';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return false;
+    } finally {
+      _finishLoading();
+    }
+  }
+
+  /// 图片：上传 OSS → REST 发图消息 → 替换乐观行；成功返回供 IM 使用的 URL。
+  Future<String?> sendChatImageRest({
+    required int targetId,
+    required int chatType,
+    required String filePath,
+    int? optimisticLocalId,
+  }) async {
+    final isGroup = chatType == 2;
+    _startLoading();
+    try {
+      final up = await _api.uploadImage(filePath);
+      final url = up.data?.fileUrl;
+      if (!up.isSuccess || url == null || url.trim().isEmpty) {
+        _error =
+            up.message.isNotEmpty ? up.message : '图片上传失败，请重试。';
+        if (optimisticLocalId != null && optimisticLocalId != 0) {
+          markOutgoingTextSendFailed(optimisticLocalId);
+        }
+        return null;
+      }
+      final trimmed = url.trim();
+      final send =
+          await _api.sendImageMessage(targetId, trimmed, isGroup: isGroup);
+      if (send.isSuccess && send.data != null) {
+        final merged = _normalizeServerMessage(send.data as MessageDTO);
+        _applySentMessage(merged, optimisticLocalId: optimisticLocalId);
+        await loadConversations();
+        return _urlForImAfterRest(merged, trimmed);
+      }
+      _error = send.message.isNotEmpty ? send.message : '图片发送失败。';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return null;
+    } catch (_) {
+      _error = '图片发送失败，请检查网络后重试。';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return null;
+    } finally {
+      _finishLoading();
+    }
+  }
+
+  /// 视频：上传 → REST；成功返回供 IM 使用的 URL。
+  Future<String?> sendChatVideoRest({
+    required int targetId,
+    required int chatType,
+    required String filePath,
+    int? optimisticLocalId,
+    String coverUrl = '',
+    int durationSeconds = 0,
+  }) async {
+    final isGroup = chatType == 2;
+    _startLoading();
+    try {
+      final up = await _api.uploadVideo(filePath);
+      final url = up.data?.fileUrl;
+      if (!up.isSuccess || url == null || url.trim().isEmpty) {
+        _error =
+            up.message.isNotEmpty ? up.message : '视频上传失败，请重试。';
+        if (optimisticLocalId != null && optimisticLocalId != 0) {
+          markOutgoingTextSendFailed(optimisticLocalId);
+        }
+        return null;
+      }
+      final trimmed = url.trim();
+      final send = await _api.sendVideoMessage(
+        targetId,
+        trimmed,
+        coverUrl,
+        durationSeconds,
+        isGroup: isGroup,
+      );
+      if (send.isSuccess && send.data != null) {
+        final merged = _normalizeServerMessage(send.data as MessageDTO);
+        _applySentMessage(merged, optimisticLocalId: optimisticLocalId);
+        await loadConversations();
+        return _urlForImAfterRest(merged, trimmed);
+      }
+      _error = send.message.isNotEmpty ? send.message : '视频发送失败。';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return null;
+    } catch (_) {
+      _error = '视频发送失败，请检查网络后重试。';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return null;
+    } finally {
+      _finishLoading();
+    }
+  }
+
+  /// 语音：上传 → REST；成功返回供 IM 使用的 URL。
+  Future<String?> sendChatAudioRest({
+    required int targetId,
+    required int chatType,
+    required String filePath,
+    required int durationSeconds,
+    int? optimisticLocalId,
+  }) async {
+    final isGroup = chatType == 2;
+    _startLoading();
+    try {
+      final up = await _api.uploadAudio(filePath);
+      final url = up.data?.fileUrl;
+      if (!up.isSuccess || url == null || url.trim().isEmpty) {
+        _error =
+            up.message.isNotEmpty ? up.message : '语音上传失败，请重试。';
+        if (optimisticLocalId != null && optimisticLocalId != 0) {
+          markOutgoingTextSendFailed(optimisticLocalId);
+        }
+        return null;
+      }
+      final trimmed = url.trim();
+      final send = await _api.sendAudioMessage(
+        targetId,
+        trimmed,
+        durationSeconds,
+        isGroup: isGroup,
+      );
+      if (send.isSuccess && send.data != null) {
+        final merged = _normalizeServerMessage(send.data as MessageDTO);
+        _applySentMessage(merged, optimisticLocalId: optimisticLocalId);
+        await loadConversations();
+        return _urlForImAfterRest(merged, trimmed);
+      }
+      _error = send.message.isNotEmpty ? send.message : '语音发送失败。';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return null;
+    } catch (_) {
+      _error = '语音发送失败，请检查网络后重试。';
+      if (optimisticLocalId != null && optimisticLocalId != 0) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return null;
+    } finally {
+      _finishLoading();
+    }
+  }
+
   Future<bool> recallMessage(int messageId) async {
     _startLoading();
     try {
@@ -546,11 +1281,20 @@ class MessageProvider extends ChangeNotifier {
         return false;
       }
 
+      int? previewTargetId;
+      var previewType = 1;
       final index = _messages.indexWhere((message) => message.id == messageId);
       if (index != -1) {
         _messages[index] = _messages[index].copyWith(isRecalled: true);
+        final m = _messages[index];
+        previewType = _resolveConversationType(m);
+        previewTargetId =
+            _resolveConversationTargetId(m, currentUserId: m.fromUserId);
       }
       await loadConversations();
+      if (previewTargetId != null) {
+        refreshConversationPreview(targetId: previewTargetId, type: previewType);
+      }
       return true;
     } catch (_) {
       _error = 'Failed to recall message.';
@@ -566,17 +1310,70 @@ class MessageProvider extends ChangeNotifier {
     int? groupId,
     required String content,
     int msgType = 1,
+    int? optimisticLocalId,
   }) async {
-    return _sendMessageTask(
-      task: () => _api.replyMessage(
+    MessageDTO mergeReplyResult(MessageDTO raw) {
+      final mergedReplyId = raw.replyToMsgId ?? replyToMsgId;
+      return MessageDTO(
+        id: raw.id,
+        msgId: raw.msgId,
+        fromUserId: raw.fromUserId,
+        toUserId: raw.toUserId,
+        groupId: raw.groupId,
+        content: raw.content,
+        msgType: raw.msgType,
+        subType: raw.subType,
+        extra: raw.extra,
+        isRead: raw.isRead,
+        isRecalled: raw.isRecalled,
+        isDeleted: raw.isDeleted,
+        replyToMsgId: mergedReplyId,
+        forwardFromMsgId: raw.forwardFromMsgId,
+        forwardFromUserId: raw.forwardFromUserId,
+        isEdited: raw.isEdited,
+        status: raw.status ?? 1,
+        createdAt: raw.createdAt,
+        fromUserInfo: raw.fromUserInfo,
+      );
+    }
+
+    _startLoading();
+    try {
+      final response = await _api.replyMessage(
         replyToMsgId: replyToMsgId,
         toUserId: toUserId,
         groupId: groupId,
         content: content,
         msgType: msgType,
-      ),
-      fallbackError: 'Failed to send reply.',
-    );
+      );
+      if (response.isSuccess && response.data != null) {
+        final merged = mergeReplyResult(response.data as MessageDTO);
+        if (optimisticLocalId != null) {
+          final replaced =
+              _updateMessageById(optimisticLocalId, (_) => merged);
+          if (!replaced) {
+            _messages = [..._messages, merged];
+          }
+        } else {
+          _messages = [..._messages, merged];
+        }
+        await loadConversations();
+        return true;
+      }
+      _error = response.message;
+      if (optimisticLocalId != null) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return false;
+    } catch (_) {
+      _error = 'Failed to send reply.';
+      if (optimisticLocalId != null) {
+        markOutgoingTextSendFailed(optimisticLocalId);
+      }
+      return false;
+    } finally {
+      _finishLoading();
+    }
   }
 
   Future<bool> editMessage(int messageId, String newContent) async {
@@ -588,11 +1385,20 @@ class MessageProvider extends ChangeNotifier {
         return false;
       }
 
+      int? previewTargetId;
+      var previewType = 1;
       final index = _messages.indexWhere((message) => message.id == messageId);
       if (index != -1) {
         _messages[index] = response.data as MessageDTO;
+        final m = _messages[index];
+        previewType = _resolveConversationType(m);
+        previewTargetId =
+            _resolveConversationTargetId(m, currentUserId: m.fromUserId);
       }
       await loadConversations();
+      if (previewTargetId != null) {
+        refreshConversationPreview(targetId: previewTargetId, type: previewType);
+      }
       return true;
     } catch (_) {
       _error = 'Failed to edit message.';
@@ -631,6 +1437,11 @@ class MessageProvider extends ChangeNotifier {
   Future<bool> markAsRead(int fromUserId) async {
     try {
       final response = await _api.markAsRead(fromUserId);
+      if (response.isSuccess) {
+        _setConversationUnread(fromUserId, 1, 0);
+        _sortConversationsInternal();
+        notifyListeners();
+      }
       return response.isSuccess;
     } catch (_) {
       return false;
@@ -718,6 +1529,94 @@ class MessageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 进入聊天页时调用：去掉其他会话的缓存行，仅保留本会话未同步到服务端的本地行（负 [MessageDTO.id]），
+  /// 避免退出再进或切换会话后发送失败/发送中的气泡消失。
+  void retainEphemeralMessagesForChat(int targetId, int type) {
+    _messages = _messages
+        .where(
+          (m) =>
+              m.id != null &&
+              m.id! < 0 &&
+              _messageBelongsToConversation(m, targetId, type),
+        )
+        .toList();
+    notifyListeners();
+  }
+
+  /// 与远端第 1 页历史合并仍保留在内存中的本地行（发送中、发送失败）。
+  /// 接口分页多为「最新在前」，此处统一为升序：旧消息在上、最新在下。
+  List<MessageDTO> _mergeHistoryPage1WithPreservedLocals(
+    List<MessageDTO> serverPage, {
+    required int conversationTargetId,
+    required int conversationType,
+  }) {
+    final preserved = _messages
+        .where(
+          (m) =>
+              m.id != null &&
+              m.id! < 0 &&
+              _messageBelongsToConversation(
+                m,
+                conversationTargetId,
+                conversationType,
+              ),
+        )
+        .toList();
+
+    final serverNorm = serverPage.map(_normalizeServerMessage).toList();
+    final combined = [...serverNorm, ...preserved];
+    if (combined.isEmpty) {
+      return combined;
+    }
+    final originalOrder = <MessageDTO, int>{};
+    for (var i = 0; i < combined.length; i++) {
+      originalOrder[combined[i]] = i;
+    }
+
+    return List<MessageDTO>.from(combined)
+      ..sort((a, b) {
+        final c = _compareMessagesForSort(a, b);
+        if (c != 0) {
+          return c;
+        }
+        return (originalOrder[a] ?? 0).compareTo(originalOrder[b] ?? 0);
+      });
+  }
+
+  /// 升序：时间早的在前，适合 ListView 顶部→底部为旧→新。
+  int _compareMessagesForSort(MessageDTO a, MessageDTO b) {
+    final ma = ChatDateFormat.parseToMillis(a.createdAt);
+    final mb = ChatDateFormat.parseToMillis(b.createdAt);
+    if (ma != null && mb != null) {
+      final cmp = ma.compareTo(mb);
+      if (cmp != 0) {
+        return cmp;
+      }
+    } else {
+      final sa = (a.createdAt ?? '').trim();
+      final sb = (b.createdAt ?? '').trim();
+      if (sa.isNotEmpty || sb.isNotEmpty) {
+        final sc = sa.compareTo(sb);
+        if (sc != 0) {
+          return sc;
+        }
+      }
+    }
+
+    final ia = a.id;
+    final ib = b.id;
+    if (ia != null && ib != null && ia != ib) {
+      return ia.compareTo(ib);
+    }
+    if (ia != null && ib == null) {
+      return -1;
+    }
+    if (ia == null && ib != null) {
+      return 1;
+    }
+    return 0;
+  }
+
   void removeMessagesLocal(Iterable<int> messageIds) {
     final ids = messageIds.toSet();
     if (ids.isEmpty) {
@@ -729,24 +1628,724 @@ class MessageProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _insertMessage(MessageDTO message) {
+  /// App [MessageDTO.msgType]: 2 image, 3 voice, 4 video.
+  bool _isAppMediaMsgType(int? msgType) {
+    final t = msgType ?? 0;
+    return t >= 2 && t <= 4;
+  }
+
+  /// 与乐观行合并（仅 Sending / Failed）。已 REST 送达（status==1）的媒体 IM 回显由
+  /// [_isMediaEchoDuplicateOfConfirmedOutgoing] 吞并，避免把业务 id 换成 IM id。
+  int? _tryMergeOptimisticOutgoing(MessageDTO incoming, int? currentUserId) {
+    if (currentUserId == null) {
+      return null;
+    }
+    if (incoming.fromUserId != currentUserId) {
+      return null;
+    }
+
+    final incomingType = incoming.msgType ?? 1;
+    final incomingContent = (incoming.content ?? '').trim();
+    if (incomingContent.isEmpty) {
+      return null;
+    }
+
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (m.id == null) {
+        continue;
+      }
+      final st = m.status;
+      if (st == 1) {
+        continue;
+      }
+      if (st != 0 && st != 2) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != incomingType) {
+        continue;
+      }
+      if (m.fromUserId != currentUserId) {
+        continue;
+      }
+      if (!_sameConversationForMerge(m, incoming)) {
+        continue;
+      }
+      if (incomingType == 1) {
+        if ((m.content ?? '').trim() != incomingContent) {
+          continue;
+        }
+      } else {
+        if (!_mediaPathsRelate(m.content, incoming.content)) {
+          continue;
+        }
+      }
+      return i;
+    }
+    return null;
+  }
+
+  bool _sameConversationForMerge(MessageDTO a, MessageDTO b) {
+    final ga = a.groupId;
+    final gb = b.groupId;
+    if (ga != null || gb != null) {
+      return ga != null && gb != null && ga == gb;
+    }
+    return (a.toUserId == b.toUserId && a.fromUserId == b.fromUserId) ||
+        (a.toUserId == b.fromUserId && a.fromUserId == b.toUserId);
+  }
+
+  int? _findFailedOptimisticText({
+    required int targetId,
+    required int type,
+    required String content,
+    int? fromUserId,
+  }) {
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (m.id == null || m.id! >= 0) {
+        continue;
+      }
+      if (m.status != 2) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != 1) {
+        continue;
+      }
+      if ((m.content ?? '').trim() != content) {
+        continue;
+      }
+      if (fromUserId != null && m.fromUserId != fromUserId) {
+        continue;
+      }
+      if (type == 2) {
+        if (m.groupId != targetId) {
+          continue;
+        }
+      } else {
+        if (m.toUserId != targetId) {
+          continue;
+        }
+      }
+      return i;
+    }
+    return null;
+  }
+
+  int? _findFailedOptimisticMedia({
+    required int targetId,
+    required int type,
+    required int msgType,
+    required String content,
+    int? fromUserId,
+  }) {
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (m.id == null || m.id! >= 0) {
+        continue;
+      }
+      if (m.status != 2) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != msgType) {
+        continue;
+      }
+      if ((m.content ?? '').trim() != content) {
+        continue;
+      }
+      if (fromUserId != null && m.fromUserId != fromUserId) {
+        continue;
+      }
+      if (type == 2) {
+        if (m.groupId != targetId) {
+          continue;
+        }
+      } else {
+        if (m.toUserId != targetId) {
+          continue;
+        }
+      }
+      return i;
+    }
+    return null;
+  }
+
+  int? _findPendingOptimisticForSendResult({
+    String? content,
+    int? hintMsgType,
+    int? fromUserId,
+  }) {
+    final ht = hintMsgType ?? 1;
+    if (ht != 1) {
+      for (var i = _messages.length - 1; i >= 0; i--) {
+        final m = _messages[i];
+        if (m.id == null || m.id! >= 0) {
+          continue;
+        }
+        if ((m.status ?? 0) != 0) {
+          continue;
+        }
+        if ((m.msgType ?? 1) != ht) {
+          continue;
+        }
+        if (fromUserId != null && m.fromUserId != fromUserId) {
+          continue;
+        }
+        final inc = (content ?? '').trim();
+        if (inc.isNotEmpty &&
+            !_mediaPathsRelate(m.content, content)) {
+          continue;
+        }
+        return i;
+      }
+      return null;
+    }
+
+    final trimmed = (content ?? '').trim();
+    int? found;
+    for (var i = 0; i < _messages.length; i++) {
+      final m = _messages[i];
+      if (m.id == null || m.id! >= 0) {
+        continue;
+      }
+      if ((m.status ?? 0) != 0) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != 1) {
+        continue;
+      }
+      if (fromUserId != null && m.fromUserId != fromUserId) {
+        continue;
+      }
+      if (trimmed.isNotEmpty && (m.content ?? '').trim() != trimmed) {
+        continue;
+      }
+      found = i;
+    }
+    return found;
+  }
+
+  bool _mediaPathsRelate(String? a, String? b) {
+    final x = (a ?? '').trim();
+    final y = (b ?? '').trim();
+    if (x.isEmpty || y.isEmpty) {
+      return false;
+    }
+    if (x == y) {
+      return true;
+    }
+    return _mediaBasename(x) == _mediaBasename(y) &&
+        _mediaBasename(x).isNotEmpty;
+  }
+
+  String _mediaBasename(String p) {
+    final u = p.replaceAll('\\', '/');
+    final i = u.lastIndexOf('/');
+    return i < 0 ? u : u.substring(i + 1);
+  }
+
+  /// IM 发送成功回调时，REST 已先把乐观项换成正 id，找不到 pending 时若仅匹配到一条近期已送达文本则吞掉重复 ack。
+  bool _swallowNearDuplicateSendAck({String? content, int? fromUserId}) {
+    if (fromUserId == null) {
+      return false;
+    }
+    final trimmed = (content ?? '').trim();
+    if (trimmed.isEmpty) {
+      return false;
+    }
+    var count = 0;
+    for (var i = _messages.length - 1;
+        i >= 0 && i >= _messages.length - 3;
+        i--) {
+      final m = _messages[i];
+      if (m.fromUserId != fromUserId) {
+        continue;
+      }
+      if (m.id == null || m.id! <= 0) {
+        continue;
+      }
+      if ((m.status ?? 1) != 1) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != 1) {
+        continue;
+      }
+      if ((m.content ?? '').trim() != trimmed) {
+        continue;
+      }
+      count++;
+    }
+    return count == 1;
+  }
+
+  /// IM 媒体发送成功回执：REST 已把同一媒体行换成正 id 且 status==1 时，吞掉 ack，避免走
+  /// [onSendAck] 的 [receiveIncomingMessage] 插第二条。
+  bool _swallowNearDuplicateMediaSendAck({
+    String? content,
+    int? hintMsgType,
+    int? fromUserId,
+  }) {
+    if (fromUserId == null) {
+      return false;
+    }
+    if (!_isAppMediaMsgType(hintMsgType)) {
+      return false;
+    }
+    final mt = hintMsgType!;
+    final inc = (content ?? '').trim();
+    if (inc.isEmpty) {
+      return false;
+    }
+    var count = 0;
+    for (var i = _messages.length - 1;
+        i >= 0 && i >= _messages.length - 5;
+        i--) {
+      final m = _messages[i];
+      if (m.fromUserId != fromUserId) {
+        continue;
+      }
+      if (m.id == null || m.id! <= 0) {
+        continue;
+      }
+      if ((m.status ?? 1) != 1) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != mt) {
+        continue;
+      }
+      if (!_mediaPathsRelate(m.content, content)) {
+        continue;
+      }
+      count++;
+    }
+    return count == 1;
+  }
+
+  /// 私聊/群聊：IM 回显把 from 标成别人时，与仍 Sending 的己方乐观行合并。
+  int? _tryMergeMisattributedOutgoingEcho(
+    MessageDTO incoming,
+    int? currentUserId,
+  ) {
+    if (currentUserId == null) {
+      return null;
+    }
+    if ((incoming.msgType ?? 1) != 1) {
+      return null;
+    }
+    final inc = (incoming.content ?? '').trim();
+    if (inc.isEmpty) {
+      return null;
+    }
+    if (incoming.fromUserId == currentUserId) {
+      return null;
+    }
+
+    final int? gIn = incoming.groupId;
+    if (gIn != null) {
+      for (var i = _messages.length - 1; i >= 0; i--) {
+        final m = _messages[i];
+        if (m.id == null) {
+          continue;
+        }
+        if (m.fromUserId != currentUserId) {
+          continue;
+        }
+        if (m.groupId != gIn) {
+          continue;
+        }
+        if ((m.msgType ?? 1) != 1) {
+          continue;
+        }
+        if ((m.content ?? '').trim() != inc) {
+          continue;
+        }
+        final st = m.status;
+        if (st == 1) {
+          continue;
+        }
+        if (st != 0 && st != 2) {
+          continue;
+        }
+        return i;
+      }
+      return null;
+    }
+
+    if (incoming.toUserId == null) {
+      return null;
+    }
+
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (m.id == null) {
+        continue;
+      }
+      if (m.fromUserId != currentUserId) {
+        continue;
+      }
+      if (m.toUserId != incoming.toUserId) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != 1) {
+        continue;
+      }
+      if ((m.content ?? '').trim() != inc) {
+        continue;
+      }
+      final st = m.status;
+      if (st == 1) {
+        continue;
+      }
+      if (st != 0 && st != 2) {
+        continue;
+      }
+      return i;
+    }
+    return null;
+  }
+
+  MessageDTO _mergeImEchoKeepingLocalSender({
+    required MessageDTO im,
+    required MessageDTO local,
+  }) {
+    return MessageDTO(
+      id: im.id ?? local.id,
+      msgId: im.msgId ?? local.msgId,
+      fromUserId: local.fromUserId,
+      toUserId: local.toUserId,
+      groupId: local.groupId,
+      content: im.content ?? local.content,
+      msgType: im.msgType ?? local.msgType,
+      subType: im.subType ?? local.subType,
+      extra: im.extra ?? local.extra,
+      isRead: im.isRead ?? local.isRead,
+      isRecalled: im.isRecalled ?? local.isRecalled,
+      isDeleted: local.isDeleted,
+      replyToMsgId: local.replyToMsgId,
+      forwardFromMsgId: local.forwardFromMsgId,
+      forwardFromUserId: local.forwardFromUserId,
+      isEdited: im.isEdited ?? local.isEdited,
+      status: im.status ?? local.status,
+      createdAt: im.createdAt ?? local.createdAt,
+      fromUserInfo: local.fromUserInfo,
+    );
+  }
+
+  /// 己方文本：同会话已有一条「发送成功」且正文一致的行时，忽略本条 IM 回显（避免双行）。
+  bool _hasConfirmedOwnTextDuplicateForEcho(
+    MessageDTO incoming,
+    int currentUserId,
+  ) {
+    if (incoming.fromUserId != currentUserId) {
+      return false;
+    }
+    final inc = (incoming.content ?? '').trim();
+    if (inc.isEmpty) {
+      return false;
+    }
+    final tIn = ChatDateFormat.parseToMillis(incoming.createdAt);
+    final int? gIn = incoming.groupId;
+
+    if (gIn != null) {
+      for (var i = _messages.length - 1;
+          i >= 0 && i >= _messages.length - 20;
+          i--) {
+        final m = _messages[i];
+        if (m.fromUserId != currentUserId) {
+          continue;
+        }
+        if (m.groupId != gIn) {
+          continue;
+        }
+        if ((m.msgType ?? 1) != 1) {
+          continue;
+        }
+        if ((m.content ?? '').trim() != inc) {
+          continue;
+        }
+        if (m.id == null || m.id! <= 0) {
+          continue;
+        }
+        if ((m.status ?? 1) != 1) {
+          continue;
+        }
+        final tM = ChatDateFormat.parseToMillis(m.createdAt);
+        if (tIn != null &&
+            tM != null &&
+            (tIn - tM).abs() > 12000) {
+          continue;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    final peer = incoming.toUserId;
+    if (peer == null) {
+      return false;
+    }
+    for (var i = _messages.length - 1;
+        i >= 0 && i >= _messages.length - 20;
+        i--) {
+      final m = _messages[i];
+      if (m.fromUserId != currentUserId) {
+        continue;
+      }
+      if (m.toUserId != peer) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != 1) {
+        continue;
+      }
+      if ((m.content ?? '').trim() != inc) {
+        continue;
+      }
+      if (m.id == null || m.id! <= 0) {
+        continue;
+      }
+      if ((m.status ?? 1) != 1) {
+        continue;
+      }
+      final tM = ChatDateFormat.parseToMillis(m.createdAt);
+      if (tIn != null &&
+          tM != null &&
+          (tIn - tM).abs() > 12000) {
+        continue;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /// 已 REST/ack 确认的己方消息，在短时间内又被 IM 以「他人消息」或同内容再次插一条的重复。
+  bool _isEchoDuplicateOfConfirmedOutgoing(
+    MessageDTO incoming,
+    int? currentUserId,
+  ) {
+    if (currentUserId == null) {
+      return false;
+    }
+    if (_isAppMediaMsgType(incoming.msgType)) {
+      return _isMediaEchoDuplicateOfConfirmedOutgoing(incoming, currentUserId);
+    }
+    if ((incoming.msgType ?? 1) != 1) {
+      return false;
+    }
+    final inc = (incoming.content ?? '').trim();
+    if (inc.isEmpty) {
+      return false;
+    }
+
+    /// REST 已把乐观项原位换成正式 id 后，IM 再以「己方」推同内容第二条（id 常与服务器不一致），
+    /// 必须吞掉，否则会与 [_tryMergeOptimisticOutgoing]（只合 status 0/2）形成双行。
+    if (incoming.fromUserId == currentUserId) {
+      return _hasConfirmedOwnTextDuplicateForEcho(incoming, currentUserId);
+    }
+
+    final tIn = ChatDateFormat.parseToMillis(incoming.createdAt);
+    final int? gIn = incoming.groupId;
+
+    if (gIn != null) {
+      for (var i = _messages.length - 1;
+          i >= 0 && i >= _messages.length - 20;
+          i--) {
+        final m = _messages[i];
+        if (m.fromUserId != currentUserId) {
+          continue;
+        }
+        if (m.groupId != gIn) {
+          continue;
+        }
+        if ((m.msgType ?? 1) != 1) {
+          continue;
+        }
+        if ((m.content ?? '').trim() != inc) {
+          continue;
+        }
+        if (m.id == null || m.id! <= 0) {
+          continue;
+        }
+        if ((m.status ?? 1) != 1) {
+          continue;
+        }
+        final tM = ChatDateFormat.parseToMillis(m.createdAt);
+        if (tIn != null &&
+            tM != null &&
+            (tIn - tM).abs() > 12000) {
+          continue;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    final peer = incoming.toUserId;
+    if (peer == null) {
+      return false;
+    }
+    for (var i = _messages.length - 1;
+        i >= 0 && i >= _messages.length - 20;
+        i--) {
+      final m = _messages[i];
+      if (m.fromUserId != currentUserId) {
+        continue;
+      }
+      if (m.toUserId != peer) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != 1) {
+        continue;
+      }
+      if ((m.content ?? '').trim() != inc) {
+        continue;
+      }
+      if (m.id == null || m.id! <= 0) {
+        continue;
+      }
+      if ((m.status ?? 1) != 1) {
+        continue;
+      }
+      final tM = ChatDateFormat.parseToMillis(m.createdAt);
+      if (tIn != null &&
+          tM != null &&
+          (tIn - tM).abs() > 12000) {
+        continue;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /// 媒体：己方已有一条 REST 落库且 status==1 的同类型同 URL（或本地路径相关）行时，
+  /// 忽略 IM 再推来的回显（无论 from 是否被标成己方），避免双气泡。
+  bool _isMediaEchoDuplicateOfConfirmedOutgoing(
+    MessageDTO incoming,
+    int currentUserId,
+  ) {
+    final mt = incoming.msgType ?? 1;
+    if (mt < 2 || mt > 4) {
+      return false;
+    }
+    final inc = (incoming.content ?? '').trim();
+    if (inc.isEmpty) {
+      return false;
+    }
+    final tIn = ChatDateFormat.parseToMillis(incoming.createdAt);
+    final int? gIn = incoming.groupId;
+
+    if (gIn != null) {
+      for (var i = _messages.length - 1;
+          i >= 0 && i >= _messages.length - 20;
+          i--) {
+        final m = _messages[i];
+        if (m.fromUserId != currentUserId) {
+          continue;
+        }
+        if (m.groupId != gIn) {
+          continue;
+        }
+        if ((m.msgType ?? 1) != mt) {
+          continue;
+        }
+        if (!_mediaPathsRelate(m.content, incoming.content)) {
+          continue;
+        }
+        if (m.id == null || m.id! <= 0) {
+          continue;
+        }
+        if ((m.status ?? 1) != 1) {
+          continue;
+        }
+        final tM = ChatDateFormat.parseToMillis(m.createdAt);
+        if (tIn != null &&
+            tM != null &&
+            (tIn - tM).abs() > 12000) {
+          continue;
+        }
+        return true;
+      }
+      return false;
+    }
+
+    final peer = incoming.toUserId;
+    if (peer == null) {
+      return false;
+    }
+    for (var i = _messages.length - 1;
+        i >= 0 && i >= _messages.length - 20;
+        i--) {
+      final m = _messages[i];
+      if (m.fromUserId != currentUserId) {
+        continue;
+      }
+      if (m.toUserId != peer) {
+        continue;
+      }
+      if ((m.msgType ?? 1) != mt) {
+        continue;
+      }
+      if (!_mediaPathsRelate(m.content, incoming.content)) {
+        continue;
+      }
+      if (m.id == null || m.id! <= 0) {
+        continue;
+      }
+      if ((m.status ?? 1) != 1) {
+        continue;
+      }
+      final tM = ChatDateFormat.parseToMillis(m.createdAt);
+      if (tIn != null &&
+          tM != null &&
+          (tIn - tM).abs() > 12000) {
+        continue;
+      }
+      return true;
+    }
+    return false;
+  }
+
+  MessageDTO? _insertMessage(MessageDTO message, {int? currentUserId}) {
+    final mergeIndex = _tryMergeOptimisticOutgoing(message, currentUserId);
+    if (mergeIndex != null) {
+      _messages[mergeIndex] = message;
+      return message;
+    }
+
+    final misIdx = _tryMergeMisattributedOutgoingEcho(message, currentUserId);
+    if (misIdx != null) {
+      _messages[misIdx] = _mergeImEchoKeepingLocalSender(
+        im: message,
+        local: _messages[misIdx],
+      );
+      return _messages[misIdx];
+    }
+
+    if (_isEchoDuplicateOfConfirmedOutgoing(message, currentUserId)) {
+      return null;
+    }
+
     final existingIndex = _findMessageIndexById(message.id);
     if (existingIndex != null) {
       _messages[existingIndex] = message;
-      return;
+      return message;
     }
 
     _messages = [..._messages, message];
+    return message;
   }
 
-  void _mergeMessages(List<MessageDTO> messages) {
+  List<MessageDTO?> _mergeMessages(
+    List<MessageDTO> messages, {
+    int? currentUserId,
+  }) {
     final originalOrder = <MessageDTO, int>{};
     for (var i = 0; i < _messages.length; i++) {
       originalOrder[_messages[i]] = i;
     }
 
+    final previews = <MessageDTO?>[];
     for (final message in messages) {
-      _insertMessage(message);
+      previews.add(_insertMessage(message, currentUserId: currentUserId));
     }
 
     final mergedOrder = <MessageDTO, int>{};
@@ -756,23 +2355,16 @@ class MessageProvider extends ChangeNotifier {
 
     _messages = List<MessageDTO>.from(_messages)
       ..sort((a, b) {
-        final aTime = a.createdAt;
-        final bTime = b.createdAt;
-        final canCompare = aTime != null &&
-            aTime.isNotEmpty &&
-            bTime != null &&
-            bTime.isNotEmpty;
-        if (canCompare) {
-          final timeCompare = aTime.compareTo(bTime);
-          if (timeCompare != 0) {
-            return timeCompare;
-          }
+        final c = _compareMessagesForSort(a, b);
+        if (c != 0) {
+          return c;
         }
 
         final aIndex = originalOrder[a] ?? mergedOrder[a] ?? 0;
         final bIndex = originalOrder[b] ?? mergedOrder[b] ?? 0;
         return aIndex.compareTo(bIndex);
       });
+    return previews;
   }
 
   bool _updateMessageById(
@@ -966,7 +2558,11 @@ class MessageProvider extends ChangeNotifier {
     final isPeerInfo =
         currentUserId != null && message.fromUserId != currentUserId;
     if (isPeerInfo) {
-      return message.fromUserInfo?.nickname;
+      final UserDTO? peer = message.fromUserInfo;
+      if (peer == null) {
+        return null;
+      }
+      return ProfileDisplayTexts.displayName(peer);
     }
     return null;
   }
@@ -1013,19 +2609,42 @@ class MessageProvider extends ChangeNotifier {
 
   String _messagePreviewText(MessageDTO message) {
     if (message.isRecalled == true) {
-      return 'Message recalled';
+      return '此消息已撤回';
+    }
+
+    String mediaLine(String label) {
+      if (message.status == 2) {
+        return '[发送失败] $label';
+      }
+      if (message.status == 0) {
+        return '[发送中] $label';
+      }
+      return label;
     }
 
     switch (message.msgType ?? 1) {
       case 2:
-        return '[Image]';
+        return mediaLine('[图片]');
       case 3:
-        return '[Audio]';
+        return mediaLine('[音频]');
       case 4:
-        return '[Video]';
+        return mediaLine('[视频]');
       default:
         final text = (message.content ?? '').trim();
-        return text.isEmpty ? '[Message]' : text;
+        if (text.isEmpty) {
+          return '[消息]';
+        }
+        var line = text;
+        if (message.isEdited == true) {
+          line = '已编辑 · $line';
+        }
+        if (message.status == 2) {
+          return '[发送失败] $line';
+        }
+        if (message.status == 0) {
+          return '[发送中] $line';
+        }
+        return line;
     }
   }
 

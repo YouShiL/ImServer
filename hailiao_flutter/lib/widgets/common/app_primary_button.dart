@@ -18,7 +18,7 @@ class AppPrimaryButton extends StatelessWidget {
     final isDisabled = onPressed == null && !isLoading;
     return SizedBox(
       width: double.infinity,
-      height: CommonTokens.primaryButtonHeight,
+      height: ImDesignTokens.heightButton,
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(

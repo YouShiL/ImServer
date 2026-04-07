@@ -28,6 +28,10 @@ class UserDTO {
   @JsonKey(name: 'signature')
   final String? signature;
 
+  /// 生日，约定 `yyyy-MM-dd`（与后端对齐；暂未返回时可为 null）。
+  @JsonKey(name: 'birthday')
+  final String? birthday;
+
   @JsonKey(name: 'background')
   final String? background;
 
@@ -91,6 +95,7 @@ class UserDTO {
     this.gender,
     this.region,
     this.signature,
+    this.birthday,
     this.background,
     this.onlineStatus,
     this.isVip,

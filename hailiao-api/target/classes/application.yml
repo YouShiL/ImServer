@@ -1,23 +1,37 @@
-server:
-  port: 8082
+# =============================================================================
+# 嗨聊 App API（hailiao-api）— 公共配置（所有 profile 共用）
+# =============================================================================
+# 【单一环境开关】
+#   设置其一即可（APP_ENV 优先）：
+#     APP_ENV=dev | test | prod
+#     或 SPRING_PROFILES_ACTIVE=dev | test | prod
+#   也可启动参数：--spring.profiles.active=prod
+#   未设置时默认：dev
+#
+# 【各 profile 数据源 / Redis / OSS】见 application-dev|test|prod.yml
+#   · dev / test — 已在对应 yml 中写满默认连接，一般无需再设环境变量
+#   · prod — 必须在运行环境注入 DB_*、REDIS_*、OSS_* 等（yml 中无默认值）
+# =============================================================================
 
 spring:
   application:
     name: hailiao-api
+  profiles:
+    active: ${APP_ENV:${SPRING_PROFILES_ACTIVE:dev}}
+
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
+
   servlet:
     multipart:
       enabled: true
       max-file-size: 100MB
       max-request-size: 100MB
+
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://localhost:3306/hailiao?useUnicode=true&characterEncoding=utf-8&characterSetResults=utf8mb4&useSSL=false&serverTimezone=Asia/Shanghai}
-    username: root
-    password: carmi2023_
     druid:
       initial-size: 5
       min-idle: 5
@@ -33,20 +47,13 @@ spring:
       max-pool-prepared-statement-per-connection-size: 20
       filters: stat,wall
       connection-properties: druid.stat.mergeSql=true;druid.stat.slowSqlMillis=5000
+
   jpa:
-    hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
-    show-sql: ${JPA_SHOW_SQL:true}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-        format_sql: true
+
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
-    database: ${REDIS_DATABASE:0}
-    timeout: ${REDIS_TIMEOUT:6000ms}
     lettuce:
       pool:
         max-active: 8
@@ -79,11 +86,3 @@ file:
     allowed-image-types: jpg,jpeg,png,gif,bmp,webp
     allowed-video-types: mp4,avi,mov,wmv,flv,mkv
     allowed-audio-types: mp3,wav,aac,ogg,m4a
-
-oss:
-  endpoint: ${OSS_ENDPOINT:https://oss-cn-hangzhou.aliyuncs.com}
-  access-key-id: ${OSS_ACCESS_KEY_ID:your-access-key-id}
-  access-key-secret: ${OSS_ACCESS_KEY_SECRET:your-access-key-secret}
-  bucket-name: ${OSS_BUCKET_NAME:hailiao-im}
-  domain: ${OSS_DOMAIN:https://hailiao-im.oss-cn-hangzhou.aliyuncs.com}
-  prefix: ${OSS_PREFIX:hailiao}

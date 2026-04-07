@@ -37,14 +37,14 @@ class ChatStatusBanner extends StatelessWidget {
         ),
         child: Container(
           margin: EdgeInsets.fromLTRB(
-            CommonTokens.md,
-            compact ? CommonTokens.xs : CommonTokens.sm,
-            CommonTokens.md,
+            CommonTokens.sm,
+            compact ? CommonTokens.xxs : CommonTokens.xs,
+            CommonTokens.sm,
             0,
           ),
           padding: EdgeInsets.symmetric(
-            horizontal: compact ? CommonTokens.sm : CommonTokens.md,
-            vertical: compact ? CommonTokens.xs : CommonTokens.sm,
+            horizontal: compact ? CommonTokens.xs : CommonTokens.sm,
+            vertical: compact ? CommonTokens.xxs : CommonTokens.sm,
           ),
           decoration: BoxDecoration(
             color: spec.background,
@@ -79,7 +79,9 @@ class ChatStatusBanner extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: ChatUiTokens.statusBannerTitleTextStyle.copyWith(
                         color: ChatUiTokens.statusBannerTitle,
-                        fontWeight: FontWeight.w600,
+                        fontWeight:
+                            compact ? FontWeight.w500 : FontWeight.w600,
+                        fontSize: compact ? 12.5 : null,
                       ),
                     ),
                     if (subtitle != null && subtitle!.trim().isNotEmpty) ...<Widget>[
@@ -88,9 +90,12 @@ class ChatStatusBanner extends StatelessWidget {
                         subtitle!,
                         maxLines: compact ? 1 : 2,
                         overflow: TextOverflow.ellipsis,
-                        style: ChatUiTokens.statusBannerSubtitleTextStyle.copyWith(
-                          color: ChatUiTokens.statusBannerSubtitle,
-                          height: 1.35,
+                        style: ChatUiTokens.statusBannerSubtitleTextStyle
+                            .copyWith(
+                          color: ChatUiTokens.statusBannerSubtitle
+                              .withValues(alpha: compact ? 0.82 : 1),
+                          height: 1.3,
+                          fontSize: compact ? 11.5 : null,
                         ),
                       ),
                     ],

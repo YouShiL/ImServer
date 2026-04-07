@@ -2,8 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:hailiao_flutter/models/group_dto.dart';
 import 'package:hailiao_flutter/models/group_join_request_dto.dart';
 import 'package:hailiao_flutter/providers/group_provider.dart';
-import 'package:hailiao_flutter/services/api_service.dart';
+import 'package:hailiao_flutter/screens/create_group_screen.dart';
+import 'package:hailiao_flutter/screens/search_group_screen.dart';
+import 'package:hailiao_flutter/theme/empty_state_ux_strings.dart';
+import 'package:hailiao_flutter/theme/feedback_ux_strings.dart';
+import 'package:hailiao_flutter/theme/group_ui_tokens.dart';
+import 'package:hailiao_flutter/theme/common_tokens.dart';
+import 'package:hailiao_flutter/theme/ui_tokens.dart';
+import 'package:hailiao_flutter/widgets/profile/profile_circle_avatar.dart';
+import 'package:hailiao_flutter/widgets/shell/im_template_shell.dart';
 import 'package:provider/provider.dart';
+
+String _groupDisplayName(GroupDTO group) {
+  final String n = (group.groupName ?? '').trim();
+  return n.isEmpty ? '未命名群组' : n;
+}
+
 
 class GroupListScreen extends StatefulWidget {
   const GroupListScreen({super.key});
@@ -27,333 +41,124 @@ class _GroupListScreenState extends State<GroupListScreen> {
     await groupProvider.loadMyJoinRequests();
   }
 
-  Future<void> _openCreateGroupDialog() async {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    bool isSubmitting = false;
-    String? error;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> submit() async {
-              if (nameController.text.trim().isEmpty) {
-                setDialogState(() {
-                  error = '请输入群名称';
-                });
-                return;
-              }
-
-              setDialogState(() {
-                isSubmitting = true;
-                error = null;
-              });
-
-              final groupProvider = context.read<GroupProvider>();
-              final success = await groupProvider.createGroup(
-                nameController.text.trim(),
-                descriptionController.text.trim(),
-              );
-
-              if (!mounted) {
-                return;
-              }
-
-              if (success) {
-                Navigator.of(dialogContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('群组已创建')),
-                );
-              } else {
-                setDialogState(() {
-                  error = groupProvider.error ?? '创建群组失败';
-                  isSubmitting = false;
-                });
-              }
-            }
-
-            return AlertDialog(
-              title: const Text('创建群组'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: '群名称',
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: descriptionController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: '群介绍',
-                        alignLabelWithHint: true,
-                      ),
-                    ),
-                    if (error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        error!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('取消'),
-                ),
-                ElevatedButton(
-                  onPressed: isSubmitting ? null : submit,
-                  child: Text(
-                    isSubmitting ? '创建中...' : '创建',
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+  void _openSearchGroupPage() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const SearchGroupScreen()),
     );
   }
 
-  Future<void> _openSearchGroupDialog() async {
-    final groupIdController = TextEditingController();
-    bool isSearching = false;
-    String? error;
-    GroupDTO? group;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> search() async {
-              final keyword = groupIdController.text.trim();
-              if (keyword.isEmpty) {
-                setDialogState(() {
-                  error = '请输入群号';
-                });
-                return;
-              }
-
-              setDialogState(() {
-                isSearching = true;
-                error = null;
-                group = null;
-              });
-
-              try {
-                final response = await ApiService.getGroupByBusinessId(keyword);
-                setDialogState(() {
-                  if (response.isSuccess) {
-                    group = response.data;
-                  } else {
-                    error = response.message;
-                  }
-                });
-              } catch (_) {
-                setDialogState(() {
-                  error = '搜索群组失败';
-                });
-              } finally {
-                setDialogState(() {
-                  isSearching = false;
-                });
-              }
-            }
-
-            return AlertDialog(
-              title: const Text('查找群组'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: groupIdController,
-                      decoration: InputDecoration(
-                        labelText: '群号',
-                        suffixIcon: isSearching
-                            ? const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              )
-                            : IconButton(
-                                onPressed: search,
-                                icon: const Icon(Icons.search),
-                              ),
-                      ),
-                      onSubmitted: (_) => search(),
-                    ),
-                    if (group != null) ...[
-                      const SizedBox(height: 16),
-                      ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              Theme.of(context).primaryColor.withOpacity(0.1),
-                          child: Icon(
-                            Icons.groups,
-                            color: Theme.of(context).primaryColor,
-                          ),
-                        ),
-                        title: Text(group!.groupName ?? '未命名群组'),
-                        subtitle: Text(
-                          [
-                            if ((group!.groupId ?? '').isNotEmpty)
-                              '群号 ${group!.groupId}',
-                            if ((group!.description ?? '').isNotEmpty)
-                              group!.description!,
-                          ].join(' | '),
-                        ),
-                        trailing: ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(dialogContext).pop();
-                            Navigator.pushNamed(
-                              context,
-                              '/group-detail',
-                              arguments: {'groupId': group!.id, 'group': group},
-                            );
-                          },
-                          child: const Text('查看'),
-                        ),
-                      ),
-                    ],
-                    if (error != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        error!,
-                        style: const TextStyle(color: Colors.red, fontSize: 13),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('关闭'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+  void _openCreateGroupPage() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const CreateGroupScreen()),
     );
   }
 
-  Widget _buildSearchCard() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+  Widget _buildTopActions() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        ImTemplateShell.pagePaddingH,
+        0,
+        ImTemplateShell.pagePaddingH,
+        4,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  '查找群组',
-                  style: TextStyle(
-                    color: Color(0xFF333333),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 6),
-                Text(
-                  '输入群号，快速查看群资料并发起入群申请',
-                  style: TextStyle(color: Color(0xFF666666), fontSize: 13),
-                ),
-              ],
+          Text(
+            '搜索群号加入，或创建新群聊',
+            style: ImTemplateShell.pageSubtitleText(context).copyWith(
+              color: GroupUiTokens.chipText,
             ),
           ),
-          const SizedBox(width: 12),
-          ElevatedButton.icon(
-            onPressed: _openSearchGroupDialog,
-            icon: const Icon(Icons.search),
-            label: const Text('查群'),
+          const SizedBox(height: ImTemplateShell.elementGapMd),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _openSearchGroupPage,
+                  icon: const Icon(Icons.search_rounded, size: 20),
+                  label: const Text('搜索群号'),
+                  style: UiTokens.outlinedSecondary(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: ImTemplateShell.elementGapMd),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: _openCreateGroupPage,
+                  icon: const Icon(Icons.add_rounded, size: 20),
+                  label: const Text('创建群聊'),
+                  style: UiTokens.filledPrimary(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildGroupTile(GroupDTO group) {
-    final meta = <String>[
-      if ((group.groupId ?? '').isNotEmpty) '群号 ${group.groupId}',
-      if (group.memberCount != null) '${group.memberCount}人',
-      if (group.maxMembers != null) '上限 ${group.maxMembers}',
-      if (group.isMute == true) '已静音',
+  Widget _buildGroupTile(GroupDTO group, {bool showDivider = true}) {
+    final String titleText = _groupDisplayName(group);
+    final parts = <String>[
+      if ((group.groupId ?? '').trim().isNotEmpty) '群号 ${group.groupId}',
+      if (group.memberCount != null) '${group.memberCount} 人',
+      if ((group.description ?? '').trim().isNotEmpty) group.description!.trim(),
     ];
+    if (group.isMute == true) {
+      parts.add('全体禁言');
+    }
+    final String subLine =
+        parts.isEmpty ? '群聊' : parts.take(3).join(' · ');
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+          leading: ProfileCircleAvatar(
+            title: titleText,
+            avatarRaw: group.avatar,
+            size: 50,
+            fontSize: 18,
           ),
-        ],
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Theme.of(context).primaryColor.withOpacity(0.1),
-          child: Icon(Icons.groups, color: Theme.of(context).primaryColor),
-        ),
-        title: Text(
-          group.groupName ?? '未命名群组',
-          style: const TextStyle(
-            color: Color(0xFF333333),
-            fontWeight: FontWeight.w600,
+          title: Text(
+            titleText,
+            style: TextStyle(
+              color: UiTokens.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
+            ),
           ),
-        ),
-        subtitle: Text(
-          [
-            if (meta.isNotEmpty) meta.join(' | '),
-            if ((group.description ?? '').isNotEmpty) group.description!,
-          ].join('\n'),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            color: Color(0xFF666666),
-            fontSize: 13,
+          subtitle: Text(
+            subLine,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: UiTokens.textSecondary,
+              fontSize: 13,
+            ),
           ),
+          trailing: Icon(
+            Icons.chevron_right_rounded,
+            color: UiTokens.textSecondary.withValues(alpha: 0.55),
+          ),
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              '/group-detail',
+              arguments: <String, dynamic>{
+                'groupId': group.id,
+                'group': group,
+              },
+            );
+          },
         ),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () {
-          Navigator.pushNamed(
-            context,
-            '/group-detail',
-            arguments: {'groupId': group.id, 'group': group},
-          );
-        },
-      ),
+        if (showDivider)
+          Divider(height: 1, indent: 62, color: UiTokens.lineSubtle),
+      ],
     );
   }
 
@@ -366,14 +171,31 @@ class _GroupListScreenState extends State<GroupListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('撤回申请'),
-          content: const Text('确定撤回这条入群申请吗？'),
+          shape: ImTemplateShell.dialogShape,
+          insetPadding: ImTemplateShell.dialogInsetPadding,
+          title: const ImDialogTitle('撤回申请'),
+          titlePadding: ImTemplateShell.dialogTitlePadding,
+          contentPadding: ImTemplateShell.dialogContentPadding,
+          content: Text(
+            '确定撤回这条入群申请吗？',
+            style: TextStyle(
+              color: UiTokens.textSecondary,
+              fontSize: 15,
+              height: 1.45,
+            ),
+          ),
+          actionsPadding: ImTemplateShell.dialogActionsPadding,
+          actionsAlignment: MainAxisAlignment.end,
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('取消'),
+              child: Text(
+                '取消',
+                style: TextStyle(color: UiTokens.textSecondary),
+              ),
             ),
-            ElevatedButton(
+            FilledButton(
+              style: UiTokens.filledPrimary(),
               onPressed: () => Navigator.of(context).pop(true),
               child: const Text('确认撤回'),
             ),
@@ -404,7 +226,10 @@ class _GroupListScreenState extends State<GroupListScreen> {
     );
   }
 
-  Widget _buildJoinRequestCard(GroupJoinRequestDTO request) {
+  Widget _buildJoinRequestCard(
+    GroupJoinRequestDTO request, {
+    bool showBottomDivider = true,
+  }) {
     final statusText = switch (request.status) {
       1 => '已通过',
       2 => '已拒绝',
@@ -418,108 +243,150 @@ class _GroupListScreenState extends State<GroupListScreen> {
       _ => const Color(0xFFEF6C00),
     };
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  request.groupInfo?.groupName ?? '未知群组',
-                  style: const TextStyle(
-                    color: Color(0xFF333333),
-                    fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      request.groupInfo == null
+                          ? '未命名群组'
+                          : _groupDisplayName(request.groupInfo!),
+                      style: TextStyle(
+                        color: UiTokens.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
                   ),
-                ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      statusText,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  statusText,
+              if ((request.groupInfo?.groupId ?? '').isNotEmpty ||
+                  (request.message ?? '').isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  [
+                    if ((request.groupInfo?.groupId ?? '').isNotEmpty)
+                      '群号 ${request.groupInfo!.groupId}',
+                    if ((request.message ?? '').isNotEmpty)
+                      '申请信息：${request.message!}',
+                  ].join(' · '),
                   style: TextStyle(
-                    color: statusColor,
+                    color: UiTokens.textSecondary,
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Wrap(
+                  spacing: 4,
+                  children: [
+                    if (request.status == 0)
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: UiTokens.textSecondary,
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                        ),
+                        onPressed: () => _withdrawJoinRequest(request),
+                        child: const Text(
+                          '撤回申请',
+                          style: TextStyle(fontSize: 13),
+                        ),
+                      ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: UiTokens.primaryBlue,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                      onPressed: request.groupInfo?.id == null
+                          ? null
+                          : () {
+                              Navigator.pushNamed(
+                                context,
+                                '/group-detail',
+                                arguments: {
+                                  'groupId': request.groupInfo!.id,
+                                  'group': request.groupInfo,
+                                },
+                              );
+                            },
+                      child: const Text(
+                        '群信息',
+                        style: TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            [
-              if ((request.groupInfo?.groupId ?? '').isNotEmpty)
-                '群号 ${request.groupInfo!.groupId}',
-              if ((request.message ?? '').isNotEmpty) '申请信息：${request.message!}',
-            ].join(' | '),
-            style: const TextStyle(color: Color(0xFF666666), fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Wrap(
-              spacing: 8,
-              children: [
-                if (request.status == 0)
-                  TextButton(
-                    onPressed: () => _withdrawJoinRequest(request),
-                    child: const Text('撤回申请'),
-                  ),
-                TextButton(
-                  onPressed: request.groupInfo?.id == null
-                      ? null
-                      : () {
-                          Navigator.pushNamed(
-                            context,
-                            '/group-detail',
-                            arguments: {
-                              'groupId': request.groupInfo!.id,
-                              'group': request.groupInfo,
-                            },
-                          );
-                        },
-                  child: const Text('查看群详情'),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+        if (showBottomDivider)
+          Divider(height: 1, color: UiTokens.lineSubtle),
+      ],
     );
   }
 
-  Widget _buildSectionTitle(String title, {String? subtitle}) {
+  Widget _buildSectionTitle(
+    String title, {
+    String? subtitle,
+    bool secondary = false,
+  }) {
+    final topPad = secondary ? ImTemplateShell.sectionGap : 16.0;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+      padding: EdgeInsets.fromLTRB(
+        ImTemplateShell.pagePaddingH,
+        topPad,
+        ImTemplateShell.pagePaddingH,
+        secondary ? 8 : 10,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Color(0xFF333333),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
+            style: TextStyle(
+              color: CommonTokens.textPrimary,
+              fontSize: secondary ? 15 : 16,
+              fontWeight: FontWeight.w700,
             ),
           ),
-          if (subtitle != null) ...[
+          if (subtitle != null && subtitle.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               subtitle,
-              style: const TextStyle(
-                color: Color(0xFF666666),
+              style: TextStyle(
+                color: CommonTokens.textSecondary,
                 fontSize: 13,
+                fontWeight: FontWeight.w400,
               ),
             ),
           ],
@@ -537,61 +404,136 @@ class _GroupListScreenState extends State<GroupListScreen> {
         groupProvider.myJoinRequests.isEmpty;
 
     return Scaffold(
+      backgroundColor: UiTokens.backgroundGray,
       appBar: AppBar(
         title: const Text('群组'),
-        actions: [
-          IconButton(
-            onPressed: _openSearchGroupDialog,
-            icon: const Icon(Icons.search),
-            tooltip: '查找群组',
-          ),
-          IconButton(
-            onPressed: _openCreateGroupDialog,
-            icon: const Icon(Icons.add),
-            tooltip: '创建群组',
-          ),
-        ],
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        backgroundColor: UiTokens.backgroundGray,
+        foregroundColor: UiTokens.textPrimary,
+        surfaceTintColor: Colors.transparent,
       ),
       body: isInitialLoading
           ? Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).primaryColor,
+                color: UiTokens.primaryBlue,
               ),
             )
           : RefreshIndicator(
               onRefresh: _loadData,
               child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  _buildSearchCard(),
-                  _buildSectionTitle(
-                    '我的入群申请',
-                    subtitle: '可以在这里查看审核进度',
-                  ),
-                  if (groupProvider.myJoinRequests.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      child: Text(
-                        '暂无入群申请',
-                        style: TextStyle(color: Color(0xFF9E9E9E)),
-                      ),
-                    )
-                  else
-                    ...groupProvider.myJoinRequests.map(_buildJoinRequestCard),
+                  const SizedBox(height: 8),
+                  _buildTopActions(),
                   _buildSectionTitle(
                     '我的群组',
-                    subtitle: '已加入和已创建的群都在这里',
+                    subtitle: '群名、人数与状态与「群信息」一致',
                   ),
-                  if (groupProvider.groups.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                      child: Text(
-                        '暂无群组',
-                        style: TextStyle(color: Color(0xFF9E9E9E)),
-                      ),
-                    )
-                  else
-                    ...groupProvider.groups.map(_buildGroupTile),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ImTemplateShell.pagePaddingH,
+                    ),
+                    child: groupProvider.groups.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 28),
+                            child: Column(
+                              children: <Widget>[
+                                Icon(
+                                  Icons.groups_outlined,
+                                  size: 40,
+                                  color: UiTokens.textSecondary
+                                      .withValues(alpha: 0.75),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  EmptyStateUxStrings.groupListEmptyTitle,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: UiTokens.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  EmptyStateUxStrings.groupListEmptyDetail,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: UiTokens.textSecondary,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : DecoratedBox(
+                            decoration: UiTokens.groupedListDecoration(),
+                            child: Column(
+                              children: [
+                                for (int i = 0;
+                                    i < groupProvider.groups.length;
+                                    i++)
+                                  _buildGroupTile(
+                                    groupProvider.groups[i],
+                                    showDivider:
+                                        i < groupProvider.groups.length - 1,
+                                  ),
+                              ],
+                            ),
+                          ),
+                  ),
+                  _buildSectionTitle(
+                    '我的入群申请',
+                    subtitle: '审核进度',
+                    secondary: true,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ImTemplateShell.pagePaddingH,
+                    ),
+                    child: groupProvider.myJoinRequests.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Text(
+                                  EmptyStateUxStrings
+                                      .groupMyJoinRequestsEmptyTitle,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: UiTokens.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  EmptyStateUxStrings
+                                      .groupMyJoinRequestsEmptyDetail,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: UiTokens.textSecondary,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Column(
+                            children: [
+                              for (int i = 0;
+                                  i < groupProvider.myJoinRequests.length;
+                                  i++)
+                                _buildJoinRequestCard(
+                                  groupProvider.myJoinRequests[i],
+                                  showBottomDivider:
+                                      i < groupProvider.myJoinRequests.length - 1,
+                                ),
+                            ],
+                          ),
+                  ),
                 ],
               ),
             ),

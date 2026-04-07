@@ -1,18 +1,29 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:hailiao_flutter/models/conversation_dto.dart';
 import 'package:hailiao_flutter/models/friend_dto.dart';
 import 'package:hailiao_flutter/models/friend_request_dto.dart';
-import 'package:hailiao_flutter/models/user_dto.dart';
-import 'package:hailiao_flutter/providers/auth_provider.dart';
 import 'package:hailiao_flutter/providers/friend_provider.dart';
 import 'package:hailiao_flutter/providers/message_provider.dart';
-import 'package:hailiao_flutter/screens/qrcode_scanner_screen.dart';
-import 'package:hailiao_flutter/services/api_service.dart';
+import 'package:hailiao_flutter/screens/add_friend_screen.dart';
+import 'package:hailiao_flutter/screens/create_group_screen.dart';
+import 'package:hailiao_flutter/screens/group_chat_screen.dart';
+import 'package:hailiao_flutter/screens/group_list_screen.dart';
+import 'package:hailiao_flutter/screens/me_screen.dart';
+import 'package:hailiao_flutter/theme/common_tokens.dart';
 import 'package:hailiao_flutter/theme/conversation_ui_tokens.dart';
+import 'package:hailiao_flutter/theme/empty_state_ux_strings.dart';
+import 'package:hailiao_flutter/theme/search_ux_strings.dart';
+import 'package:hailiao_flutter/utils/conversation_time_format.dart';
+import 'package:hailiao_flutter/utils/network_avatar_url.dart';
 import 'package:hailiao_flutter/widgets/chat/conversation_empty_state.dart';
 import 'package:hailiao_flutter/widgets/chat/conversation_list_item.dart';
-import 'package:hailiao_flutter/widgets/chat/conversation_search_bar.dart';
-import 'package:hailiao_flutter/widgets/chat/conversation_stats_panel.dart';
+import 'package:hailiao_flutter/widgets/common/im_feedback.dart';
+import 'package:hailiao_flutter/widgets/common/wx_search_bar.dart';
+import 'package:hailiao_flutter/widgets/profile/profile_display_utils.dart';
+import 'package:hailiao_flutter/widgets/profile/profile_list_avatar.dart';
+import 'package:hailiao_flutter/theme/ui_tokens.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -27,8 +38,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _conversationSearchController =
       TextEditingController();
   String _conversationQuery = '';
-  String _conversationFilter = 'all';
-  String _conversationSort = 'smart';
+
+  static const double _homeEdgePad = 12;
+
+  /// 会话 tab 全空列表（与筛选无关）。
+  static const String _conversationEmptyTitle = '暂无会话';
+  static const String _conversationEmptyDetail = '去添加好友或发起聊天';
 
   @override
   void initState() {
@@ -68,36 +83,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _updatePrivacySetting(
-    String key,
-    bool value, {
-    required String successMessage,
-  }) async {
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.updateUserInfo({key: value});
-
-    if (!mounted) {
-      return;
-    }
-
-    final message = success
-        ? successMessage
-        : (authProvider.error ?? '设置更新失败');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
-  }
-
-  String _statusTextFromUser(UserDTO? user) {
-    if (user == null) {
-      return '状态未知';
-    }
-    if (user.showOnlineStatus == false) {
-      return '在线状态已隐藏';
-    }
-    return (user.onlineStatus ?? 0) == 1 ? '在线' : '离线';
-  }
-
   String _statusTextFromFriend(FriendDTO friend) {
     final info = friend.friendUserInfo;
     if (info?.showOnlineStatus == false) {
@@ -110,376 +95,326 @@ class _HomeScreenState extends State<HomeScreen> {
     return isOnline ? const Color(0xFF22C55E) : const Color(0xFF9E9E9E);
   }
 
-  Widget _buildAvatar({double size = 56}) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size / 2),
-        color: Theme.of(context).primaryColor.withOpacity(0.1),
+  void _openAddFriendPage() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const AddFriendScreen(),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(size / 2),
-        child: Image.asset(
-          'assets/images/default_avatar.png',
-          fit: BoxFit.cover,
+    );
+  }
+
+  void _openCreateGroupPage() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const CreateGroupScreen(),
+      ),
+    );
+  }
+
+  /// 「+」锚点：菜单左缘与顶缘（相对 Overlay），须位于按钮下沿以下以免遮挡。
+  static const double _plusMenuRightMargin = 12;
+  static const double _plusMenuGapBelow = 8;
+  static const double _plusMenuWidth = 156;
+  static const double _plusMenuRowHeight = 44;
+  static const double _plusMenuRadius = 12;
+  static const double _plusMenuCaretRight = 16;
+  static const double _plusMenuCaretTop = -6;
+
+  /// 会话页「+」锚点菜单：深色浮层（IM 操作层语义）。
+  static const Color _plusMenuSurface = Color(0xFF2C2C2E);
+  static Color get _plusMenuIconColor =>
+      Colors.white.withValues(alpha: 0.9);
+  static Color get _plusMenuTextColor =>
+      Colors.white.withValues(alpha: 0.95);
+  static Color get _plusMenuDividerColor =>
+      Colors.white.withValues(alpha: 0.08);
+  static Color get _plusMenuBorderColor =>
+      Colors.white.withValues(alpha: 0.12);
+
+  /// 与原先 [showMenu] 一致的锚点几何：顶缘 = 按钮底 + gap，左缘 = 屏宽 - 右边距 - 菜单宽。
+  ({double left, double top}) _plusMenuAnchorLeftTop(
+    BuildContext anchorContext,
+  ) {
+    final RenderBox button =
+        anchorContext.findRenderObject()! as RenderBox;
+    final OverlayState overlayState =
+        Overlay.of(anchorContext, rootOverlay: true);
+    final RenderBox overlay =
+        overlayState.context.findRenderObject()! as RenderBox;
+    final Size overlaySize = overlay.size;
+    final Offset bottomRight = button.localToGlobal(
+      button.size.bottomRight(Offset.zero),
+      ancestor: overlay,
+    );
+    final double topY = bottomRight.dy + _plusMenuGapBelow;
+    final double left = (overlaySize.width -
+            _plusMenuRightMargin -
+            _plusMenuWidth)
+        .clamp(8.0, overlaySize.width - _plusMenuRightMargin - 48);
+    return (left: left, top: topY);
+  }
+
+  Widget _plusMenuDivider() {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      indent: 12,
+      endIndent: 12,
+      color: _plusMenuDividerColor,
+    );
+  }
+
+  Widget _plusMenuActionRow({
+    required VoidCallback onTap,
+    required IconData icon,
+    required String label,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      splashColor: Colors.white.withValues(alpha: 0.10),
+      highlightColor: Colors.white.withValues(alpha: 0.06),
+      child: SizedBox(
+        height: _plusMenuRowHeight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          child: Row(
+            children: <Widget>[
+              Icon(icon, size: 18, color: _plusMenuIconColor),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: CommonTokens.body.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w400,
+                    color: _plusMenuTextColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCard({required Widget child, EdgeInsetsGeometry? margin}) {
-    return Container(
-      margin: margin ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
-            spreadRadius: 1,
-            blurRadius: 3,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: child,
-    );
-  }
+  Future<void> _showHomePlusMenu(BuildContext anchorContext) async {
+    // 等当前帧与手势结束后再挂上遮罩，避免 pointer up 立刻触发展开即关。
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted || !anchorContext.mounted) {
+      return;
+    }
 
-  Future<void> _openAddFriendDialog() async {
-    final keywordController = TextEditingController();
-    final remarkController = TextEditingController();
-    final messageController = TextEditingController(
-      text: '你好，我想加你为好友。'  
+    final ({double left, double top}) anchor =
+        _plusMenuAnchorLeftTop(anchorContext);
+    final Completer<String?> completer = Completer<String?>();
+    final OverlayState overlay =
+        Overlay.of(anchorContext, rootOverlay: true);
 
-    );
+    late OverlayEntry entry;
+    var menuDismissed = false;
+    void dismiss([String? result]) {
+      if (menuDismissed) {
+        return;
+      }
+      menuDismissed = true;
+      if (!completer.isCompleted) {
+        completer.complete(result);
+      }
+      entry.remove();
+      entry.dispose();
+    }
 
-    String searchType = 'userId';
-    UserDTO? searchedUser;
-    String? dialogError;
-    bool isSearching = false;
-    bool isSubmitting = false;
-
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            Future<void> searchUser() async {
-              final keyword = keywordController.text.trim();
-              if (keyword.isEmpty) {
-                setDialogState(() {
-                  dialogError = '请输入用户号或手机号';
-                });
-                return;
-              }
-
-              setDialogState(() {
-                isSearching = true;
-                dialogError = null;
-                searchedUser = null;
-              });
-
-              try {
-                final response =
-                    await ApiService.searchUser(keyword, type: searchType);
-                setDialogState(() {
-                  if (response.isSuccess) {
-                    searchedUser = response.data;
-                    if (searchedUser != null &&
-                        remarkController.text.trim().isEmpty) {
-                      remarkController.text =
-                          searchedUser!.nickname ?? searchedUser!.userId ?? '';
-                    }
-                  } else {
-                    dialogError = response.message;
-                  }
-                });
-              } catch (_) {
-                setDialogState(() {
-                  dialogError = '搜索失败，请稍后重试';
-                });
-              } finally {
-                setDialogState(() {
-                  isSearching = false;
-                });
-              }
-            }
-
-            Future<void> submitRequest() async {
-              if (searchedUser?.id == null) {
-                setDialogState(() {
-                  dialogError = '请先搜索用户';
-                });
-                return;
-              }
-
-              setDialogState(() {
-                isSubmitting = true;
-                dialogError = null;
-              });
-
-              final friendProvider = context.read<FriendProvider>();
-              final success = await friendProvider.addFriend(
-                searchedUser!.id!,
-                remarkController.text.trim(),
-                message: messageController.text.trim(),
-              );
-
-              if (!mounted) {
-                return;
-              }
-
-              if (success) {
-                Navigator.of(dialogContext).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('好友申请已发送'),
-                  ),
-                );
-              } else {
-                setDialogState(() {
-                  dialogError =
-                      friendProvider.error ?? '发送好友申请失败';
-                });
-              }
-
-              if (mounted) {
-                setDialogState(() {
-                  isSubmitting = false;
-                });
-              }
-            }
-
-            return AlertDialog(
-              title: const Text('添加好友'),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DropdownButtonFormField<String>(
-                      value: searchType,
-                      decoration: const InputDecoration(
-                        labelText: '搜索方式',
+    entry = OverlayEntry(
+      builder: (BuildContext _) {
+        return SizedBox.expand(
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => dismiss(null),
+                  child: const ColoredBox(color: Color(0x14000000)),
+                ),
+              ),
+              Positioned(
+                left: anchor.left,
+                top: anchor.top,
+                width: _plusMenuWidth,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: <Widget>[
+                    Material(
+                      elevation: 8,
+                      shadowColor: Colors.black.withValues(alpha: 0.25),
+                      surfaceTintColor: Colors.transparent,
+                      color: _plusMenuSurface,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(_plusMenuRadius),
+                        side: BorderSide(
+                          color: _plusMenuBorderColor,
+                          width: 0.5,
+                        ),
                       ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'userId',
-                          child: Text('用户号'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'phone',
-                          child: Text('手机号'),
-                        ),
-                      ],
-                      onChanged: isSearching
-                          ? null
-                          : (value) {
-                              if (value != null) {
-                                setDialogState(() {
-                                  searchType = value;
-                                });
-                              }
-                            },
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          _plusMenuActionRow(
+                            onTap: () => dismiss('create_group'),
+                            icon: Icons.group_add_outlined,
+                            label: '发起群聊',
+                          ),
+                          _plusMenuDivider(),
+                          _plusMenuActionRow(
+                            onTap: () => dismiss('add_friend'),
+                            icon: Icons.person_add_alt_1_outlined,
+                            label: '添加朋友',
+                          ),
+                          _plusMenuDivider(),
+                          _plusMenuActionRow(
+                            onTap: () => dismiss('scan'),
+                            icon: Icons.qr_code_scanner_rounded,
+                            label: '扫一扫',
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: keywordController,
-                      decoration: InputDecoration(
-                        labelText: '搜索关键词',
-                        hintText: searchType == 'phone'
-                            ? '请输入手机号'
-                            : '请输入用户号',
-                        suffixIcon: isSearching
-                            ? const Padding(
-                                padding: EdgeInsets.all(12),
-                                child: SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                ),
-                              )
-                            : IconButton(
-                                onPressed: searchUser,
-                                icon: const Icon(Icons.search),
-                              ),
-                      ),
-                      onSubmitted: (_) => searchUser(),
+                    Positioned(
+                      top: _plusMenuCaretTop,
+                      right: _plusMenuCaretRight,
+                      child: const _PlusMenuCaret(color: _plusMenuSurface),
                     ),
-                    if (searchedUser != null) ...[
-                      const SizedBox(height: 16),
-                      _buildSearchUserCard(searchedUser!),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: remarkController,
-                        decoration: const InputDecoration(
-                          labelText: '备注',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: messageController,
-                        maxLines: 3,
-                        decoration: const InputDecoration(
-                          labelText: '验证消息',
-                          alignLabelWithHint: true,
-                        ),
-                      ),
-                    ],
-                    if (dialogError != null) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        dialogError!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: isSubmitting
-                      ? null
-                      : () => Navigator.of(dialogContext).pop(),
-                  child: const Text('取消'),
-                ),
-                ElevatedButton(
-                  onPressed: isSubmitting ? null : submitRequest,
-                  child: Text(
-                    isSubmitting
-                        ? '发送中...'
-                        : '发送申请',
-                  ),
-                ),
-              ],
-            );
-          },
+            ],
+          ),
         );
       },
     );
-  }
 
-  Widget _buildSearchUserCard(UserDTO user) {
-    final isOnline = (user.onlineStatus ?? 0) == 1;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            user.nickname ?? '未设置昵称',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text('用户号：${user.userId ?? '-'}'),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _statusColor(isOnline),
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 6),
-              Text(_statusTextFromUser(user)),
-            ],
-          ),
-          if ((user.signature ?? '').isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              user.signature!,
-              style: const TextStyle(color: Color(0xFF666666)),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  bool _matchesConversationFilter(
-    dynamic conversation,
-    String draftText,
-    bool hasUnread,
-  ) {
-    switch (_conversationFilter) {
-      case 'unread':
-        return hasUnread;
-      case 'draft':
-        return draftText.isNotEmpty;
-      case 'top':
-        return conversation.isTop == true;
-      case 'mute':
-        return conversation.isMute == true;
-      default:
-        return true;
+    overlay.insert(entry);
+    final String? choice = await completer.future;
+    if (!mounted || choice == null) {
+      return;
+    }
+    switch (choice) {
+      case 'create_group':
+        _openCreateGroupPage();
+        break;
+      case 'add_friend':
+        _openAddFriendPage();
+        break;
+      case 'scan':
+        Navigator.pushNamed(context, '/qr-scan');
+        break;
     }
   }
 
-  List<dynamic> _filteredConversations(MessageProvider messageProvider) {
-    final query = _conversationQuery.trim().toLowerCase();
-    final items = messageProvider.conversations.where((conversation) {
-      final hasUnread =
-          conversation.unreadCount != null && conversation.unreadCount! > 0;
-      final draft = messageProvider.getDraft(
-        conversation.targetId,
-        conversation.type,
-      );
-      final draftText = (draft?.trim().isNotEmpty == true
-              ? draft!.trim()
-              : (conversation.draft?.trim() ?? ''));
-      if (!_matchesConversationFilter(conversation, draftText, hasUnread)) {
-        return false;
+  FriendDTO? _singleChatFriend(
+    ConversationDTO conversation,
+    FriendProvider friendProvider,
+  ) {
+    if (conversation.type != 1) {
+      return null;
+    }
+    for (final FriendDTO f in friendProvider.friends) {
+      if (f.friendId == conversation.targetId) {
+        return f;
       }
+    }
+    return null;
+  }
+
+  /// 与聊天顶栏、资料页使用同一套单聊展示名规则（含好友备注）。
+  /// 删除好友后 [FriendProvider] 无对应关系时回落 [ConversationDTO.name]/用户号链路，不再使用备注。
+  String _conversationListTitle(
+    ConversationDTO conversation,
+    FriendProvider friendProvider,
+  ) {
+    if (conversation.type != 1) {
+      return conversation.name ?? ProfileDisplayTexts.unset;
+    }
+    final FriendDTO? match = _singleChatFriend(conversation, friendProvider);
+    return ProfileDisplayTexts.singleChatDisplayTitle(
+      peer: match?.friendUserInfo,
+      friendRemark: match?.remark,
+      nameFallback: conversation.name,
+    );
+  }
+
+  /// 单聊优先好友资料头像，否则会话快照 [ConversationDTO.avatar]；仅接受 `http`/`https`。
+  String? _conversationAvatarImageUrl(
+    ConversationDTO conversation,
+    FriendProvider friendProvider,
+  ) {
+    final String raw;
+    if (conversation.type == 1) {
+      final FriendDTO? match = _singleChatFriend(conversation, friendProvider);
+      final String avTrim =
+          (match?.friendUserInfo?.avatar ?? '').trim();
+      final String? fromUser = avTrim.isEmpty ? null : avTrim;
+      raw = (fromUser ?? (conversation.avatar ?? '')).trim();
+    } else {
+      raw = (conversation.avatar ?? '').trim();
+    }
+    return httpOrHttpsAvatarUrlOrNull(raw);
+  }
+
+  /// [MessageProvider] 草稿优先，否则会话快照 [ConversationDTO.draft]。
+  String _effectiveConversationDraftText(
+    MessageProvider messageProvider,
+    ConversationDTO c,
+  ) {
+    final String? fromProvider = messageProvider.getDraft(c.targetId, c.type);
+    if (fromProvider != null && fromProvider.trim().isNotEmpty) {
+      return fromProvider.trim();
+    }
+    return (c.draft ?? '').trim();
+  }
+
+  bool _conversationHasUnread(ConversationDTO c) =>
+      (c.unreadCount ?? 0) > 0;
+
+  List<ConversationDTO> _filteredConversations(
+    MessageProvider messageProvider,
+    FriendProvider friendProvider,
+  ) {
+    final query = _conversationQuery.trim().toLowerCase();
+    final List<ConversationDTO> items =
+        messageProvider.conversations.where((ConversationDTO conversation) {
+      final String effectiveDraft =
+          _effectiveConversationDraftText(messageProvider, conversation);
       if (query.isEmpty) {
         return true;
       }
+      final displayTitle =
+          _conversationListTitle(conversation, friendProvider);
+      final FriendDTO? singleFriend = conversation.type == 1
+          ? _singleChatFriend(conversation, friendProvider)
+          : null;
+      final String remarkHay = (singleFriend?.remark ?? '').trim();
       final haystack = [
+        displayTitle,
+        if (remarkHay.isNotEmpty) remarkHay,
         conversation.name ?? '',
         conversation.lastMessage ?? '',
-        draftText,
+        effectiveDraft,
       ].join(' ').toLowerCase();
       return haystack.contains(query);
     }).toList();
 
-    if (_conversationSort == 'unreadFirst') {
-      items.sort((a, b) {
-        final unreadCompare =
-            (b.unreadCount ?? 0).compareTo(a.unreadCount ?? 0);
-        if (unreadCompare != 0) {
-          return unreadCompare;
-        }
-        return (b.lastMessageTime ?? '').compareTo(a.lastMessageTime ?? '');
-      });
-    } else if (_conversationSort == 'recent') {
-      items.sort(
-        (a, b) => (b.lastMessageTime ?? '').compareTo(a.lastMessageTime ?? ''),
-      );
-    } else if (_conversationSort == 'name') {
-      items.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
-    }
-
     return items;
   }
 
-  Widget _buildMessagesTab(MessageProvider messageProvider) {
+  Widget _buildMessagesTab(
+    MessageProvider messageProvider,
+    FriendProvider friendProvider,
+  ) {
     if (messageProvider.isLoading) {
       return Center(
         child: CircularProgressIndicator(
@@ -491,244 +426,122 @@ class _HomeScreenState extends State<HomeScreen> {
     if (messageProvider.conversations.isEmpty) {
       return const ConversationEmptyState(
         icon: Icons.chat_bubble_outline,
-        title: '暂无消息',
-        detail: '新的会话会显示在这里',
+        title: _conversationEmptyTitle,
+        detail: _conversationEmptyDetail,
       );
     }
 
-    final filteredConversations = _filteredConversations(messageProvider);
-    final totalCount = messageProvider.conversations.length;
-    final unreadCount = messageProvider.conversations
-        .where((item) => (item.unreadCount ?? 0) > 0)
-        .length;
-    final draftCount = messageProvider.conversations.where((conversation) {
-      final draft = messageProvider.getDraft(
-        conversation.targetId,
-        conversation.type,
-      );
-      final draftText = (draft?.trim().isNotEmpty == true
-              ? draft!.trim()
-              : (conversation.draft?.trim() ?? ''));
-      return draftText.isNotEmpty;
-    }).length;
-    final topCount = messageProvider.conversations
-        .where((item) => item.isTop == true)
-        .length;
-    final muteCount = messageProvider.conversations
-        .where((item) => item.isMute == true)
-        .length;
+    final filteredConversations =
+        _filteredConversations(messageProvider, friendProvider);
 
-    const filterOptions = <Map<String, String>>[
-      {'label': '全部', 'value': 'all'},
-      {'label': '未读', 'value': 'unread'},
-      {'label': '草稿', 'value': 'draft'},
-      {'label': '置顶', 'value': 'top'},
-      {'label': '免打扰', 'value': 'mute'},
-    ];
-    const sortOptions = <Map<String, String>>[
-      {'label': '智能排序', 'value': 'smart'},
-      {'label': '最近消息', 'value': 'recent'},
-      {'label': '未读优先', 'value': 'unreadFirst'},
-      {'label': '名称排序', 'value': 'name'},
-    ];
-
-    String resolveSortLabel(String value) {
-      for (final item in sortOptions) {
-        if (item['value'] == value) {
-          return item['label']!;
-        }
-      }
-      return '智能排序';
-    }
-
-    return Container(
+    return ColoredBox(
       color: ConversationUiTokens.pageBackground,
       child: Column(
-        children: [
+        children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      '会话工作台',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: ConversationUiTokens.mutedText,
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      '$totalCount 个会话',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: ConversationUiTokens.mutedText,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                ConversationSearchBar(
-                  controller: _conversationSearchController,
-                  hintText: '搜索会话、草稿或最近消息',
-                  showClear: _conversationQuery.isNotEmpty,
-                  onChanged: (value) {
-                    setState(() {
-                      _conversationQuery = value;
-                    });
-                  },
-                  onClear: () {
-                    setState(() {
-                      _conversationSearchController.clear();
-                      _conversationQuery = '';
-                    });
-                  },
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  height: 36,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: [
-                      for (final filter in filterOptions)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: ChoiceChip(
-                            label: Text(filter['label']!),
-                            selected: _conversationFilter == filter['value'],
-                            onSelected: (_) {
-                              setState(() {
-                                _conversationFilter = filter['value']!;
-                              });
-                            },
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ConversationStatsPanel(
-                  summaryText:
-                      '${filteredConversations.length} / $totalCount 个会话',
-                  currentSortLabel: resolveSortLabel(_conversationSort),
-                  sortOptions:
-                      sortOptions.map((item) => item['label']!).toList(),
-                  onSortSelected: (label) {
-                    for (final item in sortOptions) {
-                      if (item['label'] == label) {
-                        setState(() {
-                          _conversationSort = item['value']!;
-                        });
-                        break;
-                      }
-                    }
-                  },
-                  onReset: () {
-                    setState(() {
-                      _conversationSearchController.clear();
-                      _conversationQuery = '';
-                      _conversationFilter = 'all';
-                      _conversationSort = 'smart';
-                    });
-                  },
-                  stats: [
-                    ConversationStatData(
-                      label: '未读',
-                      value: '$unreadCount',
-                      valueColor: const Color(0xFF2563EB),
-                    ),
-                    ConversationStatData(
-                      label: '草稿',
-                      value: '$draftCount',
-                      valueColor: const Color(0xFFEA580C),
-                    ),
-                    ConversationStatData(
-                      label: '置顶',
-                      value: '$topCount',
-                      valueColor: const Color(0xFF7C3AED),
-                    ),
-                    ConversationStatData(
-                      label: '免打扰',
-                      value: '$muteCount',
-                      valueColor: const Color(0xFF0F766E),
-                    ),
-                  ],
-                ),
-              ],
+            padding: const EdgeInsets.fromLTRB(
+              _homeEdgePad,
+              6,
+              _homeEdgePad,
+              8,
+            ),
+            child: WxSearchBar(
+              controller: _conversationSearchController,
+              hintText: '搜索',
+              showClear: _conversationQuery.isNotEmpty,
+              onChanged: (String value) {
+                setState(() {
+                  _conversationQuery = value;
+                });
+              },
+              onClear: () {
+                setState(() {
+                  _conversationSearchController.clear();
+                  _conversationQuery = '';
+                });
+              },
             ),
           ),
           Expanded(
-            child: filteredConversations.isEmpty
-                ? const ConversationEmptyState(
-                    icon: Icons.filter_list_off,
-                    title: '没有符合当前筛选条件的会话',
-                    detail: '换个关键词或筛选条件试试',
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.only(top: 8, bottom: 12),
-                    itemCount: filteredConversations.length,
-                    itemBuilder: (context, index) {
-                      final conversation = filteredConversations[index];
-                      final hasUnread = conversation.unreadCount != null &&
-                          conversation.unreadCount! > 0;
-                      final draft = messageProvider.getDraft(
-                        conversation.targetId,
-                        conversation.type,
-                      );
-                      final draftText = (draft?.trim().isNotEmpty == true
-                              ? draft!.trim()
-                              : (conversation.draft?.trim() ?? ''));
-                      final statusLabels = <String>[
-                        if (conversation.isTop == true) '置顶',
-                        if (conversation.isMute == true) '免打扰',
-                      ];
-                      final previewText = draftText.isNotEmpty
-                          ? '[草稿] $draftText'
-                          : (conversation.lastMessage ?? '');
-                      final title = conversation.name ?? '';
-                      final avatarText = title.trim().isEmpty
-                          ? '?'
-                          : title.trim().substring(0, 1).toUpperCase();
+            child: ColoredBox(
+              color: ConversationUiTokens.surface,
+              child: filteredConversations.isEmpty
+                  ? const ConversationEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: SearchUxStrings.emptyNoResults,
+                      detail:
+                          EmptyStateUxStrings.conversationSearchNoMatchDetail,
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      itemCount: filteredConversations.length,
+                      itemBuilder: (BuildContext context, int index) {
+                        final conversation = filteredConversations[index];
+                        final bool hasUnread =
+                            _conversationHasUnread(conversation);
+                        final String draftText =
+                            _effectiveConversationDraftText(
+                          messageProvider,
+                          conversation,
+                        );
+                        final previewText = draftText.isNotEmpty
+                            ? '[草稿] $draftText'
+                            : (conversation.lastMessage ?? '');
+                        final title = _conversationListTitle(
+                          conversation,
+                          friendProvider,
+                        );
+                        final String avatarText =
+                            ProfileDisplayTexts.listAvatarInitial(title);
 
-                      return ConversationListItem(
-                        title: title,
-                        previewText: [
-                          if (statusLabels.isNotEmpty)
-                            '[${statusLabels.join(' / ')}]',
-                          previewText,
-                        ].where((item) => item.isNotEmpty).join(' '),
-                        timeText: conversation.lastMessageTime ?? '',
-                        hasUnread: hasUnread,
-                        isTop: conversation.isTop == true,
-                        isMute: conversation.isMute == true,
-                        isDraft: draftText.isNotEmpty,
-                        unreadCount: conversation.unreadCount ?? 0,
-                        avatarText: avatarText,
-                        onLongPress: () => _showConversationActions(conversation),
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/chat',
-                            arguments: {
-                              'targetId': conversation.targetId,
-                              'type': conversation.type,
-                              'title': conversation.name,
-                            },
-                          );
-                        },
-                      );
-                    },
-                  ),
+                        return ConversationListItem(
+                          title: title,
+                          previewText: previewText,
+                          timeText: ConversationTimeFormat.formatListTime(
+                            conversation.lastMessageTime,
+                          ),
+                          hasUnread: hasUnread,
+                          isDraft: draftText.isNotEmpty,
+                          isTop: conversation.isTop == true,
+                          isMute: conversation.isMute == true,
+                          unreadCount: conversation.unreadCount ?? 0,
+                          avatarText: avatarText,
+                          avatarImageUrl: _conversationAvatarImageUrl(
+                            conversation,
+                            friendProvider,
+                          ),
+                          onLongPress: () =>
+                              _showConversationActions(conversation),
+                          onTap: () {
+                            final int? tid = conversation.targetId;
+                            if (tid == null) {
+                              return;
+                            }
+                            Navigator.pushNamed(
+                              context,
+                              '/chat',
+                              arguments: conversation.type == 2
+                                  ? GroupChatScreen.navigationArguments(
+                                      targetId: tid,
+                                      title: title,
+                                    )
+                                  : <String, dynamic>{
+                                      'targetId': tid,
+                                      'type': conversation.type,
+                                      'title': title,
+                                    },
+                            );
+                          },
+                        );
+                      },
+                    ),
+            ),
           ),
         ],
       ),
     );
-    }
+  }
+
   Widget _buildRequestActionButton({
     required String label,
     required VoidCallback? onPressed,
@@ -736,8 +549,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return Expanded(
       child: primary
-          ? ElevatedButton(onPressed: onPressed, child: Text(label))
-          : OutlinedButton(onPressed: onPressed, child: Text(label)),
+          ? FilledButton(
+              style: UiTokens.filledPrimary(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: onPressed,
+              child: Text(label),
+            )
+          : OutlinedButton(
+              style: UiTokens.outlinedSecondary(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              onPressed: onPressed,
+              child: Text(label),
+            ),
     );
   }
 
@@ -748,45 +573,52 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final user = request.fromUserInfo ?? request.toUserInfo;
 
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
       child: Column(
-        children: [
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
           Row(
-            children: [
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
               CircleAvatar(
-                backgroundColor:
-                    Theme.of(context).primaryColor.withOpacity(0.1),
+                radius: 20,
+                backgroundColor: CommonTokens.softSurface,
                 child: Icon(
-                  Icons.person,
-                  color: Theme.of(context).primaryColor,
+                  Icons.person_outline,
+                  color: CommonTokens.textTertiary,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: <Widget>[
                     Text(
-                      user?.nickname ?? request.remark ?? '新朋友',
+                      user != null
+                          ? ProfileDisplayTexts.displayName(user)
+                          : ProfileDisplayTexts.fieldValue(
+                              request.remark,
+                              emptyLabel: '新朋友',
+                            ),
                       style: const TextStyle(
-                        color: Color(0xFF333333),
+                        color: CommonTokens.textPrimary,
                         fontWeight: FontWeight.w600,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
                       request.message?.isNotEmpty == true
                           ? request.message!
                           : subtitle,
-                      style: const TextStyle(
-                        color: Color(0xFF666666),
+                      style: TextStyle(
+                        color: CommonTokens.textSecondary.withValues(
+                          alpha: 0.92,
+                        ),
                         fontSize: 13,
+                        height: 1.25,
                       ),
                     ),
                   ],
@@ -794,8 +626,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ],
           ),
-          if (showActions) ...[
-            const SizedBox(height: 12),
+          if (showActions) ...<Widget>[
+            const SizedBox(height: 10),
             Row(
               children: [
                 _buildRequestActionButton(
@@ -861,6 +693,45 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _conversationSheetTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color? iconColor,
+    Color? textColor,
+  }) {
+    return SizedBox(
+      height: ImDesignTokens.heightItem,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ImDesignTokens.spaceLg,
+          ),
+          child: Row(
+            children: <Widget>[
+              Icon(
+                icon,
+                size: ImDesignTokens.iconMd,
+                color: iconColor ?? ImDesignTokens.textSecondary,
+              ),
+              SizedBox(width: ImDesignTokens.spaceMd),
+              Expanded(
+                child: Text(
+                  title,
+                  style: CommonTokens.body.copyWith(
+                    color: textColor ?? ImDesignTokens.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showConversationActions(dynamic conversation) {
     showModalBottomSheet<void>(
       context: context,
@@ -869,50 +740,60 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ListTile(
-                leading: Icon(
-                  (conversation.isTop ?? false)
-                      ? Icons.vertical_align_bottom
-                      : Icons.vertical_align_top,
-                ),
-                title: Text(
-                  (conversation.isTop ?? false)
-                      ? '取消top'
-                      : '置顶会话',
-                ),
+              _conversationSheetTile(
+                icon: (conversation.isTop ?? false)
+                    ? Icons.vertical_align_bottom
+                    : Icons.vertical_align_top,
+                title: (conversation.isTop ?? false)
+                    ? '取消置顶'
+                    : '置顶会话',
                 onTap: () {
                   Navigator.pop(context);
                   _toggleConversationTop(conversation);
                 },
               ),
-              ListTile(
-                leading: Icon(
-                  (conversation.isMute ?? false)
-                      ? Icons.notifications_active_outlined
-                      : Icons.notifications_off_outlined,
-                ),
-                title: Text(
-                  (conversation.isMute ?? false)
-                      ? '取消免打扰'
-                      : '开启免打扰',
-                ),
+              Divider(height: 1, thickness: 1, color: CommonTokens.lineSubtle),
+              _conversationSheetTile(
+                icon: (conversation.isMute ?? false)
+                    ? Icons.notifications_active_outlined
+                    : Icons.notifications_off_outlined,
+                title: (conversation.isMute ?? false)
+                    ? '取消免打扰'
+                    : '开启免打扰',
                 onTap: () {
                   Navigator.pop(context);
                   _toggleConversationMute(conversation);
                 },
               ),
-              ListTile(
-                leading: const Icon(
-                  Icons.delete_outline,
-                  color: Color(0xFFE53935),
-                ),
-                title: const Text(
-                  '删除会话',
-                  style: TextStyle(color: Color(0xFFE53935)),
-                ),
-                onTap: () {
+              Divider(height: 1, thickness: 1, color: CommonTokens.lineSubtle),
+              _conversationSheetTile(
+                icon: Icons.delete_outline,
+                title: '删除会话',
+                iconColor: CommonTokens.danger,
+                textColor: CommonTokens.danger,
+                onTap: () async {
                   Navigator.pop(context);
-                  _showConversationActions(conversation);
+                  final int? tid = conversation.targetId;
+                  if (tid == null || !mounted) {
+                    return;
+                  }
+                  final success = await context
+                      .read<MessageProvider>()
+                      .deleteConversation(
+                        tid,
+                        type: conversation.type ?? 1,
+                      );
+                  if (!mounted) {
+                    return;
+                  }
+                  if (success) {
+                    ImFeedback.showSuccess(context, '已删除会话');
+                  } else {
+                    ImFeedback.showError(
+                      context,
+                      context.read<MessageProvider>().error ?? '删除失败',
+                    );
+                  }
                 },
               ),
             ],
@@ -928,85 +809,118 @@ class _HomeScreenState extends State<HomeScreen> {
     required bool showActions,
     required String emptySubtitle,
   }) {
-    return _buildCard(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.only(left: 4, bottom: 6),
+            child: Text(
               title,
-              style: const TextStyle(
-                color: Color(0xFF333333),
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+              style: CommonTokens.caption.copyWith(
+                color: CommonTokens.textTertiary,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
             ),
-            ...requests.map(
-              (request) => _buildRequestCard(
-                request,
-                showActions: showActions,
-                subtitle: emptySubtitle,
-              ),
+          ),
+          ...requests.map(
+            (FriendRequestDTO request) => Column(
+              children: <Widget>[
+                _buildRequestCard(
+                  request,
+                  showActions: showActions,
+                  subtitle: emptySubtitle,
+                ),
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: CommonTokens.lineSubtle,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFriendTile(FriendDTO friend) {
     final info = friend.friendUserInfo;
+    final String rowTitle = ProfileDisplayTexts.singleChatDisplayTitle(
+      peer: info,
+      friendRemark: friend.remark,
+      nameFallback: null,
+    );
     final isOnline = (info?.onlineStatus ?? 0) == 1;
     final signature = info?.signature ?? '';
     final subtitle = signature.isNotEmpty
-        ? '${_statusTextFromFriend(friend)} | $signature'
+        ? '${_statusTextFromFriend(friend)} · $signature'
         : _statusTextFromFriend(friend);
+    final String? avatarUrl = httpOrHttpsAvatarUrlOrNull(info?.avatar);
 
-    return _buildCard(
-      child: ListTile(
-        leading: _buildAvatar(),
-        title: Text(
-          friend.remark ?? info?.nickname ?? '',
-          style: const TextStyle(color: Color(0xFF333333)),
-        ),
-        subtitle: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: _statusColor(isOnline),
-                shape: BoxShape.circle,
-              ),
+    return Column(
+      children: [
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: ProfileListAvatar(
+            title: rowTitle,
+            imageUrl: avatarUrl,
+            size: 52,
+          ),
+          title: Text(
+            rowTitle,
+            style: TextStyle(
+              color: UiTokens.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
             ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Color(0xFF9E9E9E),
-                  fontSize: 14,
+          ),
+          subtitle: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _statusColor(isOnline),
+                  shape: BoxShape.circle,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: UiTokens.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          onTap: info?.id == null
+              ? null
+              : () {
+                  Navigator.pushNamed(
+                    context,
+                    '/user-detail',
+                    arguments: {
+                      'userId': info!.id,
+                      'user': info,
+                    },
+                  );
+                },
         ),
-        onTap: info?.id == null
-            ? null
-            : () {
-                Navigator.pushNamed(
-                  context,
-                  '/user-detail',
-                  arguments: {
-                    'userId': info!.id,
-                    'user': info,
-                  },
-                );
-              },
-      ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          indent: 72,
+          color: CommonTokens.lineSubtle,
+        ),
+      ],
     );
   }
 
@@ -1050,212 +964,121 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildProfileTab(AuthProvider authProvider) {
-    final showOnlineStatus = authProvider.user?.showOnlineStatus ?? true;
-    final showLastOnline = authProvider.user?.showLastOnline ?? true;
-    final allowSearchByPhone = authProvider.user?.allowSearchByPhone ?? true;
-    final needFriendVerification =
-        authProvider.user?.needFriendVerification ?? true;
-
-    return ListView(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      children: [
-        _buildCard(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                _buildAvatar(size: 80),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        authProvider.user?.nickname ??
-                            '未设置昵称',
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF333333),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        authProvider.user?.phone ?? '',
-                        style: const TextStyle(
-                          color: Color(0xFF666666),
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        _buildCard(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(
-            children: [
-              SwitchListTile(
-                title: const Text('显示在线状态'),
-                subtitle: const Text(
-                  '其他用户可以看到你是否在线。',
-                ),
-                value: showOnlineStatus,
-                onChanged: (value) => _updatePrivacySetting(
-                  'showOnlineStatus',
-                  value,
-                  successMessage:
-                      '在线状态显示设置已更新',
-                ),
-              ),
-              const Divider(height: 1),
-              SwitchListTile(
-                title: const Text('显示最后在线时间'),
-                subtitle: const Text(
-                  '其他用户可以看到你的最后在线时间。',
-                ),
-                value: showLastOnline,
-                onChanged: (value) => _updatePrivacySetting(
-                  'showLastOnline',
-                  value,
-                  successMessage:
-                      '最后在线时间显示设置已更新',
-                ),
-              ),
-              const Divider(height: 1),
-              SwitchListTile(
-                title: const Text('允许手机号搜索'),
-                subtitle: const Text(
-                  '其他用户可以通过手机号搜索到你。',
-                ),
-                value: allowSearchByPhone,
-                onChanged: (value) => _updatePrivacySetting(
-                  'allowSearchByPhone',
-                  value,
-                  successMessage:
-                      '手机号搜索设置已更新',
-                ),
-              ),
-              const Divider(height: 1),
-              SwitchListTile(
-                title: const Text('添加好友需要验证'),
-                subtitle: const Text(
-                  '关闭后，对方可直接成为你的好友。',
-                ),
-                value: needFriendVerification,
-                onChanged: (value) => _updatePrivacySetting(
-                  'needFriendVerification',
-                  value,
-                  successMessage:
-                      '好友验证设置已更新',
-                ),
-              ),
-            ],
-          ),
-        ),
-        _buildCard(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: const Icon(Icons.security_outlined),
-            title: const Text('账号与设备'),
-            subtitle: const Text('管理设备锁、登录设备和异地登录提示'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.pushNamed(context, '/security'),
-          ),
-        ),
-        _buildCard(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: const Icon(Icons.flag_outlined),
-            title: const Text('我的举报'),
-            subtitle: const Text('查看你提交的举报处理进度'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.pushNamed(context, '/report-list'),
-          ),
-        ),
-        _buildCard(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: const Icon(Icons.verified_outlined),
-            title: const Text('我的内容审核'),
-            subtitle: const Text('查看你提交内容的审核状态'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => Navigator.pushNamed(context, '/content-audit-list'),
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          child: ElevatedButton(
-            onPressed: () async {
-              await authProvider.logout();
-              if (!mounted) {
-                return;
-              }
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-            child: const Text('退出登录'),
-          ),
-        ),
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
     final messageProvider = context.watch<MessageProvider>();
     final friendProvider = context.watch<FriendProvider>();
 
     final tabs = <Widget>[
       Scaffold(
+        backgroundColor: ConversationUiTokens.pageBackground,
         appBar: AppBar(
-          title: const Text('消息'),
-          actions: [
-            IconButton(
-              onPressed: () => Navigator.pushNamed(context, '/groups'),
-              icon: const Icon(Icons.groups_outlined),
-              tooltip: '我的群组',
+          centerTitle: true,
+          title: const Text(
+            '会话',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
+            ),
+          ),
+          toolbarHeight: 42,
+          leadingWidth: 48,
+          leading: const SizedBox(width: 48, height: 48),
+          titleSpacing: 0,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: ConversationUiTokens.pageBackground,
+          foregroundColor: UiTokens.textPrimary,
+          surfaceTintColor: Colors.transparent,
+          actions: <Widget>[
+            SizedBox(
+              width: 48,
+              height: 48,
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  splashColor: Colors.white.withValues(alpha: 0.10),
+                  highlightColor: Colors.white.withValues(alpha: 0.06),
+                ),
+                child: Builder(
+                  builder: (BuildContext buttonCtx) {
+                    return IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        minHeight: 48,
+                      ),
+                      icon: const Icon(Icons.add, size: 26),
+                      tooltip: '快捷操作',
+                      onPressed: () => _showHomePlusMenu(buttonCtx),
+                    );
+                  },
+                ),
+              ),
             ),
           ],
         ),
-        body: _buildMessagesTab(messageProvider),
+        body: _buildMessagesTab(messageProvider, friendProvider),
       ),
       Scaffold(
+        backgroundColor: UiTokens.backgroundGray,
         appBar: AppBar(
           title: const Text('好友'),
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: UiTokens.backgroundGray,
+          foregroundColor: UiTokens.textPrimary,
+          surfaceTintColor: Colors.transparent,
           actions: [
             IconButton(
-              onPressed: _openAddFriendDialog,
+              onPressed: _openAddFriendPage,
               icon: const Icon(Icons.person_add_alt_1),
               tooltip: '添加好友',
             ),
           ],
         ),
-        body: _buildFriendsTab(friendProvider),
+        body: ColoredBox(
+          color: UiTokens.backgroundGray,
+          child: _buildFriendsTab(friendProvider),
+        ),
       ),
+      const GroupListScreen(),
       Scaffold(
-        appBar: AppBar(title: const Text('我的')),
-        body: _buildProfileTab(authProvider),
+        backgroundColor: ConversationUiTokens.pageBackground,
+        appBar: AppBar(
+          title: const Text(
+            '我的',
+            style: TextStyle(
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          toolbarHeight: 44,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          backgroundColor: ConversationUiTokens.pageBackground,
+          foregroundColor: UiTokens.textPrimary,
+          surfaceTintColor: Colors.transparent,
+        ),
+        body: const MeScreen(),
       ),
     ];
 
-    final isWebOrWindows =
-        kIsWeb || defaultTargetPlatform == TargetPlatform.windows;
     final items = <BottomNavigationBarItem>[
       const BottomNavigationBarItem(
         icon: Icon(Icons.chat_bubble_outline),
         activeIcon: Icon(Icons.chat_bubble),
-        label: '消息',
+        label: '会话',
       ),
       const BottomNavigationBarItem(
         icon: Icon(Icons.people_outline),
         activeIcon: Icon(Icons.people),
         label: '好友',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.groups_outlined),
+        activeIcon: Icon(Icons.groups),
+        label: '群组',
       ),
       const BottomNavigationBarItem(
         icon: Icon(Icons.person_outline),
@@ -1264,43 +1087,80 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     ];
 
-    if (!isWebOrWindows) {
-      items.add(
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.qr_code_scanner),
-          activeIcon: Icon(Icons.qr_code_scanner),
-          label: '扫码',
-        ),
-      );
-    }
-
     return Scaffold(
+      backgroundColor: ConversationUiTokens.pageBackground,
       body: tabs[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          if (!isWebOrWindows && index == 3) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => QRCodeScannerScreen(
-                  title: '扫码',
-                  onScan: (code) => debugPrint('Scan result: $code'),
-                ),
-              ),
-            );
-            return;
-          }
-
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: items,
+      bottomNavigationBar: DecoratedBox(
+        decoration: const BoxDecoration(
+          color: ConversationUiTokens.surface,
+          border: Border(
+            top: BorderSide(color: CommonTokens.lineSubtle),
+          ),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.transparent,
+          selectedItemColor: CommonTokens.brandBlue,
+          unselectedItemColor:
+              CommonTokens.textSecondary.withValues(alpha: 0.55),
+          selectedLabelStyle: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+          unselectedLabelStyle: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+            color: CommonTokens.textSecondary.withValues(alpha: 0.55),
+          ),
+          elevation: 0,
+          onTap: (int index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          items: items,
+        ),
       ),
     );
   }
+}
+
+/// 指向「+」的小三角，与 [_HomeScreenState._plusMenuSurface] 同色以无缝贴合。
+class _PlusMenuCaret extends StatelessWidget {
+  const _PlusMenuCaret({required this.color});
+
+  final Color color;
+
+  static const Size _size = Size(12, 7);
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: _size,
+      painter: _PlusMenuCaretPainter(color: color),
+    );
+  }
+}
+
+class _PlusMenuCaretPainter extends CustomPainter {
+  const _PlusMenuCaretPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Path path = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(size.width * 0.5, 0)
+      ..lineTo(size.width, size.height)
+      ..close();
+    canvas.drawPath(path, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PlusMenuCaretPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _EmptyState extends StatelessWidget {

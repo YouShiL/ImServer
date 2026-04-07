@@ -23,36 +23,29 @@ class ConversationEmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                color: ConversationUiTokens.softSurface,
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: Icon(
-                icon,
-                size: 32,
-                color: ConversationUiTokens.subtleText,
-              ),
+            Icon(
+              icon,
+              size: 48,
+              color: ConversationUiTokens.subtleText.withValues(alpha: 0.55),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF374151),
+                fontWeight: FontWeight.w500,
+                color: ConversationUiTokens.mutedText,
               ),
             ),
             if (detail != null && detail!.isNotEmpty) ...<Widget>[
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 detail!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: ConversationUiTokens.mutedText,
+                  color: ConversationUiTokens.mutedText.withValues(alpha: 0.9),
+                  height: 1.35,
                 ),
               ),
             ],

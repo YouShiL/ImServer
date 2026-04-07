@@ -10,18 +10,19 @@ class CommonTokens {
   static const Color brandYellow = Color(0xFFF1B94C);
   static const Color brandOrange = Color(0xFFEA7A2F);
 
-  static const Color bgPrimary = Color(0xFFF5F7FB);
+  /// 产品级页面灰底（微信/Telegram 系浅色底）。
+  static const Color bgPrimary = Color(0xFFF7F7F7);
   static const Color bgSecondary = Color(0xFFF0F4F8);
   static const Color surfacePrimary = Color(0xFFFFFFFF);
   static const Color surfaceMuted = Color(0xFFF8FAFD);
   static const Color elevatedSurface = Color(0xFFFFFFFF);
 
-  static const Color textPrimary = Color(0xFF121826);
-  static const Color textSecondary = Color(0xFF5F6B7A);
+  static const Color textPrimary = Color(0xFF111111);
+  static const Color textSecondary = Color(0xFF666666);
   static const Color textTertiary = Color(0xFF8E99AA);
   static const Color textOnBrand = Color(0xFFFFFFFF);
 
-  static const Color lineSubtle = Color(0xFFE6EBF2);
+  static const Color lineSubtle = Color(0xFFEEEEEE);
   static const Color dividerSoft = Color(0xFFEEF2F6);
   static const Color hairlineSoft = Color(0xFFF3F5F8);
 
@@ -127,7 +128,11 @@ class CommonTokens {
   static const TextStyle secondary = bodySmall;
 
   // Semantic tokens
-  static const Color pageBackground = bgPrimary;
+  static const Color pageBackground = Color(0xFFF7F7F7);
+  static const Color appSurface = Color(0xFFFFFFFF);
+  static const Color appBorder = Color(0xFFEEEEEE);
+  static const Color appTextPrimary = Color(0xFF111111);
+  static const Color appTextSecondary = Color(0xFF666666);
   static const Color cardBackground = surfacePrimary;
   static const Color inputBackground = surfacePrimary;
   static const Color searchBackground = surfaceMuted;
@@ -190,4 +195,44 @@ class CommonTokens {
     color: textTertiary,
     height: 1.3,
   );
+}
+
+/// 第二轮 IM 统一设计 Token：间距 / 圆角 / 高度 / 语义色（页面引用本类，避免魔法数）。
+abstract final class ImDesignTokens {
+  ImDesignTokens._();
+
+  static const double spaceXs = 4;
+  static const double spaceSm = 8;
+  static const double spaceMd = 12;
+  static const double spaceLg = 16;
+  static const double spaceXl = 24;
+
+  static const double radiusSm = 8;
+  static const double radiusMd = 12;
+  static const double radiusLg = 16;
+  /// 弹窗大圆角（与 [spaceXl] 不同：24 为版心区块间距，20 为对话框圆角与内边距基准）。
+  static const double radiusXl = 20;
+  static const double imDialogPadding = 16;
+  static const double imDialogRadius = 16;
+
+  static const double heightInput = 44;
+  static const double heightItem = 56;
+  static const double heightButton = 48;
+
+  /// 资料 / 设置列表左侧圆形 icon 底。
+  static const double leadingIconSize = 40;
+
+  static const double dialogPadding = imDialogPadding;
+  static const double dialogSectionGap = spaceLg;
+
+  static const double iconSm = 20;
+  static const double iconMd = 22;
+  static const double iconLg = 24;
+
+  static const Color primary = CommonTokens.brandBlue;
+  static const Color textPrimary = CommonTokens.textPrimary;
+  static const Color textSecondary = CommonTokens.textSecondary;
+  static const Color border = CommonTokens.appBorder;
+  static const Color surface = CommonTokens.appSurface;
+  static const Color background = CommonTokens.pageBackground;
 }

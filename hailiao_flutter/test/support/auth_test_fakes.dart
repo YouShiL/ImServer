@@ -164,6 +164,9 @@ AuthProvider buildSignedInAuthProvider({
       },
     ),
     deviceInfoProvider: deviceInfoProvider ?? FakeDeviceInfoProvider(),
+    autoLoadSavedToken: false,
+    sessionUser: currentUser,
+    sessionToken: token,
   );
 }
 
