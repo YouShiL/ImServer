@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS `user` (
   `birthday` VARCHAR(10) DEFAULT NULL COMMENT '生日 yyyy-MM-dd',
   `background` VARCHAR(255) DEFAULT NULL COMMENT '个人主页背景图',
   `online_status` INT(11) DEFAULT 0 COMMENT '在线状态: 0离线, 1在线, 2忙碌, 3隐身',
+  `last_online_at` DATETIME DEFAULT NULL COMMENT '最后在线时间',
+  `show_online_status` TINYINT(1) DEFAULT 1 COMMENT '是否显示在线状态',
+  `show_last_online` TINYINT(1) DEFAULT 1 COMMENT '是否显示最后在线时间',
   `is_vip` TINYINT(1) DEFAULT 0 COMMENT '是否VIP: 0否, 1是',
   `is_pretty_number` TINYINT(1) DEFAULT 0 COMMENT '是否靓号: 0否, 1是',
   `pretty_number` VARCHAR(20) DEFAULT NULL COMMENT '靓号',
@@ -127,12 +130,14 @@ CREATE TABLE IF NOT EXISTS `message` (
   `is_recall` TINYINT(1) DEFAULT 0 COMMENT '是否撤回: 0否, 1是',
   `recall_time` DATETIME DEFAULT NULL COMMENT '撤回时间',
   `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+  `client_msg_no` VARCHAR(64) DEFAULT NULL COMMENT '客户端幂等键',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_msg_id` (`msg_id`),
   KEY `idx_from_user` (`from_user_id`),
   KEY `idx_to_user` (`to_user_id`),
   KEY `idx_group` (`group_id`),
   KEY `idx_created_at` (`created_at`),
+  UNIQUE KEY `uk_client_msg_no` (`client_msg_no`),
   CONSTRAINT `fk_msg_from` FOREIGN KEY (`from_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_msg_to` FOREIGN KEY (`to_user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_msg_group` FOREIGN KEY (`group_id`) REFERENCES `group_chat` (`id`) ON DELETE CASCADE
@@ -323,12 +328,12 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
 
 -- 初始化数据
 
--- 插入默认超级管理员
-INSERT INTO `admin_user` (`username`, `password`, `name`, `role`, `permissions`, `status`, `created_at`) VALUES
+-- 插入默认超级管理员（可重复执行：已存在则跳过）
+INSERT IGNORE INTO `admin_user` (`username`, `password`, `name`, `role`, `permissions`, `status`, `created_at`) VALUES
 ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt6Z5EO', '超级管理员', 1, '["*"]', 1, NOW());
 
--- 插入系统配置
-INSERT INTO `system_config` (`config_key`, `config_value`, `description`, `category`) VALUES
+-- 插入系统配置（可重复执行：已存在 config_key 则跳过）
+INSERT IGNORE INTO `system_config` (`config_key`, `config_value`, `description`, `category`) VALUES
 ('app.name', '嗨聊', '应用名称', 'basic'),
 ('app.version', '1.0.0', '应用版本', 'basic'),
 ('user.default_friend_limit', '500', '默认好友上限', 'user'),
@@ -342,8 +347,8 @@ INSERT INTO `system_config` (`config_key`, `config_value`, `description`, `categ
 ('storage.max_file_size', '104857600', '最大文件大小(字节)', 'storage'),
 ('storage.max_image_size', '10485760', '最大图片大小(字节)', 'storage');
 
--- 插入测试靓号
-INSERT INTO `pretty_number` (`number`, `level`, `price`, `status`, `created_at`) VALUES
+-- 插入测试靓号（可重复执行：号码已存在则跳过）
+INSERT IGNORE INTO `pretty_number` (`number`, `level`, `price`, `status`, `created_at`) VALUES
 ('8888888888', 3, 9999.00, 0, NOW()),
 ('6666666666', 3, 8888.00, 0, NOW()),
 ('9999999999', 3, 8888.00, 0, NOW()),
@@ -433,41 +438,102 @@ CREATE TABLE IF NOT EXISTS `message_read_status` (
   CONSTRAINT `fk_read_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息已读状态表';
 
--- 新增字段 - 用户表
-ALTER TABLE `user` ADD COLUMN `last_online_at` DATETIME DEFAULT NULL COMMENT '最后在线时间' AFTER `online_status`;
-ALTER TABLE `user` ADD COLUMN `show_online_status` TINYINT(1) DEFAULT 1 COMMENT '是否显示在线状态' AFTER `last_online_at`;
-ALTER TABLE `user` ADD COLUMN `show_last_online` TINYINT(1) DEFAULT 1 COMMENT '是否显示最后在线时间' AFTER `show_online_status`;
+-- 增量字段与索引（可重复执行；兼容 MySQL 5.7+ / 8.x，不依赖 ADD COLUMN IF NOT EXISTS）
+-- 依赖当前库：请先执行 USE hailiao;。已存在的列/索引会自动跳过。
 
--- 新增字段 - 消息表
-ALTER TABLE `message` ADD COLUMN `reply_to_msg_id` BIGINT(20) DEFAULT NULL COMMENT '引用回复的消息ID' AFTER `extra`;
-ALTER TABLE `message` ADD COLUMN `forward_from_msg_id` BIGINT(20) DEFAULT NULL COMMENT '转发来源消息ID' AFTER `reply_to_msg_id`;
-ALTER TABLE `message` ADD COLUMN `forward_from_user_id` BIGINT(20) DEFAULT NULL COMMENT '转发来源用户ID' AFTER `forward_from_msg_id`;
-ALTER TABLE `message` ADD COLUMN `forward_from_nickname` VARCHAR(50) DEFAULT NULL COMMENT '转发来源用户昵称' AFTER `forward_from_user_id`;
-ALTER TABLE `message` ADD COLUMN `is_edited` TINYINT(1) DEFAULT 0 COMMENT '是否已编辑' AFTER `forward_from_nickname`;
-ALTER TABLE `message` ADD COLUMN `edit_time` DATETIME DEFAULT NULL COMMENT '编辑时间' AFTER `is_edited`;
-ALTER TABLE `message` ADD COLUMN `is_pinned` TINYINT(1) DEFAULT 0 COMMENT '是否置顶' AFTER `edit_time`;
-ALTER TABLE `message` ADD COLUMN `pin_time` DATETIME DEFAULT NULL COMMENT '置顶时间' AFTER `is_pinned`;
-ALTER TABLE `message` ADD COLUMN `at_user_ids` VARCHAR(500) DEFAULT NULL COMMENT '@的用户ID列表(JSON)' AFTER `pin_time`;
-ALTER TABLE `message` ADD COLUMN `is_at_all` TINYINT(1) DEFAULT 0 COMMENT '是否@所有人' AFTER `at_user_ids`;
-ALTER TABLE `message` ADD COLUMN `read_count` INT(11) DEFAULT 0 COMMENT '已读人数(群聊)' AFTER `is_at_all`;
+-- user
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = 'last_online_at');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `user` ADD COLUMN `last_online_at` DATETIME DEFAULT NULL COMMENT ''最后在线时间'' AFTER `online_status`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = 'show_online_status');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `user` ADD COLUMN `show_online_status` TINYINT(1) DEFAULT 1 COMMENT ''是否显示在线状态'' AFTER `last_online_at`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'user' AND COLUMN_NAME = 'show_last_online');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `user` ADD COLUMN `show_last_online` TINYINT(1) DEFAULT 1 COMMENT ''是否显示最后在线时间'' AFTER `show_online_status`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
 
--- 新增字段 - 群组表
-ALTER TABLE `group_chat` ADD COLUMN `notice_updated_at` DATETIME DEFAULT NULL COMMENT '公告更新时间' AFTER `notice`;
-ALTER TABLE `group_chat` ADD COLUMN `notice_updated_by` BIGINT(20) DEFAULT NULL COMMENT '公告更新人ID' AFTER `notice_updated_at`;
-ALTER TABLE `group_chat` ADD COLUMN `mute_all` TINYINT(1) DEFAULT 0 COMMENT '全员禁言' AFTER `is_mute`;
-ALTER TABLE `group_chat` ADD COLUMN `allow_member_invite` TINYINT(1) DEFAULT 1 COMMENT '允许成员邀请' AFTER `mute_all`;
+-- message
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'reply_to_msg_id');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `reply_to_msg_id` BIGINT(20) DEFAULT NULL COMMENT ''引用回复的消息ID'' AFTER `extra`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'forward_from_msg_id');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `forward_from_msg_id` BIGINT(20) DEFAULT NULL COMMENT ''转发来源消息ID'' AFTER `reply_to_msg_id`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'forward_from_user_id');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `forward_from_user_id` BIGINT(20) DEFAULT NULL COMMENT ''转发来源用户ID'' AFTER `forward_from_msg_id`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'forward_from_nickname');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `forward_from_nickname` VARCHAR(50) DEFAULT NULL COMMENT ''转发来源用户昵称'' AFTER `forward_from_user_id`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'is_edited');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `is_edited` TINYINT(1) DEFAULT 0 COMMENT ''是否已编辑'' AFTER `forward_from_nickname`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'edit_time');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `edit_time` DATETIME DEFAULT NULL COMMENT ''编辑时间'' AFTER `is_edited`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'is_pinned');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `is_pinned` TINYINT(1) DEFAULT 0 COMMENT ''是否置顶'' AFTER `edit_time`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'pin_time');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `pin_time` DATETIME DEFAULT NULL COMMENT ''置顶时间'' AFTER `is_pinned`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'at_user_ids');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `at_user_ids` VARCHAR(500) DEFAULT NULL COMMENT ''@的用户ID列表(JSON)'' AFTER `pin_time`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'is_at_all');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `is_at_all` TINYINT(1) DEFAULT 0 COMMENT ''是否@所有人'' AFTER `at_user_ids`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'read_count');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `read_count` INT(11) DEFAULT 0 COMMENT ''已读人数(群聊)'' AFTER `is_at_all`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND COLUMN_NAME = 'client_msg_no');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD COLUMN `client_msg_no` VARCHAR(64) DEFAULT NULL COMMENT ''客户端幂等键'' AFTER `created_at`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
 
--- 新增字段 - 群成员表
-ALTER TABLE `group_member` ADD COLUMN `mute_until` DATETIME DEFAULT NULL COMMENT '禁言截止时间' AFTER `is_mute`;
-ALTER TABLE `group_member` ADD COLUMN `last_read_msg_id` BIGINT(20) DEFAULT NULL COMMENT '最后已读消息ID' AFTER `join_time`;
-ALTER TABLE `group_member` ADD COLUMN `is_top` TINYINT(1) DEFAULT 0 COMMENT '是否置顶' AFTER `last_read_msg_id`;
-ALTER TABLE `group_member` ADD COLUMN `is_mute_notification` TINYINT(1) DEFAULT 0 COMMENT '是否消息免打扰' AFTER `is_top`;
+-- group_chat
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_chat' AND COLUMN_NAME = 'notice_updated_at');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_chat` ADD COLUMN `notice_updated_at` DATETIME DEFAULT NULL COMMENT ''公告更新时间'' AFTER `notice`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_chat' AND COLUMN_NAME = 'notice_updated_by');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_chat` ADD COLUMN `notice_updated_by` BIGINT(20) DEFAULT NULL COMMENT ''公告更新人ID'' AFTER `notice_updated_at`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_chat' AND COLUMN_NAME = 'mute_all');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_chat` ADD COLUMN `mute_all` TINYINT(1) DEFAULT 0 COMMENT ''全员禁言'' AFTER `is_mute`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_chat' AND COLUMN_NAME = 'allow_member_invite');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_chat` ADD COLUMN `allow_member_invite` TINYINT(1) DEFAULT 1 COMMENT ''允许成员邀请'' AFTER `mute_all`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
 
--- 创建索引
-ALTER TABLE `message` ADD INDEX `idx_reply_to` (`reply_to_msg_id`);
-ALTER TABLE `message` ADD INDEX `idx_forward_from` (`forward_from_msg_id`);
-ALTER TABLE `message` ADD INDEX `idx_is_pinned` (`is_pinned`);
-ALTER TABLE `group_chat` ADD INDEX `idx_mute_all` (`mute_all`);
+-- group_member
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_member' AND COLUMN_NAME = 'mute_until');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_member` ADD COLUMN `mute_until` DATETIME DEFAULT NULL COMMENT ''禁言截止时间'' AFTER `is_mute`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_member' AND COLUMN_NAME = 'last_read_msg_id');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_member` ADD COLUMN `last_read_msg_id` BIGINT(20) DEFAULT NULL COMMENT ''最后已读消息ID'' AFTER `join_time`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_member' AND COLUMN_NAME = 'is_top');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_member` ADD COLUMN `is_top` TINYINT(1) DEFAULT 0 COMMENT ''是否置顶'' AFTER `last_read_msg_id`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_member' AND COLUMN_NAME = 'is_mute_notification');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_member` ADD COLUMN `is_mute_notification` TINYINT(1) DEFAULT 0 COMMENT ''是否消息免打扰'' AFTER `is_top`');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+
+-- 索引（已存在则跳过）
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND INDEX_NAME = 'idx_reply_to');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD INDEX `idx_reply_to` (`reply_to_msg_id`)');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND INDEX_NAME = 'idx_forward_from');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD INDEX `idx_forward_from` (`forward_from_msg_id`)');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND INDEX_NAME = 'idx_is_pinned');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD INDEX `idx_is_pinned` (`is_pinned`)');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'group_chat' AND INDEX_NAME = 'idx_mute_all');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `group_chat` ADD INDEX `idx_mute_all` (`mute_all`)');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
+SET @hailiao_c := (SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'message' AND INDEX_NAME = 'uk_client_msg_no');
+SET @hailiao_sql := IF(@hailiao_c > 0, 'SELECT 1', 'ALTER TABLE `message` ADD UNIQUE INDEX `uk_client_msg_no` (`client_msg_no`)');
+PREPARE hailiao_stmt FROM @hailiao_sql; EXECUTE hailiao_stmt; DEALLOCATE PREPARE hailiao_stmt;
 
 -- 创建数据库用户并授权(可选)
 -- CREATE USER IF NOT EXISTS 'hailiao'@'localhost' IDENTIFIED BY 'hailiao123';

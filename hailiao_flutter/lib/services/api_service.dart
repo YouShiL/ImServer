@@ -62,6 +62,10 @@ class ApiService {
     final m = Map<String, dynamic>.from(raw);
     m['isRecalled'] ??= m['recalled'] ?? m['isRecall'];
 
+    if (m['clientMsgNo'] != null && m['clientMsgNo'] is! String) {
+      m['clientMsgNo'] = m['clientMsgNo'].toString();
+    }
+
     if (m['msgId'] != null && m['msgId'] is! String) {
       m['msgId'] = m['msgId'].toString();
     }
@@ -390,12 +394,21 @@ class ApiService {
   }
 
   // 消息相关API
-  static Future<ResponseDTO<MessageDTO>> sendPrivateMessage(int toUserId, String content, int msgType) async {
-    final response = await _request('/message/send/private', method: 'POST', body: {
+  static Future<ResponseDTO<MessageDTO>> sendPrivateMessage(
+    int toUserId,
+    String content,
+    int msgType, {
+    String? clientMsgNo,
+  }) async {
+    final body = <String, dynamic>{
       'toUserId': toUserId,
       'content': content,
       'msgType': msgType,
-    });
+    };
+    if (clientMsgNo != null && clientMsgNo.trim().isNotEmpty) {
+      body['clientMsgNo'] = clientMsgNo.trim();
+    }
+    final response = await _request('/message/send/private', method: 'POST', body: body);
     final json = jsonDecode(response.body);
     return ResponseDTO.fromJson(
       json,
@@ -403,12 +416,21 @@ class ApiService {
     );
   }
 
-  static Future<ResponseDTO<MessageDTO>> sendGroupMessage(int groupId, String content, int msgType) async {
-    final response = await _request('/message/send/group', method: 'POST', body: {
+  static Future<ResponseDTO<MessageDTO>> sendGroupMessage(
+    int groupId,
+    String content,
+    int msgType, {
+    String? clientMsgNo,
+  }) async {
+    final body = <String, dynamic>{
       'groupId': groupId,
       'content': content,
       'msgType': msgType,
-    });
+    };
+    if (clientMsgNo != null && clientMsgNo.trim().isNotEmpty) {
+      body['clientMsgNo'] = clientMsgNo.trim();
+    }
+    final response = await _request('/message/send/group', method: 'POST', body: body);
     final json = jsonDecode(response.body);
     return ResponseDTO.fromJson(
       json,

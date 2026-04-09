@@ -5,6 +5,15 @@ import 'package:hailiao_flutter/theme/common_tokens.dart';
 /// 内联在输入条下方的扩展面板（与 [ChatEmojiPanel] 同层，不占满屏）。
 /// 单聊首屏 5 项高频能力；群聊首屏仅媒体与文件，留白由网格自然形成。
 class ChatAttachPanel extends StatelessWidget {
+  /// 与 [build] 中 padding + 网格行高一致；[itemCount] 为格子数量（单聊 5 / 群聊 3）。
+  static double embeddedHeightForItemCount(int itemCount) {
+    final int rows = ((itemCount.clamp(1, 32) + 3) ~/ 4);
+    const double verticalPadding = 12 + 18;
+    return verticalPadding +
+        rows * 76 +
+        (rows > 1 ? (rows - 1) * 14 : 0);
+  }
+
   const ChatAttachPanel({
     super.key,
     required this.isSingleChat,

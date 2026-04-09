@@ -53,6 +53,11 @@ dependencies:
   
   # JSON serialization
   json_annotation: ^4.9.0
+
+  uuid: ^4.5.1
+
+  # WuKongIM / sqflite 在 Windows/Linux/macOS 桌面端依赖 FFI（见 lib/sqlite_desktop_init*.dart）
+  sqflite_common_ffi: ^2.3.4
   
   # Image picker for multimedia messages
   image_picker: ^1.0.7

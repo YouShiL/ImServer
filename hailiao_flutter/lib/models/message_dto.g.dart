@@ -9,6 +9,7 @@ part of 'message_dto.dart';
 MessageDTO _$MessageDTOFromJson(Map<String, dynamic> json) => MessageDTO(
   id: (json['id'] as num?)?.toInt(),
   msgId: json['msgId'] as String?,
+  clientMsgNo: json['clientMsgNo'] as String?,
   fromUserId: (json['fromUserId'] as num?)?.toInt(),
   toUserId: (json['toUserId'] as num?)?.toInt(),
   groupId: (json['groupId'] as num?)?.toInt(),
@@ -34,6 +35,7 @@ Map<String, dynamic> _$MessageDTOToJson(MessageDTO instance) =>
     <String, dynamic>{
       'id': instance.id,
       'msgId': instance.msgId,
+      'clientMsgNo': instance.clientMsgNo,
       'fromUserId': instance.fromUserId,
       'toUserId': instance.toUserId,
       'groupId': instance.groupId,

@@ -44,7 +44,8 @@ public class MessageController {
                     request.getToUserId(),
                     request.getContent(),
                     request.getMsgType() != null ? request.getMsgType() : 1,
-                    request.getExtra());
+                    request.getExtra(),
+                    request.getClientMsgNo());
             return ResponseEntity.ok(ResponseDTO.success(convertToDTO(message)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
@@ -60,7 +61,8 @@ public class MessageController {
                     request.getGroupId(),
                     request.getContent(),
                     request.getMsgType() != null ? request.getMsgType() : 1,
-                    request.getExtra());
+                    request.getExtra(),
+                    request.getClientMsgNo());
             return ResponseEntity.ok(ResponseDTO.success(convertToDTO(message)));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));
@@ -158,6 +160,7 @@ public class MessageController {
         dto.setIsEdited(message.getIsEdited());
         dto.setIsRead(message.getIsRead());
         dto.setIsRecalled(message.getIsRecall());
+        dto.setClientMsgNo(message.getClientMsgNo());
 
         try {
             User user = userService.getUserById(message.getFromUserId());

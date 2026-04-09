@@ -25,8 +25,12 @@ public class SecurityConfig {
     @Autowired
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
+    @Autowired
+    private ImProperties imProperties;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        String imWebhookPath = ImWebhookPaths.normalizedPath(imProperties);
         http
             .csrf().disable()
             .cors().and()
@@ -35,6 +39,7 @@ public class SecurityConfig {
             .authorizeRequests()
             .antMatchers("/api/auth/**").permitAll()
             .antMatchers("/api/public/**").permitAll()
+            .antMatchers(HttpMethod.POST, imWebhookPath, imWebhookPath + "/").permitAll()
             .antMatchers("/ws/**").authenticated()
             .antMatchers("/uploads/**").permitAll()
             .antMatchers("/swagger-ui/**").permitAll()

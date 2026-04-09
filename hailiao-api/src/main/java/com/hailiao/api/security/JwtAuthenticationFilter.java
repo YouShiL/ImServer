@@ -1,5 +1,7 @@
 package com.hailiao.api.security;
 
+import com.hailiao.api.config.ImProperties;
+import com.hailiao.api.config.ImWebhookPaths;
 import com.hailiao.common.service.UserSessionService;
 import com.hailiao.common.util.AppJwtUtil;
 import io.jsonwebtoken.Claims;
@@ -27,6 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     private AppJwtUtil jwtUtil;
 
+    @Autowired
+    private ImProperties imProperties;
+
     @Autowired(required = false)
     private UserSessionService userSessionService;
 
@@ -38,7 +43,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         if (requestURI.startsWith("/api/auth/") || requestURI.startsWith("/api/public/")
                 || requestURI.startsWith("/swagger-ui") || requestURI.startsWith("/v3/api-docs")
-                || requestURI.startsWith("/webjars") || requestURI.startsWith("/favicon.ico")) {
+                || requestURI.startsWith("/webjars") || requestURI.startsWith("/favicon.ico")
+                || ImWebhookPaths.matchesRequestUri(imProperties, requestURI)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -104,4 +110,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             response.getWriter().write("{\"code\": 401, \"message\": \"\\u767b\\u5f55\\u51ed\\u8bc1\\u6821\\u9a8c\\u5931\\u8d25\"}");
         }
     }
+
 }

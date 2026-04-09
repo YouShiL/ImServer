@@ -26,6 +26,7 @@ public class MessageDTO {
     private Integer status;
     private Date createdAt;
     private UserDTO fromUserInfo;
+    private String clientMsgNo;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -83,4 +84,7 @@ public class MessageDTO {
 
     public UserDTO getFromUserInfo() { return fromUserInfo; }
     public void setFromUserInfo(UserDTO fromUserInfo) { this.fromUserInfo = fromUserInfo; }
+
+    public String getClientMsgNo() { return clientMsgNo; }
+    public void setClientMsgNo(String clientMsgNo) { this.clientMsgNo = clientMsgNo; }
 }

@@ -11,6 +11,9 @@ class MessageDTO {
   @JsonKey(name: 'msgId')
   final String? msgId;
 
+  @JsonKey(name: 'clientMsgNo')
+  final String? clientMsgNo;
+
   @JsonKey(name: 'fromUserId')
   final int? fromUserId;
 
@@ -65,6 +68,7 @@ class MessageDTO {
   MessageDTO({
     this.id,
     this.msgId,
+    this.clientMsgNo,
     this.fromUserId,
     this.toUserId,
     this.groupId,
@@ -92,6 +96,7 @@ class MessageDTO {
     return MessageDTO(
       id: id,
       msgId: msgId,
+      clientMsgNo: clientMsgNo,
       fromUserId: fromUserId,
       toUserId: toUserId,
       groupId: groupId,

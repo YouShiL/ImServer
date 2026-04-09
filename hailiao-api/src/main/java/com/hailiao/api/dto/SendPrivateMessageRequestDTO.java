@@ -23,6 +23,9 @@ public class SendPrivateMessageRequestDTO {
     @Schema(description = "消息附加信息，如图片URL、音频时长等", required = false, example = "{\"url\": \"https://example.com/image.jpg\"}")
     private String extra;
 
+    @Schema(description = "客户端幂等键（文本发送可选）", required = false)
+    private String clientMsgNo;
+
     public Long getToUserId() { return toUserId; }
     public void setToUserId(Long toUserId) { this.toUserId = toUserId; }
     public String getContent() { return content; }
@@ -31,4 +34,7 @@ public class SendPrivateMessageRequestDTO {
     public void setMsgType(Integer msgType) { this.msgType = msgType; }
     public String getExtra() { return extra; }
     public void setExtra(String extra) { this.extra = extra; }
+
+    public String getClientMsgNo() { return clientMsgNo; }
+    public void setClientMsgNo(String clientMsgNo) { this.clientMsgNo = clientMsgNo; }
 }

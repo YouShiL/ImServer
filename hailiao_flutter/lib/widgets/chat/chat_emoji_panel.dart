@@ -4,6 +4,10 @@ import 'package:hailiao_flutter/theme/chat_ui_tokens.dart';
 
 /// 表情区：上方 emoji 网格；底部删除 + 辅助发送（不替代输入条上的发送）。
 class ChatEmojiPanel extends StatefulWidget {
+  /// 嵌入 composer 下方时的总高度（与 [build] 布局一致，供聊天列表统一 bottom padding）。
+  static const double embeddedHeight =
+      12 + 240 + 14 + 14 + 34;
+
   const ChatEmojiPanel({
     super.key,
     required this.controller,

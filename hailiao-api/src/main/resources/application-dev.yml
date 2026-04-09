@@ -36,6 +36,17 @@ springfox:
     swagger-ui:
       enabled: true
 
+# IM：与 Flutter --dart-define=IM_SEND_VIA_SERVER=true & IM_CLIENT_DIRECT_SEND_FALLBACK=false 对齐。
+# REST 落库后会经 WukongImClient 调 WuKong；若仍为 false，消息不会进入 WuKongIM。
+# 请将 api-base-url 改为本机可访问的 WuKong Manager/API 根地址（与 WuKong 实际部署一致）。
+im:
+  send:
+    via-server: true
+  wukong:
+    enabled: true
+    api-base-url: ${WUKONG_API_BASE_URL:http://127.0.0.1:5001}
+    manager-token: ${WUKONG_MANAGER_TOKEN:}
+
 # 本地开发 OSS：请替换为你的阿里云测试凭据（勿提交真实 Key 到公开仓库）
 oss:
   endpoint: https://oss-cn-hangzhou.aliyuncs.com

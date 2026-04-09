@@ -76,6 +76,27 @@ springfox:
       v3:
         path: /v3/api-docs
 
+# -----------------------------------------------------------------------------
+# IM 渐进迁移（Phase 0）：默认与当前行为一致 — 后端不发 WuKong、webhook 关闭、客户端可直发 IM
+# -----------------------------------------------------------------------------
+im:
+  migration:
+    mode: legacy
+  wukong:
+    enabled: false
+    api-base-url: http://127.0.0.1:5001
+    # 登录/注册/刷新 JWT 后 POST {api-base-url}/user/token，写入 WuKong 侧 uid+token（与 Flutter SDK 一致），否则 TCP 报 device token not found
+    sync-user-token-on-auth: true
+    manager-token: ""
+  webhook:
+    enabled: false
+    path: /api/im/webhook
+    secret: ""
+  send:
+    via-server: false
+  client:
+    direct-send-fallback: true
+
 file:
   upload:
     path: ./uploads

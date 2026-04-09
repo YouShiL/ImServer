@@ -223,8 +223,9 @@ class FakeHomeMessageApi implements MessageApi {
   Future<ResponseDTO<MessageDTO>> sendGroupMessage(
     int groupId,
     String content,
-    int msgType,
-  ) {
+    int msgType, {
+    String? clientMsgNo,
+  }) {
     throw UnimplementedError();
   }
 
@@ -241,8 +242,9 @@ class FakeHomeMessageApi implements MessageApi {
   Future<ResponseDTO<MessageDTO>> sendPrivateMessage(
     int toUserId,
     String content,
-    int msgType,
-  ) {
+    int msgType, {
+    String? clientMsgNo,
+  }) {
     throw UnimplementedError();
   }
 

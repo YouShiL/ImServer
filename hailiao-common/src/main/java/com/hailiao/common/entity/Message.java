@@ -90,6 +90,10 @@ public class Message implements Serializable {
     @Column(name = "created_at")
     private Date createdAt;
 
+    /** 客户端幂等键（文本）；可空，非空时全局唯一 */
+    @Column(name = "client_msg_no", length = 64, unique = true)
+    private String clientMsgNo;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -161,4 +165,7 @@ public class Message implements Serializable {
 
     public Date getCreatedAt() { return createdAt; }
     public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
+
+    public String getClientMsgNo() { return clientMsgNo; }
+    public void setClientMsgNo(String clientMsgNo) { this.clientMsgNo = clientMsgNo; }
 }

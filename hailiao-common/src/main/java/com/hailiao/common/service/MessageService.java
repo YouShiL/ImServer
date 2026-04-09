@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hailiao.common.entity.Conversation;
 import com.hailiao.common.entity.ContentAudit;
 import com.hailiao.common.entity.Message;
+import com.hailiao.common.im.WukongOutboundBridge;
 import com.hailiao.common.entity.MessageReadStatus;
 import com.hailiao.common.repository.ConversationRepository;
 import com.hailiao.common.repository.MessageReadStatusRepository;
@@ -17,9 +18,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -54,6 +57,9 @@ public class MessageService {
     @Autowired(required = false)
     private ContentAuditService contentAuditService;
 
+    @Autowired(required = false)
+    private WukongOutboundBridge wukongOutboundBridge;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
     /**
@@ -61,6 +67,20 @@ public class MessageService {
      */
     @Transactional
     public Message sendPrivateMessage(Long fromUserId, Long toUserId, String content, Integer msgType, String extra) {
+        return sendPrivateMessage(fromUserId, toUserId, content, msgType, extra, null);
+    }
+
+    @Transactional
+    public Message sendPrivateMessage(Long fromUserId, Long toUserId, String content, Integer msgType,
+                                      String extra, String clientMsgNo) {
+        if (StringUtils.hasText(clientMsgNo)) {
+            String key = clientMsgNo.trim();
+            Optional<Message> existing = messageRepository.findByClientMsgNo(key);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+
         Message message = new Message();
         message.setMsgId(UUID.randomUUID().toString().replace("-", ""));
         message.setFromUserId(fromUserId);
@@ -72,6 +92,9 @@ public class MessageService {
         message.setIsRead(false);
         message.setIsRecall(false);
         message.setCreatedAt(new Date());
+        if (clientMsgNo != null && !clientMsgNo.trim().isEmpty()) {
+            message.setClientMsgNo(clientMsgNo.trim());
+        }
 
         Message savedMessage = messageRepository.save(message);
 
@@ -85,7 +108,42 @@ public class MessageService {
         }
 
         createContentAuditIfNeeded(savedMessage);
+        dispatchWukongPrivate(savedMessage, clientMsgNo);
         return savedMessage;
+    }
+
+    private void dispatchWukongPrivate(Message savedMessage, String clientMsgNo) {
+        String cm = StringUtils.hasText(clientMsgNo)
+                ? clientMsgNo.trim()
+                : (savedMessage.getClientMsgNo() != null ? savedMessage.getClientMsgNo().trim() : "");
+        String cprev = imLogPreview(savedMessage.getContent(), 200);
+        logger.info(
+                "[im.send] dispatch private message: fromUid={} toUid={} clientMsgNo={} dbMessageId={} content={}",
+                savedMessage.getFromUserId(),
+                savedMessage.getToUserId(),
+                cm,
+                savedMessage.getId(),
+                cprev);
+        if (wukongOutboundBridge == null) {
+            logger.warn("[im.send] dispatch private message skipped: WukongOutboundBridge bean absent");
+            return;
+        }
+        try {
+            wukongOutboundBridge.afterPrivateMessageSaved(savedMessage, clientMsgNo);
+        } catch (Exception e) {
+            logger.warn("[im.send] WuKong outbound private skipped: {}", e.getMessage());
+        }
+    }
+
+    private static String imLogPreview(String s, int max) {
+        if (!StringUtils.hasText(s)) {
+            return "";
+        }
+        String t = s.trim();
+        if (t.length() <= max) {
+            return t;
+        }
+        return t.substring(0, max) + "…";
     }
 
     private void createContentAuditIfNeeded(Message message) {
@@ -126,6 +184,20 @@ public class MessageService {
      */
     @Transactional
     public Message sendGroupMessage(Long fromUserId, Long groupId, String content, Integer msgType, String extra) {
+        return sendGroupMessage(fromUserId, groupId, content, msgType, extra, null);
+    }
+
+    @Transactional
+    public Message sendGroupMessage(Long fromUserId, Long groupId, String content, Integer msgType,
+                                    String extra, String clientMsgNo) {
+        if (StringUtils.hasText(clientMsgNo)) {
+            String key = clientMsgNo.trim();
+            Optional<Message> existing = messageRepository.findByClientMsgNo(key);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+
         Message message = new Message();
         message.setMsgId(UUID.randomUUID().toString().replace("-", ""));
         message.setFromUserId(fromUserId);
@@ -137,6 +209,9 @@ public class MessageService {
         message.setIsRead(false);
         message.setIsRecall(false);
         message.setCreatedAt(new Date());
+        if (clientMsgNo != null && !clientMsgNo.trim().isEmpty()) {
+            message.setClientMsgNo(clientMsgNo.trim());
+        }
 
         Message savedMessage = messageRepository.save(message);
 
@@ -155,7 +230,19 @@ public class MessageService {
         }
 
         createContentAuditIfNeeded(savedMessage);
+        dispatchWukongGroup(savedMessage, clientMsgNo);
         return savedMessage;
+    }
+
+    private void dispatchWukongGroup(Message savedMessage, String clientMsgNo) {
+        if (wukongOutboundBridge == null) {
+            return;
+        }
+        try {
+            wukongOutboundBridge.afterGroupMessageSaved(savedMessage, clientMsgNo);
+        } catch (Exception e) {
+            logger.warn("[im.send] WuKong outbound group skipped: {}", e.getMessage());
+        }
     }
 
     /**

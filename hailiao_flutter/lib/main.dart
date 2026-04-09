@@ -24,12 +24,14 @@ import 'package:hailiao_flutter/screens/register_screen.dart';
 import 'package:hailiao_flutter/screens/security_screen.dart';
 import 'package:hailiao_flutter/screens/user_detail_screen.dart';
 import 'package:hailiao_flutter/services/api_service.dart';
+import 'package:hailiao_flutter/sqlite_desktop_init.dart';
 import 'package:provider/provider.dart';
 
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await initSqfliteForCurrentPlatform();
   final sourceHanSansLoader = FontLoader('Source Han Sans SC');
   sourceHanSansLoader.addFont(
     rootBundle.load('assets/fonts/SourceHanSansSC-Regular.otf'),
@@ -97,12 +99,17 @@ class _ImBridgeBinderState extends State<_ImBridgeBinder> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final authProvider = context.watch<AuthProvider>();
-    if (!authProvider.isAuthenticated || _bindScheduled) {
+    if (!authProvider.isAuthenticated) {
+      context.read<ImEventBridge>().unbind();
+      _bindScheduled = false;
+      return;
+    }
+    if (_bindScheduled) {
       return;
     }
 
     _bindScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) {
         return;
       }
@@ -110,7 +117,7 @@ class _ImBridgeBinderState extends State<_ImBridgeBinder> {
         _bindScheduled = false;
         return;
       }
-      context.read<ImEventBridge>().bind();
+      await context.read<ImEventBridge>().bind();
       _bindScheduled = false;
     });
   }

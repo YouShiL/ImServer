@@ -25,6 +25,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -51,7 +53,7 @@ class MessageControllerTest {
         Message message = buildPrivateMessage();
         User sender = buildUser(1L, "1000000001", "发送者");
 
-        when(messageService.sendPrivateMessage(1L, 2L, "你好", 1, "{}")).thenReturn(message);
+        when(messageService.sendPrivateMessage(eq(1L), eq(2L), eq("你好"), eq(1), eq("{}"), isNull())).thenReturn(message);
         when(userService.getUserById(1L)).thenReturn(sender);
 
         ResponseEntity<ResponseDTO<com.hailiao.api.dto.MessageDTO>> response =
@@ -70,13 +72,37 @@ class MessageControllerTest {
         request.setExtra("{}");
 
         Message message = buildGroupMessage();
-        when(messageService.sendGroupMessage(1L, 10L, "群消息", 1, "{}")).thenReturn(message);
+        when(messageService.sendGroupMessage(eq(1L), eq(10L), eq("群消息"), eq(1), eq("{}"), isNull())).thenReturn(message);
 
         ResponseEntity<ResponseDTO<com.hailiao.api.dto.MessageDTO>> response =
                 messageController.sendGroupMessage(1L, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(Long.valueOf(10L), response.getBody().getData().getGroupId());
+    }
+
+    @Test
+    void sendPrivateMessageShouldPassClientMsgNoToService() {
+        SendPrivateMessageRequestDTO request = new SendPrivateMessageRequestDTO();
+        request.setToUserId(2L);
+        request.setContent("你好");
+        request.setMsgType(1);
+        request.setExtra("{}");
+        request.setClientMsgNo("cm-ctrl-1");
+
+        Message message = buildPrivateMessage();
+        message.setClientMsgNo("cm-ctrl-1");
+        User sender = buildUser(1L, "1000000001", "发送者");
+
+        when(messageService.sendPrivateMessage(eq(1L), eq(2L), eq("你好"), eq(1), eq("{}"), eq("cm-ctrl-1")))
+                .thenReturn(message);
+        when(userService.getUserById(1L)).thenReturn(sender);
+
+        ResponseEntity<ResponseDTO<com.hailiao.api.dto.MessageDTO>> response =
+                messageController.sendPrivateMessage(1L, request);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals("cm-ctrl-1", response.getBody().getData().getClientMsgNo());
     }
 
     @Test

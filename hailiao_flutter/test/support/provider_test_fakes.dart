@@ -273,10 +273,18 @@ class FakeMessageApi implements MessageApi {
       getPrivateMessagesHandler;
   Future<ResponseDTO<List<MessageDTO>>> Function(int groupId, int page, int size)?
       getGroupMessagesHandler;
-  Future<ResponseDTO<MessageDTO>> Function(int toUserId, String content, int msgType)?
-      sendPrivateMessageHandler;
-  Future<ResponseDTO<MessageDTO>> Function(int groupId, String content, int msgType)?
-      sendGroupMessageHandler;
+  Future<ResponseDTO<MessageDTO>> Function(
+    int toUserId,
+    String content,
+    int msgType, {
+    String? clientMsgNo,
+  })? sendPrivateMessageHandler;
+  Future<ResponseDTO<MessageDTO>> Function(
+    int groupId,
+    String content,
+    int msgType, {
+    String? clientMsgNo,
+  })? sendGroupMessageHandler;
   Future<ResponseDTO<String>> Function(int messageId)? recallMessageHandler;
   Future<ResponseDTO<MessageDTO>> Function({
     required int replyToMsgId,
@@ -351,18 +359,30 @@ class FakeMessageApi implements MessageApi {
   Future<ResponseDTO<MessageDTO>> sendPrivateMessage(
     int toUserId,
     String content,
-    int msgType,
-  ) {
-    return sendPrivateMessageHandler!.call(toUserId, content, msgType);
+    int msgType, {
+    String? clientMsgNo,
+  }) {
+    return sendPrivateMessageHandler!.call(
+      toUserId,
+      content,
+      msgType,
+      clientMsgNo: clientMsgNo,
+    );
   }
 
   @override
   Future<ResponseDTO<MessageDTO>> sendGroupMessage(
     int groupId,
     String content,
-    int msgType,
-  ) {
-    return sendGroupMessageHandler!.call(groupId, content, msgType);
+    int msgType, {
+    String? clientMsgNo,
+  }) {
+    return sendGroupMessageHandler!.call(
+      groupId,
+      content,
+      msgType,
+      clientMsgNo: clientMsgNo,
+    );
   }
 
   @override

@@ -4,6 +4,7 @@ import com.hailiao.api.dto.LoginRequestDTO;
 import com.hailiao.api.dto.RegisterRequestDTO;
 import com.hailiao.api.dto.ResponseDTO;
 import com.hailiao.api.dto.UserSessionDTO;
+import com.hailiao.api.wukong.WukongUserTokenSyncService;
 import com.hailiao.common.entity.User;
 import com.hailiao.common.entity.UserSession;
 import com.hailiao.common.service.UserService;
@@ -48,6 +49,9 @@ class AuthControllerTest {
 
     @Mock
     private HttpServletRequest httpServletRequest;
+
+    @Mock
+    private WukongUserTokenSyncService wukongUserTokenSyncService;
 
     @InjectMocks
     private AuthController authController;

@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' show max;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hailiao_flutter/config/im_feature_flags.dart';
 import 'package:hailiao_flutter/im/im_event_bridge.dart';
 import 'package:hailiao_flutter/models/conversation_dto.dart';
 import 'package:hailiao_flutter/models/emoji.dart';
@@ -22,7 +24,9 @@ import 'package:hailiao_flutter/theme/common_tokens.dart';
 import 'package:hailiao_flutter/widgets/chat/chat_app_bar.dart';
 import 'package:hailiao_flutter/widgets/chat/chat_app_bar_title.dart';
 import 'package:hailiao_flutter/widgets/chat/chat_body.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_attach_panel.dart';
 import 'package:hailiao_flutter/widgets/chat/chat_composer_column.dart';
+import 'package:hailiao_flutter/widgets/chat/chat_emoji_panel.dart';
 import 'package:hailiao_flutter/widgets/chat/chat_message_actions_sheet.dart';
 import 'package:hailiao_flutter/widgets/chat/chat_message_timeline.dart';
 import 'package:hailiao_flutter/widgets/chat/chat_scene.dart';
@@ -36,6 +40,22 @@ import 'package:hailiao_flutter/widgets/common/wx_bottom_sheet_shell.dart';
 import 'package:hailiao_flutter/widgets/common/wx_search_bar.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:wukongimfluttersdk/wkim.dart';
+
+/// [ListView.builder] 稳定 key：clientMsgNo → id → 字段指纹（禁止用 index）。
+String chatMessageListItemValueKey(MessageDTO message) {
+  final String? no = message.clientMsgNo?.trim();
+  if (no != null && no.isNotEmpty) {
+    return 'msg-cmn-$no';
+  }
+  final int? id = message.id;
+  if (id != null) {
+    return 'msg-id-$id';
+  }
+  final String fb =
+      '${message.fromUserId}_${message.toUserId}_${message.groupId}_${message.createdAt}_${message.content}';
+  return 'msg-fb-${fb.hashCode}';
+}
 
 abstract class ChatScreenApi {
   Future<ResponseDTO<Map<String, dynamic>>> getUserOnlineInfo(int userId);
@@ -95,10 +115,11 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final _imagePicker = ImagePicker();
+  Timer? _privateReadSyncTimer;
 
   bool _initialized = false;
   bool _isTyping = false;
@@ -124,10 +145,78 @@ class _ChatScreenState extends State<ChatScreen> {
 
   static const int _pageSize = 20;
 
+  /// 判断「贴近底部」：距最大滚动量不超过此值则 composer / 面板高度变化后自动贴底。
+  static const double _nearBottomScrollThreshold = 80;
+
+  /// [composerHeight + bottomPanelHeight + safeAreaBottom] 签名，用于统一底部模型只做一套贴底。
+  String _lastBottomLayoutSignature = '';
+
+  /// 底部布局变化后单次 [jumpTo(max)]，避免多路 postFrame 争抢。
+  bool _bottomAnchorJumpScheduled = false;
+
+  /// 上一帧用于 IME ↔ 表情 / + 号过渡检测（先于 [_syncBottomAnchorIfLayoutChanged] 内更新）。
+  double _bottomAnchorTrackPrevInsets = 0;
+  bool _bottomAnchorTrackPrevEmoji = false;
+  bool _bottomAnchorTrackPrevAttach = false;
+
+  /// IME 与自定义面板切换中推迟贴底，待 [_tryCompensateAfterImePanelTransition] 稳态再 jump。
+  bool _pendingStablePanelAnchorAfterImeTransition = false;
+
+  /// 检测 thread 条数是否增加（IM/REST）；仅在「非拉更早历史」且条数变多时触发滚底。
+  int? _prevThreadLenForAutoScroll;
+
+  /// 避免对同一条对方消息重复 [markAsRead]（幂等仍少打接口）。
+  int? _lastPeerMessageMarkReadId;
+  String? _lastPeerMessageMarkReadClientMsgNo;
+
+  /// 分页拉取更早消息导致 thread 变长时，不要自动滚到底（避免打断用户回看）。
+  bool _suppressAutoScrollOnNextThreadGrow = false;
+
+  /// 私聊已读：[threadMessages.length] 增长检测基线（与滚底解耦）。
+  int? _prevThreadLenForRead;
+
+  /// 首轮 [reset: true] 历史落地并切回实时流后为 true，即时已读增长判断依赖此门闸。
+  bool _chatInitSequenceComplete = false;
+
+  /// 会话列表拉取仅在 post-frame 触发一次，避免 [loadConversations] 内 notify 落在 build 生命周期。
+  bool _scheduledLoadConversations = false;
+
+  /// 首屏滚底完成前禁止「贴顶自动拉更早一页」，避免 page2 prepend 打断首屏。
+  bool _suppressPrependHistoryUntilInitialScrollSettled = true;
+
+  /// 首屏消息区：在切回 Provider 实时列表前，用本地快照渲染，避免用户看到 thread 的“生长过程”。
+  List<MessageDTO> _firstPaintSnapshotMessages = const [];
+
+  /// 首屏 handoff 未完成（遮罩 / 禁止 prepend 等）。与数据源解耦：[build] 中 messages 另见 [_freezeFirstPaintDataSource]。
+  bool _useFirstPaintSnapshot = true;
+
+  /// page1 已写入快照列表，可供首帧稳定绘制。
+  bool _firstPaintSnapshotReady = false;
+
+  /// revealed 后短暂保持 [_firstPaintSnapshotMessages] 作为列表数据源，再切 [liveThreadMessages]，避免换数据瞬时高度差导致「吸一下」。
+  bool _freezeFirstPaintDataSource = false;
+
+  /// 首屏 [jumpTo(maxScrollExtent)] 已完成，才允许用户看到消息区（避免先见默认 offset 再跳底的「弹出感」）。
+  bool _firstPaintSnapshotRevealed = false;
+
+  /// 避免 [setState] 切实时流被嵌套调用多次。
+  bool _switchingOffFirstPaintSnapshot = false;
+
+  MessageProvider? _messageProviderBinding;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _composerFocus.addListener(_onComposerFocusChanged);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      _syncPrivateOutgoingReadIfOpen();
+    }
   }
 
   void _onComposerFocusChanged() {
@@ -152,6 +241,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _messageProviderBinding ??= context.read<MessageProvider>();
     if (_initialized) {
       return;
     }
@@ -162,6 +252,13 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _scheduledLoadConversations = false;
+    _suppressPrependHistoryUntilInitialScrollSettled = true;
+    _messageProviderBinding?.clearActiveConversation();
+    _lastPeerMessageMarkReadId = null;
+    _lastPeerMessageMarkReadClientMsgNo = null;
+    WidgetsBinding.instance.removeObserver(this);
+    _privateReadSyncTimer?.cancel();
     _composerFocus.removeListener(_onComposerFocusChanged);
     _composerFocus.dispose();
     _scrollController.removeListener(_handleScroll);
@@ -171,7 +268,28 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _initializeChat() async {
-    context.read<BlacklistProvider>().loadBlacklist();
+    _chatInitSequenceComplete = false;
+    _suppressPrependHistoryUntilInitialScrollSettled = true;
+    _firstPaintSnapshotMessages = const [];
+    _firstPaintSnapshotReady = false;
+    _firstPaintSnapshotRevealed = false;
+    _freezeFirstPaintDataSource = false;
+    _useFirstPaintSnapshot = true;
+    _switchingOffFirstPaintSnapshot = false;
+    _lastBottomLayoutSignature = '';
+    _bottomAnchorTrackPrevInsets = 0;
+    _bottomAnchorTrackPrevEmoji = false;
+    _bottomAnchorTrackPrevAttach = false;
+    _pendingStablePanelAnchorAfterImeTransition = false;
+    if (kDebugMode) {
+      debugPrint('[im.chat.audit] _initializeChat enter');
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      context.read<BlacklistProvider>().loadBlacklist();
+    });
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     _targetId = args?['targetId'] as int? ?? 1;
@@ -185,30 +303,331 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadingHistory = false;
     _historyBoundaryIndex = null;
 
-    final int? viewerId = context.read<AuthProvider>().messagingUserId;
+    final AuthProvider authReader = context.read<AuthProvider>();
+    final int? viewerId = _effectiveViewerForThread(authReader);
     if (kDebugMode && _type == 1) {
-      debugPrint('[im.chat] open private peer=$_targetId viewer=$viewerId');
+      debugPrint(
+        '[im.chat] open private peer=$_targetId viewer=$viewerId '
+        '(authMessaging=${authReader.messagingUserId} wkUid=${WKIM.shared.options.uid})',
+      );
     }
-
     final provider = context.read<MessageProvider>();
+    provider.setActiveConversation(_targetId!, _type!);
+    if (_scheduledLoadConversations) {
+      return;
+    }
+    _scheduledLoadConversations = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_initializeChatLoadConversationsPhase());
+    });
+  }
+
+  /// 首帧 build 结束后再 [loadConversations]（内部 notify），随后与原顺序一致拉历史 / 已读等。
+  Future<void> _initializeChatLoadConversationsPhase() async {
+    if (!mounted) {
+      _scheduledLoadConversations = false;
+      return;
+    }
+    final MessageProvider provider = context.read<MessageProvider>();
+    final int? viewerInit =
+        _effectiveViewerForThread(context.read<AuthProvider>());
     provider.retainEphemeralMessagesForChat(
       _targetId!,
       _type!,
-      currentUserId: viewerId,
+      currentUserId: viewerInit,
     );
     await provider.loadConversations();
+    if (!mounted) {
+      _scheduledLoadConversations = false;
+      return;
+    }
     _hydrateConversationMeta(provider.conversations);
     _restoreDraft(provider.conversations);
 
     await _loadHistoryPage(page: 1, reset: true);
+    if (!mounted) {
+      return;
+    }
+    final int? viewerAfterHistory =
+        _effectiveViewerForThread(context.read<AuthProvider>());
+    final List<MessageDTO> prepared =
+        List<MessageDTO>.from(_threadMessages(provider, viewerAfterHistory));
+    setState(() {
+      _firstPaintSnapshotMessages = prepared;
+      _firstPaintSnapshotReady = true;
+      _useFirstPaintSnapshot = true;
+      _freezeFirstPaintDataSource = false;
+    });
+    _scheduleFirstPaintSnapshotHandoff();
+  }
+
+  void _postFrame(void Function() fn) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      fn();
+    });
+  }
+
+  /// 首屏快照已就绪：双帧 layout → 遮罩下 [jumpTo] 底 → 揭遮罩 → 冻数据源 1 帧 → 对齐 live → 底距守恒滚轮 → 再副作用。
+  void _scheduleFirstPaintSnapshotHandoff() {
+    if (!mounted || !_firstPaintSnapshotReady) {
+      return;
+    }
+    if (_firstPaintSnapshotMessages.isEmpty) {
+      _postFrame(() {
+        _postFrame(() {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _firstPaintSnapshotRevealed = true;
+            _useFirstPaintSnapshot = false;
+            _freezeFirstPaintDataSource = false;
+            _chatInitSequenceComplete = true;
+            _suppressPrependHistoryUntilInitialScrollSettled = false;
+          });
+          _prevThreadLenForAutoScroll = 0;
+          _prevThreadLenForRead = 0;
+          unawaited(_completeOpenChatSideEffects());
+        });
+      });
+      return;
+    }
+    _postFrame(() {
+      _postFrame(() {
+        if (_scrollController.hasClients) {
+          final double max = _scrollController.position.maxScrollExtent;
+          if (max > 0) {
+            _scrollController.jumpTo(max);
+          }
+        }
+        _postFrame(() {
+          setState(() {
+            _firstPaintSnapshotRevealed = true;
+          });
+          _postFrame(_lingerSnapshotThenHandoffToLive);
+        });
+      });
+    });
+  }
+
+  void _lingerSnapshotThenHandoffToLive() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _useFirstPaintSnapshot = false;
+      _freezeFirstPaintDataSource = true;
+    });
+    _postFrame(() => _trySwitchFirstPaintDataToLive(alignAttempt: 0));
+  }
+
+  /// snapshot 与 live 在尾部是否可用同一「强键」对齐（id 或 clientMsgNo 至少一侧非空且相等）。
+  bool _snapshotTailStrongKeyMatch(MessageDTO a, MessageDTO b) {
+    final int? idA = a.id;
+    final int? idB = b.id;
+    if (idA != null && idB != null && idA == idB) {
+      return true;
+    }
+    final String? cA = a.clientMsgNo?.trim();
+    final String? cB = b.clientMsgNo?.trim();
+    if (cA != null &&
+        cA.isNotEmpty &&
+        cB != null &&
+        cB.isNotEmpty &&
+        cA == cB) {
+      return true;
+    }
+    return false;
+  }
+
+  /// 仅在 live 与首屏快照足够一致时才切流，避免 snapshot→live 那一帧视觉抖动。
+  bool _canSwitchFromSnapshotToLive(
+    List<MessageDTO> snapshot,
+    List<MessageDTO> live,
+  ) {
+    if (snapshot.isEmpty && live.isEmpty) {
+      return true;
+    }
+    if (snapshot.length != live.length) {
+      return false;
+    }
+    if (snapshot.isEmpty || live.isEmpty) {
+      return false;
+    }
+    final MessageDTO sLast = snapshot.last;
+    final MessageDTO lLast = live.last;
+    if (!_snapshotTailStrongKeyMatch(sLast, lLast)) {
+      return false;
+    }
+    final int n = snapshot.length < 5 ? snapshot.length : 5;
+    for (int k = 0; k < n; k++) {
+      final int i = snapshot.length - 1 - k;
+      final MessageDTO s = snapshot[i];
+      final MessageDTO l = live[i];
+      if (!_snapshotTailStrongKeyMatch(s, l)) {
+        return false;
+      }
+      if (s.isRead != l.isRead) {
+        return false;
+      }
+      if (s.status != l.status) {
+        return false;
+      }
+      if (s.msgType != l.msgType) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// 冻数据源阶段：对齐 live 与快照后再切数据，并用距底守恒修正 scroll（[alignAttempt] 最多顺延 3 帧）。
+  void _trySwitchFirstPaintDataToLive({int alignAttempt = 0}) {
+    if (!mounted ||
+        !_firstPaintSnapshotReady ||
+        !_firstPaintSnapshotRevealed ||
+        !_freezeFirstPaintDataSource) {
+      return;
+    }
+    final int? v = _effectiveViewerForThread(context.read<AuthProvider>());
+    final List<MessageDTO> live = List<MessageDTO>.from(
+      _threadMessages(context.read<MessageProvider>(), v),
+    );
+    final List<MessageDTO> snapshot = _firstPaintSnapshotMessages;
+
+    final bool aligned = _canSwitchFromSnapshotToLive(snapshot, live);
+    if (!aligned && alignAttempt < 3) {
+      _postFrame(() => _trySwitchFirstPaintDataToLive(alignAttempt: alignAttempt + 1));
+      return;
+    }
+
+    if (_switchingOffFirstPaintSnapshot) {
+      return;
+    }
+    _switchingOffFirstPaintSnapshot = true;
+    final int snapLen = _firstPaintSnapshotMessages.length;
+    _prevThreadLenForAutoScroll = snapLen;
+    _prevThreadLenForRead = snapLen;
+    _suppressPrependHistoryUntilInitialScrollSettled = false;
+
+    double? preserveDistanceFromBottom;
+    if (_scrollController.hasClients) {
+      final ScrollPosition pos = _scrollController.position;
+      preserveDistanceFromBottom = pos.maxScrollExtent - pos.pixels;
+    }
+
+    setState(() {
+      _freezeFirstPaintDataSource = false;
+      _chatInitSequenceComplete = true;
+    });
+    _switchingOffFirstPaintSnapshot = false;
+
+    _postFrame(() {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+      final ScrollPosition pos = _scrollController.position;
+      final double newMax = pos.maxScrollExtent;
+      final double minExt = pos.minScrollExtent;
+      if (preserveDistanceFromBottom != null) {
+        final double target = newMax - preserveDistanceFromBottom;
+        _scrollController.jumpTo(target.clamp(minExt, newMax));
+      } else if (newMax > 0) {
+        _scrollController.jumpTo(newMax);
+      }
+      _postFrame(() {
+        if (mounted) {
+          unawaited(_completeOpenChatSideEffects());
+        }
+      });
+    });
+  }
+
+  Future<void> _completeOpenChatSideEffects() async {
+    if (!mounted) {
+      return;
+    }
+    final MessageProvider provider = context.read<MessageProvider>();
+    if (_targetId != null) {
+      final bool readOk = await provider.markAsRead(_targetId!, type: _type!);
+      if (!mounted) {
+        return;
+      }
+      if (_type == 1 && readOk) {
+        await _syncOutgoingReadImmediate();
+      }
+    }
+    if (!mounted) {
+      return;
+    }
     if (_type == 1 && _targetId != null) {
-      await provider.markAsRead(_targetId!);
       await _loadPresence(_targetId!);
+      _privateReadSyncTimer?.cancel();
+      _privateReadSyncTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+        if (!mounted) {
+          return;
+        }
+        _syncPrivateOutgoingReadIfOpen();
+      });
+    } else {
+      _privateReadSyncTimer?.cancel();
+      _privateReadSyncTimer = null;
+    }
+    if (!mounted) {
+      return;
     }
     if (_type == 2) {
       context.read<GroupProvider>().loadGroups();
     }
-    _scrollToLatest();
+  }
+
+  /// 私聊：对齐服务端「对方已读」后写回的 [MessageDTO.isRead]，便于双勾更新（无 IM 已读推送时的兜底）。
+  void _syncPrivateOutgoingReadIfOpen() {
+    if (_type != 1 || _targetId == null) {
+      return;
+    }
+    final int? viewerId =
+        _effectiveViewerForThread(context.read<AuthProvider>());
+    if (viewerId == null) {
+      return;
+    }
+    context.read<MessageProvider>().syncPrivateOutgoingReadFlags(
+          _targetId!,
+          viewerUserId: viewerId,
+        );
+  }
+
+  /// [markAsRead] 成功后立刻从 REST 对齐「我→对方」的 [isRead]，规避 IM [readed] 延迟或未命中。
+  Future<void> _syncOutgoingReadImmediate() async {
+    if (!mounted || _type != 1 || _targetId == null) {
+      return;
+    }
+    final int? viewerId =
+        _effectiveViewerForThread(context.read<AuthProvider>());
+    if (viewerId == null) {
+      return;
+    }
+    await context.read<MessageProvider>().syncPrivateOutgoingReadFlags(
+          _targetId!,
+          viewerUserId: viewerId,
+          skipIfRecentReadEvent: Duration.zero,
+        );
+  }
+
+  Future<void> _runMarkReadThenSyncOutgoing() async {
+    if (!mounted || _type != 1 || _targetId == null) {
+      return;
+    }
+    final MessageProvider provider = context.read<MessageProvider>();
+    if (!provider.isActiveConversation(_targetId!, _type!)) {
+      return;
+    }
+    final bool ok = await provider.markAsRead(_targetId!, type: _type!);
+    if (mounted && ok) {
+      await _syncOutgoingReadImmediate();
+    }
   }
 
   void _hydrateConversationMeta(List<ConversationDTO> conversations) {
@@ -250,6 +669,42 @@ class _ChatScreenState extends State<ChatScreen> {
     _isTyping = draft.isNotEmpty;
   }
 
+  /// 与 [ImEventBridge._effectiveMapperUserId] / IM 私聊 to/from 映射一致，避免 Windows 等场景 Auth 与 WK uid 短暂不一致时 [messagesForChat] 整条过滤掉 IM 行。
+  int? _effectiveViewerForThread(AuthProvider auth) {
+    final int? a = auth.messagingUserId;
+    if (a != null) {
+      return a;
+    }
+    final String? u = WKIM.shared.options.uid;
+    if (u == null || u.isEmpty) {
+      return null;
+    }
+    return int.tryParse(u);
+  }
+
+  List<MessageDTO> _threadMessages(
+    MessageProvider messageProvider,
+    int? viewerId,
+  ) {
+    final tid = _targetId;
+    final typ = _type;
+    if (tid == null || typ == null) {
+      return const <MessageDTO>[];
+    }
+    final List<MessageDTO> thread = messageProvider.messagesForChat(
+      targetId: tid,
+      type: typ,
+      currentUserId: viewerId,
+    );
+    if (kDebugMode) {
+      debugPrint(
+        '[im.chat.filter] _threadMessages len=${thread.length} '
+        'target=$tid type=$typ viewer=$viewerId',
+      );
+    }
+    return thread;
+  }
+
   Future<void> _loadHistoryPage({
     required int page,
     bool reset = false,
@@ -261,13 +716,18 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
 
+    final bool willLoadOlder = !reset && page > 1;
+    if (willLoadOlder) {
+      _suppressAutoScrollOnNextThreadGrow = true;
+    }
+
     setState(() {
       _loadingHistory = true;
     });
 
     final provider = context.read<MessageProvider>();
-    final int beforeCount = provider.messages.length;
-    final int? viewerId = context.read<AuthProvider>().messagingUserId;
+    final int? viewerId = _effectiveViewerForThread(context.read<AuthProvider>());
+    final int beforeCount = _threadMessages(provider, viewerId).length;
 
     if (_type == 1) {
       await provider.loadPrivateMessages(
@@ -281,10 +741,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     if (!mounted) {
+      if (willLoadOlder) {
+        _suppressAutoScrollOnNextThreadGrow = false;
+      }
       return;
     }
 
-    final int afterCount = provider.messages.length;
+    final int afterCount = _threadMessages(provider, viewerId).length;
     final int loadedCount = reset ? afterCount : (afterCount - beforeCount);
 
     final String? loadErr = provider.error;
@@ -312,6 +775,14 @@ class _ChatScreenState extends State<ChatScreen> {
         _historyBoundaryIndex = null;
       }
     });
+    if (reset && afterCount > 0 && kDebugMode) {
+      debugPrint(
+        '[im.chat.audit] _loadHistoryPage(reset) done afterCount=$afterCount',
+      );
+    }
+    if (willLoadOlder && loadedCount <= 0) {
+      _suppressAutoScrollOnNextThreadGrow = false;
+    }
   }
 
   Future<void> _loadPresence(int userId) async {
@@ -368,8 +839,279 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  /// [ChatInputBar] 及输入区独占行：多行按换行与 [TextField] style 估算，语音模式走单行占位。
+  double _composerInputRowHeight() {
+    const double barVerticalPadding = 12;
+    const double sideSlot = ChatUiTokens.inputActionSize;
+    if (_isVoiceMode) {
+      return barVerticalPadding + ChatUiTokens.inputFieldMinHeight;
+    }
+    final String text = _messageController.text;
+    int lines = 1;
+    if (text.isNotEmpty) {
+      lines = text.split('\n').length;
+      final int cap = ChatUiTokens.inputFieldMaxLines.toInt();
+      if (lines > cap) {
+        lines = cap;
+      }
+    }
+    const double lineHeight = 16 * 1.25;
+    final double fieldH = max(
+      ChatUiTokens.inputFieldMinHeight,
+      lineHeight * lines,
+    );
+    final double rowH = max(sideSlot, fieldH);
+    return barVerticalPadding + rowH;
+  }
+
+  /// Composer 内输入条以上固定条（拉黑 / 禁言 / 回复引用），不含表情或 + 内联面板。
+  double _composerChromeAboveInputHeight({
+    required bool isBlocked,
+    required bool groupAllMuted,
+    required bool replyVisible,
+  }) {
+    double h = 0;
+    if (isBlocked) {
+      h += 48;
+    }
+    if (groupAllMuted) {
+      h += 56;
+    }
+    if (replyVisible) {
+      h += 76;
+    }
+    return h;
+  }
+
+  /// 仅承载页面内自定义底栏（表情 / + 号）。系统键盘由 [Scaffold.resizeToAvoidBottomInset] 收缩布局，
+  /// 不在此返回 [MediaQuery.viewInsets.bottom]，避免 list padding 与布局双算上推。
+  double _resolveBottomPanelHeight(MediaQueryData mq, ChatScene scene) {
+    final double ime = mq.viewInsets.bottom;
+    if (ime > 0.5) {
+      return 0;
+    }
+    if (_isEmojiPanelOpen) {
+      return ChatEmojiPanel.embeddedHeight;
+    }
+    if (_isAttachPanelOpen) {
+      final int cells = scene.isGroupChat ? 3 : 5;
+      return ChatAttachPanel.embeddedHeightForItemCount(cells);
+    }
+    return 0;
+  }
+
+  bool _chatScrollIsNearBottom() {
+    if (!_scrollController.hasClients) {
+      return false;
+    }
+    final ScrollPosition pos = _scrollController.position;
+    final double distanceFromBottom = pos.maxScrollExtent - pos.pixels;
+    return distanceFromBottom <= _nearBottomScrollThreshold;
+  }
+
+  bool _firstPaintHandoffBlocksBottomAnchor() {
+    return !_firstPaintSnapshotReady ||
+        _useFirstPaintSnapshot ||
+        _freezeFirstPaintDataSource;
+  }
+
+  /// IME 与 emoji / attach 切换的过渡帧：避免在键盘收缩尚未结束、bottomPanel 已开始计入时过早 [jumpTo]。
+  static bool _isInImeCustomPanelTransition({
+    required double previousViewInsetsBottom,
+    required double currentViewInsetsBottom,
+    required bool previousEmojiOpen,
+    required bool previousAttachOpen,
+    required bool currentEmojiOpen,
+    required bool currentAttachOpen,
+  }) {
+    final bool prevIme = previousViewInsetsBottom > 0.5;
+    final bool currIme = currentViewInsetsBottom > 0.5;
+    final bool panelOpenChanged =
+        previousEmojiOpen != currentEmojiOpen ||
+        previousAttachOpen != currentAttachOpen;
+    final bool prevPanel = previousEmojiOpen || previousAttachOpen;
+    final bool currPanel = currentEmojiOpen || currentAttachOpen;
+
+    if (prevIme &&
+        panelOpenChanged &&
+        (currIme ||
+            (currentViewInsetsBottom - previousViewInsetsBottom).abs() > 1.0)) {
+      return true;
+    }
+    if (prevPanel && !currPanel && currIme && !prevIme) {
+      return true;
+    }
+    if (currIme && currPanel && (!prevPanel || panelOpenChanged)) {
+      return true;
+    }
+    return false;
+  }
+
+  void _updateBottomAnchorTransitionTrack({
+    required double viewInsetsBottom,
+    required bool emojiOpen,
+    required bool attachOpen,
+  }) {
+    _bottomAnchorTrackPrevInsets = viewInsetsBottom;
+    _bottomAnchorTrackPrevEmoji = emojiOpen;
+    _bottomAnchorTrackPrevAttach = attachOpen;
+  }
+
+  /// IME 已收起且 in-app 面板已进入 [listBottomPad]；或键盘已独占底部（自定义面板已关，避免 IME 仍可见且 emoji flag 已开但 bp 仍为 0 的过渡帧误触发）。
+  bool _shouldCompensateAfterImePanelTransition(
+    double viewInsetsBottom,
+    double bottomPanelHeight,
+  ) {
+    final bool currPanel = _isEmojiPanelOpen || _isAttachPanelOpen;
+    if (viewInsetsBottom <= 0.5 && bottomPanelHeight > 0.5) {
+      return true;
+    }
+    if (viewInsetsBottom > 0.5 &&
+        bottomPanelHeight <= 0.5 &&
+        !currPanel) {
+      return true;
+    }
+    return false;
+  }
+
+  void _tryCompensateAfterImePanelTransition({
+    required double viewInsetsBottom,
+    required double bottomPanelHeight,
+  }) {
+    if (!_pendingStablePanelAnchorAfterImeTransition) {
+      return;
+    }
+    if (!_chatInitSequenceComplete || _firstPaintHandoffBlocksBottomAnchor()) {
+      return;
+    }
+    if (!_chatScrollIsNearBottom()) {
+      _pendingStablePanelAnchorAfterImeTransition = false;
+      return;
+    }
+    if (!_shouldCompensateAfterImePanelTransition(
+          viewInsetsBottom,
+          bottomPanelHeight,
+        )) {
+      return;
+    }
+    _pendingStablePanelAnchorAfterImeTransition = false;
+    _scheduleBottomAnchorJumpOnce();
+  }
+
+  void _scheduleBottomAnchorJumpOnce() {
+    if (_bottomAnchorJumpScheduled) {
+      return;
+    }
+    _bottomAnchorJumpScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _bottomAnchorJumpScheduled = false;
+      if (!mounted || !_chatInitSequenceComplete) {
+        return;
+      }
+      if (_firstPaintHandoffBlocksBottomAnchor()) {
+        return;
+      }
+      if (!_scrollController.hasClients) {
+        return;
+      }
+      final ScrollPosition pos = _scrollController.position;
+      final double maxExt = pos.maxScrollExtent;
+      final double minExt = pos.minScrollExtent;
+      final double target = maxExt.clamp(minExt, maxExt);
+      if ((target - pos.pixels).abs() < 1.0) {
+        return;
+      }
+      _scrollController.jumpTo(target);
+    });
+  }
+
+  /// [composerHeight] / [bottomPanelHeight] / [safeAreaBottom] / [viewInsetsBottom] 签名变化且此前贴底时贴齐新 [maxScrollExtent]。
+  /// [viewInsetsBottom] 仅参与签名以捕获 IME 显隐（不写进 [listBottomPad]，避免与 Scaffold 双算）。
+  void _syncBottomAnchorIfLayoutChanged({
+    required double composerHeight,
+    required double bottomPanelHeight,
+    required double safeAreaBottom,
+    required double viewInsetsBottom,
+  }) {
+    final bool inTransition = _isInImeCustomPanelTransition(
+      previousViewInsetsBottom: _bottomAnchorTrackPrevInsets,
+      currentViewInsetsBottom: viewInsetsBottom,
+      previousEmojiOpen: _bottomAnchorTrackPrevEmoji,
+      previousAttachOpen: _bottomAnchorTrackPrevAttach,
+      currentEmojiOpen: _isEmojiPanelOpen,
+      currentAttachOpen: _isAttachPanelOpen,
+    );
+
+    void finishTrack() {
+      _updateBottomAnchorTransitionTrack(
+        viewInsetsBottom: viewInsetsBottom,
+        emojiOpen: _isEmojiPanelOpen,
+        attachOpen: _isAttachPanelOpen,
+      );
+    }
+
+    final String sig =
+        '${composerHeight.toStringAsFixed(1)}|${bottomPanelHeight.toStringAsFixed(1)}|${safeAreaBottom.toStringAsFixed(1)}|${viewInsetsBottom.toStringAsFixed(1)}';
+    if (sig == _lastBottomLayoutSignature) {
+      if (!inTransition) {
+        _tryCompensateAfterImePanelTransition(
+          viewInsetsBottom: viewInsetsBottom,
+          bottomPanelHeight: bottomPanelHeight,
+        );
+      }
+      finishTrack();
+      return;
+    }
+
+    final bool keepBottom = _chatScrollIsNearBottom();
+    _lastBottomLayoutSignature = sig;
+
+    if (!_chatInitSequenceComplete) {
+      finishTrack();
+      return;
+    }
+    if (_firstPaintHandoffBlocksBottomAnchor()) {
+      finishTrack();
+      return;
+    }
+    if (!keepBottom) {
+      _pendingStablePanelAnchorAfterImeTransition = false;
+      finishTrack();
+      return;
+    }
+
+    if (inTransition) {
+      _pendingStablePanelAnchorAfterImeTransition = true;
+      finishTrack();
+      return;
+    }
+
+    if (_pendingStablePanelAnchorAfterImeTransition) {
+      if (_shouldCompensateAfterImePanelTransition(
+            viewInsetsBottom,
+            bottomPanelHeight,
+          )) {
+        _pendingStablePanelAnchorAfterImeTransition = false;
+        _scheduleBottomAnchorJumpOnce();
+      }
+      finishTrack();
+      return;
+    }
+
+    _scheduleBottomAnchorJumpOnce();
+    finishTrack();
+  }
+
   void _handleScroll() {
     if (!_scrollController.hasClients || _loadingHistory || !_hasMoreHistory) {
+      return;
+    }
+    if (_useFirstPaintSnapshot ||
+        _freezeFirstPaintDataSource ||
+        !_firstPaintSnapshotReady) {
+      return;
+    }
+    if (_suppressPrependHistoryUntilInitialScrollSettled) {
       return;
     }
     if (_scrollController.position.pixels <= 80) {
@@ -377,16 +1119,202 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _scrollToLatest() {
+  /// 双帧后再滚：等 [maxScrollExtent] 稳定；真正滚动前再做 [hasClients] / [maxScrollExtent] 保护。
+  ///
+  /// [animated]==false 时 [jumpTo] 无动画；否则 [animateTo] 平滑滚底。
+  void _scrollToLatest({bool animated = true}) {
+    if (kDebugMode) {
+      debugPrint(
+        '[im.chat.audit] _scrollToLatest invoked animated=$animated',
+      );
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) {
+      if (!mounted) {
         return;
       }
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        if (!_scrollController.hasClients) {
+          if (kDebugMode) {
+            debugPrint('[im.chat.audit] _scrollToLatest abort hasClients=false');
+          }
+          return;
+        }
+        final double max = _scrollController.position.maxScrollExtent;
+        final double px = _scrollController.position.pixels;
+        if (max <= 0) {
+          if (kDebugMode) {
+            debugPrint(
+              '[im.chat.audit] _scrollToLatest skip max<=0 (already top or no overflow)',
+            );
+          }
+          return;
+        }
+        if (animated) {
+          if (kDebugMode) {
+            debugPrint(
+              '[im.chat.audit] before animateTo pixels=$px maxScrollExtent=$max',
+            );
+          }
+          _scrollController
+              .animateTo(
+            max,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          )
+              .then((_) {
+            if (kDebugMode && mounted && _scrollController.hasClients) {
+              debugPrint(
+                '[im.chat.audit] after animateTo pixels=${_scrollController.position.pixels} '
+                'maxScrollExtent=${_scrollController.position.maxScrollExtent}',
+              );
+            }
+          });
+        } else {
+          if (kDebugMode) {
+            debugPrint(
+              '[im.chat.audit] before jumpTo pixels=$px maxScrollExtent=$max',
+            );
+          }
+          _scrollController.jumpTo(max);
+          if (kDebugMode && mounted && _scrollController.hasClients) {
+            debugPrint(
+              '[im.chat.audit] after jumpTo pixels=${_scrollController.position.pixels} '
+              'maxScrollExtent=${_scrollController.position.maxScrollExtent}',
+            );
+          }
+        }
+      });
+    });
+  }
+
+  /// 当前会话 thread 变长且非「正在拉更早历史」时滚到底（不做「仅贴近底部」门闸，避免键盘/安全区导致误判）。
+  void _maybeScrollToLatestOnNewThreadMessage(
+    int currentLen,
+    List<MessageDTO> threadMessages,
+  ) {
+    if (_useFirstPaintSnapshot || _freezeFirstPaintDataSource) {
+      return;
+    }
+    if (_targetId == null || _type == null) {
+      _prevThreadLenForAutoScroll = currentLen;
+      return;
+    }
+    if (_selectionMode) {
+      _prevThreadLenForAutoScroll = currentLen;
+      return;
+    }
+
+    final int? prev = _prevThreadLenForAutoScroll;
+    if (prev == null) {
+      _prevThreadLenForAutoScroll = currentLen;
+      return;
+    }
+    final bool grew = currentLen > prev && !_loadingHistory;
+    _prevThreadLenForAutoScroll = currentLen;
+
+    if (grew) {
+      if (_suppressAutoScrollOnNextThreadGrow) {
+        _suppressAutoScrollOnNextThreadGrow = false;
+        return;
+      }
+      if (kDebugMode) {
+        debugPrint('[im.chat.scroll] thread grew $prev → $currentLen, schedule');
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _loadingHistory) {
+          return;
+        }
+        _scrollToLatest();
+      });
+    }
+  }
+
+  /// 私聊：thread 条数增长时尝试已读（与滚底逻辑独立）。
+  void _maybeMarkPrivateReadOnThreadGrowth(List<MessageDTO> threadMessages) {
+    final int currentLen = threadMessages.length;
+    if (_type != 1 || _targetId == null) {
+      _prevThreadLenForRead = currentLen;
+      return;
+    }
+    if (!_chatInitSequenceComplete) {
+      _prevThreadLenForRead = currentLen;
+      return;
+    }
+    if (_loadingHistory) {
+      _prevThreadLenForRead = currentLen;
+      return;
+    }
+    if (threadMessages.isEmpty) {
+      _prevThreadLenForRead = currentLen;
+      return;
+    }
+    if (_selectionMode) {
+      _prevThreadLenForRead = currentLen;
+      return;
+    }
+    final int? prevLen = _prevThreadLenForRead;
+    if (prevLen == null) {
+      _prevThreadLenForRead = currentLen;
+      return;
+    }
+    if (currentLen <= prevLen) {
+      _prevThreadLenForRead = currentLen;
+      return;
+    }
+    _prevThreadLenForRead = currentLen;
+    if (kDebugMode) {
+      debugPrint(
+        '[im.chat.audit] thread growth read-check currentLen=$currentLen prevLen=$prevLen',
       );
+    }
+    _maybeMarkPrivateReadOnNewPeerLine(threadMessages);
+  }
+
+  /// 私聊：对方新消息到达且当前页正在展示该会话时，再上报一次已读（与打开会话时 [markAsRead] 互补）。
+  void _maybeMarkPrivateReadOnNewPeerLine(List<MessageDTO> thread) {
+    if (_type != 1 || _targetId == null || thread.isEmpty) {
+      return;
+    }
+    final MessageProvider mp = context.read<MessageProvider>();
+    final bool active = mp.isActiveConversation(_targetId!, _type!);
+    if (!active) {
+      if (kDebugMode) {
+        debugPrint('[im.chat.audit] skip markAsRead activeConversation=false');
+      }
+      return;
+    }
+    final MessageDTO last = thread.last;
+    final bool fromPeer = last.fromUserId == _targetId;
+    if (kDebugMode) {
+      debugPrint(
+        '[im.chat.audit] last.fromUserId=${last.fromUserId} targetId=$_targetId active=$active',
+      );
+    }
+    if (!fromPeer) {
+      return;
+    }
+    final int? lid = last.id;
+    final String? lcm = last.clientMsgNo?.trim();
+    if (lid != null && lid > 0 && _lastPeerMessageMarkReadId == lid) {
+      return;
+    }
+    if (lcm != null &&
+        lcm.isNotEmpty &&
+        _lastPeerMessageMarkReadClientMsgNo == lcm) {
+      return;
+    }
+    _lastPeerMessageMarkReadId = lid;
+    _lastPeerMessageMarkReadClientMsgNo = lcm;
+    if (kDebugMode) {
+      debugPrint('[im.chat.audit] scheduling markAsRead(peer=$_targetId)');
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_runMarkReadThenSyncOutgoing());
     });
   }
 
@@ -462,17 +1390,18 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  List<MessageDTO> get _selectedMessages {
+  /// 当前多选命中的消息（必须基于 [build] 里已 watch 得到的 [threadMessages]）。
+  List<MessageDTO> _selectedMessagesInThread(List<MessageDTO> threadMessages) {
     final ids = _selectedMessageIds;
-    return context
-        .read<MessageProvider>()
-        .messages
+    return threadMessages
         .where((message) => message.id != null && ids.contains(message.id))
         .toList();
   }
 
   void _selectAllMessages() {
-    final messages = context.read<MessageProvider>().messages;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final messages = _threadMessages(mp, viewer);
     setState(() {
       _replyingTo = null;
       _editingMessage = null;
@@ -487,7 +1416,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _invertSelectedMessages() {
-    final messages = context.read<MessageProvider>().messages;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final messages = _threadMessages(mp, viewer);
     final currentIds = messages
         .where((message) => message.id != null)
         .map((message) => message.id!)
@@ -508,7 +1439,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _selectMessagesForDate(String bucket) {
-    final messages = context.read<MessageProvider>().messages;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final messages = _threadMessages(mp, viewer);
     final dayIds = messages
         .where((message) =>
             message.id != null && ChatMessageTimeline.dateKey(message) == bucket)
@@ -525,7 +1458,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _selectMessagesByType(int msgType) {
-    final messages = context.read<MessageProvider>().messages;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final messages = _threadMessages(mp, viewer);
     final typeIds = messages
         .where((message) => message.id != null && message.safeBodyType == msgType)
         .map((message) => message.id!)
@@ -542,7 +1477,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _selectMessagesBySender(bool selectMine) {
     final currentUserId = context.read<AuthProvider>().user?.id;
-    final messages = context.read<MessageProvider>().messages;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final messages = _threadMessages(mp, viewer);
     final senderIds = messages
         .where(
           (message) =>
@@ -582,8 +1519,8 @@ class _ChatScreenState extends State<ChatScreen> {
     return (message.content ?? '').isEmpty ? '-' : message.content!;
   }
 
-  String _selectionSummaryText() {
-    final messages = _selectedMessages;
+  String _selectionSummaryText(List<MessageDTO> threadMessages) {
+    final messages = _selectedMessagesInThread(threadMessages);
     if (messages.isEmpty) {
       return '当前未选择消息';
     }
@@ -624,7 +1561,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _showSelectionOverview() async {
-    final messages = _selectedMessages;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final thread = _threadMessages(mp, viewer);
+    final messages = _selectedMessagesInThread(thread);
     await showModalBottomSheet<void>(
       context: context,
       builder: (context) => SafeArea(
@@ -648,7 +1588,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                _selectionSummaryText(),
+                _selectionSummaryText(thread),
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF4B5563),
@@ -744,7 +1684,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _copySelectedMessagesSummary() async {
-    final messages = _selectedMessages;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final messages =
+        _selectedMessagesInThread(_threadMessages(mp, viewer));
     if (messages.isEmpty) {
       return;
     }
@@ -814,7 +1757,10 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _focusFirstSelectedMessage() async {
-    final message = _selectedMessages.isNotEmpty ? _selectedMessages.first : null;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final selected = _selectedMessagesInThread(_threadMessages(mp, viewer));
+    final message = selected.isNotEmpty ? selected.first : null;
     if (message?.id == null) {
       return;
     }
@@ -954,8 +1900,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     1,
                     optimisticLocalId: localId,
                   );
-          if (restOk) {
-            imBridge.sendTextMessage(
+          if (restOk && !ImFeatureFlags.omitClientDirectImAfterRest) {
+            await imBridge.sendTextMessage(
               targetId: _targetId!,
               type: _type!,
               text: content,
@@ -1032,7 +1978,7 @@ class _ChatScreenState extends State<ChatScreen> {
       return;
     }
     if (url != null && url.isNotEmpty) {
-      context.read<ImEventBridge>().sendImageMessage(
+      await context.read<ImEventBridge>().sendImageMessage(
             targetId: _targetId!,
             type: _type!,
             remoteUrl: url,
@@ -1446,8 +2392,8 @@ class _ChatScreenState extends State<ChatScreen> {
     if (!mounted) {
       return;
     }
-    if (restOk) {
-      context.read<ImEventBridge>().sendTextMessage(
+    if (restOk && !ImFeatureFlags.omitClientDirectImAfterRest) {
+      await context.read<ImEventBridge>().sendTextMessage(
             targetId: _targetId!,
             type: _type!,
             text: text,
@@ -1487,7 +2433,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return;
         }
         if (url != null && url.isNotEmpty) {
-          context.read<ImEventBridge>().sendImageMessage(
+          await context.read<ImEventBridge>().sendImageMessage(
                 targetId: _targetId!,
                 type: _type!,
                 remoteUrl: url,
@@ -1506,7 +2452,7 @@ class _ChatScreenState extends State<ChatScreen> {
           return;
         }
         if (url != null && url.isNotEmpty) {
-          context.read<ImEventBridge>().sendVideoMessage(
+          await context.read<ImEventBridge>().sendVideoMessage(
                 targetId: _targetId!,
                 type: _type!,
                 remoteUrl: url,
@@ -1565,12 +2511,18 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  List<Widget> _chatAppBarTrailingActions() {
+  //
+  // 必须使用 [build] 中通过 context.watch 得到的 [threadMessages]，
+  // 避免在构建路径用 read 取消息列表导致多选条等与列表不同步；正常聊天列表已由 watch 订阅。
+  //
+  List<Widget> _chatAppBarTrailingActions(List<MessageDTO> threadMessages) {
+    final selectedInThread = _selectedMessagesInThread(threadMessages);
     return <Widget>[
       if (_selectionMode)
         IconButton(
           icon: const Icon(Icons.info_outline),
-          onPressed: _selectedMessages.isEmpty ? null : _showSelectionOverview,
+          onPressed:
+              selectedInThread.isEmpty ? null : _showSelectionOverview,
         ),
       if (_selectionMode)
         IconButton(
@@ -1625,18 +2577,18 @@ class _ChatScreenState extends State<ChatScreen> {
       if (_selectionMode)
         IconButton(
           icon: const Icon(Icons.forward_outlined),
-          onPressed: _selectedMessages.isEmpty
+          onPressed: selectedInThread.isEmpty
               ? null
               : () => _showForwardTargets(
-                    _selectedMessages.first,
-                    messages: _selectedMessages,
+                    selectedInThread.first,
+                    messages: selectedInThread,
                   ),
         ),
       if (_selectionMode)
         IconButton(
           icon: const Icon(Icons.my_location_outlined),
           onPressed:
-              _selectedMessages.isEmpty ? null : _focusFirstSelectedMessage,
+              selectedInThread.isEmpty ? null : _focusFirstSelectedMessage,
         ),
       if (!_selectionMode)
         IconButton(
@@ -1654,7 +2606,7 @@ class _ChatScreenState extends State<ChatScreen> {
         IconButton(
           icon: const Icon(Icons.content_copy_outlined),
           onPressed:
-              _selectedMessages.isEmpty ? null : _copySelectedMessagesSummary,
+              selectedInThread.isEmpty ? null : _copySelectedMessagesSummary,
         ),
     ];
   }
@@ -1821,11 +2773,15 @@ class _ChatScreenState extends State<ChatScreen> {
     if (messageId == null) {
       return;
     }
-    var messages = context.read<MessageProvider>().messages;
+    final mp0 = context.read<MessageProvider>();
+    final viewer0 = _effectiveViewerForThread(context.read<AuthProvider>());
+    var messages = _threadMessages(mp0, viewer0);
     var index = messages.indexWhere((message) => message.id == messageId);
     while (index == -1 && _hasMoreHistory) {
       await _loadHistoryPage(page: _currentPage + 1);
-      messages = context.read<MessageProvider>().messages;
+      final mp = context.read<MessageProvider>();
+      final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+      messages = _threadMessages(mp, viewer);
       index = messages.indexWhere((message) => message.id == messageId);
     }
     if (index == -1) {
@@ -2095,8 +3051,12 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final removedCount = _selectedMessageIds.length;
+    final mp = context.read<MessageProvider>();
+    final viewer = _effectiveViewerForThread(context.read<AuthProvider>());
+    final selectedInThread =
+        _selectedMessagesInThread(_threadMessages(mp, viewer));
     await _removeMessagesFromCurrentView(
-      _selectedMessages,
+      selectedInThread,
       title: '移除结果',
       successMessage:
           '已从当前视图移除 $removedCount 条消息。',
@@ -2180,7 +3140,44 @@ class _ChatScreenState extends State<ChatScreen> {
     final AuthProvider authProvider = context.watch<AuthProvider>();
     final BlacklistProvider blacklistProvider = context.watch<BlacklistProvider>();
     final GroupProvider groupProvider = context.watch<GroupProvider>();
-    final int? currentUserId = authProvider.messagingUserId;
+    final int? currentUserId = _effectiveViewerForThread(authProvider);
+    final List<MessageDTO> liveThreadMessages =
+        _threadMessages(messageProvider, currentUserId);
+    final bool awaitingSnapshotData =
+        _useFirstPaintSnapshot && !_firstPaintSnapshotReady;
+    final bool awaitingFirstPaintSnapshot =
+        (_useFirstPaintSnapshot || _freezeFirstPaintDataSource) &&
+            (!_firstPaintSnapshotReady || !_firstPaintSnapshotRevealed);
+    final bool useSnapshotMessages = _firstPaintSnapshotReady &&
+        (_useFirstPaintSnapshot || _freezeFirstPaintDataSource);
+    final bool firstPaintHandoffActive =
+        _useFirstPaintSnapshot || _freezeFirstPaintDataSource;
+    final List<MessageDTO> effectiveThreadMessages = awaitingSnapshotData
+        ? const <MessageDTO>[]
+        : (useSnapshotMessages
+            ? _firstPaintSnapshotMessages
+            : liveThreadMessages);
+    final bool isLoadingMessages = awaitingSnapshotData ||
+        (!firstPaintHandoffActive &&
+            messageProvider.isLoading &&
+            effectiveThreadMessages.isEmpty);
+    final bool isEmptyMessages =
+        !isLoadingMessages && effectiveThreadMessages.isEmpty;
+    if (kDebugMode) {
+      debugPrint(
+        '[im.chain] chat build liveLen=${liveThreadMessages.length} '
+        'effectiveLen=${effectiveThreadMessages.length} snapshotSrc=$useSnapshotMessages '
+        'awaitingSnapshot=$awaitingFirstPaintSnapshot revealed=$_firstPaintSnapshotRevealed '
+        'freezeDs=$_freezeFirstPaintDataSource '
+        'target=$_targetId type=$_type authViewer=${authProvider.messagingUserId} '
+        'threadViewer=$currentUserId',
+      );
+    }
+    _maybeScrollToLatestOnNewThreadMessage(
+      effectiveThreadMessages.length,
+      effectiveThreadMessages,
+    );
+    _maybeMarkPrivateReadOnThreadGrowth(liveThreadMessages);
     final bool isBlocked =
         _type == 1 && _targetId != null && blacklistProvider.isBlocked(_targetId!);
     final GroupDTO? groupMeta = _groupMeta(groupProvider.groups);
@@ -2191,9 +3188,38 @@ class _ChatScreenState extends State<ChatScreen> {
         chatScene.isGroupChat && (groupMeta?.isMute == true);
     final bool composerEnabled = !isBlocked && !groupAllMuted;
 
-    /// 仅固定留白：Composer 在 [ChatPageScaffold] 中单独占位，列表随波 resize 上移；
-    /// 不把键盘高度写入 padding，也不随 [MediaQuery.viewInsets] 叠加。
-    final double listBottomPad = ChatUiTokens.messageListBottomSpacing;
+    /// 统一底部：尾间距 + 输入区（条本体 + 条上固定 chrome）+ 内联底面板（表情 或 +；不含 IME）+ 安全区底。
+    /// 键盘上推仅靠 Scaffold 视口收缩；贴底仍依赖 [_syncBottomAnchorIfLayoutChanged] 在 near-bottom 时 jump。
+    final MediaQueryData mq = MediaQuery.of(context);
+    final double safeAreaBottom = mq.padding.bottom;
+    final double composerHeight = _selectionMode
+        ? 0
+        : _composerInputRowHeight() +
+            _composerChromeAboveInputHeight(
+              isBlocked: isBlocked,
+              groupAllMuted: groupAllMuted,
+              replyVisible:
+                  _editingMessage != null || _replyingTo != null,
+            );
+    final double bottomPanelHeight = _selectionMode
+        ? 0
+        : _resolveBottomPanelHeight(mq, chatScene);
+    final double listBottomPad = ChatUiTokens.messageListBottomSpacing +
+        composerHeight +
+        bottomPanelHeight +
+        safeAreaBottom;
+    _syncBottomAnchorIfLayoutChanged(
+      composerHeight: composerHeight,
+      bottomPanelHeight: bottomPanelHeight,
+      safeAreaBottom: safeAreaBottom,
+      viewInsetsBottom: mq.viewInsets.bottom,
+    );
+    if (kDebugMode) {
+      debugPrint(
+        '[im.chat.audit] composerH=$composerHeight bottomPanel=$bottomPanelHeight '
+        'safe=$safeAreaBottom viewInsets=${mq.viewInsets.bottom} listBottomPad=$listBottomPad',
+      );
+    }
 
     return ChatPageScaffold(
       header: Column(
@@ -2220,7 +3246,7 @@ class _ChatScreenState extends State<ChatScreen> {
             onLeadingPressed: _selectionMode
                 ? _requestClearSelection
                 : () => Navigator.maybePop(context),
-            actions: _chatAppBarTrailingActions(),
+            actions: _chatAppBarTrailingActions(effectiveThreadMessages),
           ),
           Divider(
             height: 1,
@@ -2229,53 +3255,73 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
         ],
       ),
-      body: ChatMessagesBody(
-        selectionBar: _selectionMode
-            ? ChatSelectionSummaryBar(
-                selectedCount: _selectedMessageIds.length,
-                summaryText: _selectionSummaryText(),
-              )
-            : null,
-        topBanner: _buildTopContextBanner(),
-        isLoading: messageProvider.isLoading && messageProvider.messages.isEmpty,
-        isEmpty: messageProvider.messages.isEmpty,
-        loading: const Center(child: CircularProgressIndicator()),
-        empty: const AppEmptyState(
-          icon: Icons.chat_bubble_outline,
-          text: '暂无消息',
-          detail: '开始发送第一条消息吧',
-        ),
-        listScrollController: _scrollController,
-        listPadding: EdgeInsets.fromLTRB(
-          12,
-          ChatUiTokens.messageListTopSpacing,
-          12,
-          listBottomPad,
-        ),
-        messageCount: messageProvider.messages.length,
-        loadingHistory: _loadingHistory,
-        hasMoreHistory: _hasMoreHistory,
-        onLoadOlderTap: () => _loadHistoryPage(page: _currentPage + 1),
-        itemBuilder: (BuildContext context, int index) {
-          return ChatThreadMessageItem(
-            message: messageProvider.messages[index],
-            index: index,
-            messages: messageProvider.messages,
-            currentUserId: currentUserId,
-            historyBoundaryIndex: _historyBoundaryIndex,
-            selectionMode: _selectionMode,
-            selectedMessageIds: _selectedMessageIds,
-            highlightedMessageId: _highlightedMessageId,
-            scene: chatScene,
-            onShowMessageActions: _showMessageActions,
-            onToggleSelection: _toggleMessageSelection,
-            onOpenMediaPreview: _openMediaPreview,
-            onOpenMediaDetails: _openMediaDetails,
-            audioDurationLabel: _audioDurationLabel,
-            onRetryOutgoingFailed: _retryOutgoingFailed,
-            onSelectMessagesForDate: _selectMessagesForDate,
-          );
-        },
+      body: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          ChatMessagesBody(
+            selectionBar: _selectionMode
+                ? ChatSelectionSummaryBar(
+                    selectedCount: _selectedMessageIds.length,
+                    summaryText:
+                        _selectionSummaryText(effectiveThreadMessages),
+                  )
+                : null,
+            topBanner: _buildTopContextBanner(),
+            isLoading: isLoadingMessages,
+            isEmpty: isEmptyMessages,
+            loading: const Center(child: CircularProgressIndicator()),
+            empty: const AppEmptyState(
+              icon: Icons.chat_bubble_outline,
+              text: '暂无消息',
+              detail: '开始发送第一条消息吧',
+            ),
+            listScrollController: _scrollController,
+            listPadding: EdgeInsets.fromLTRB(
+              12,
+              ChatUiTokens.messageListTopSpacing,
+              12,
+              listBottomPad,
+            ),
+            messageCount: effectiveThreadMessages.length,
+            loadingHistory: _loadingHistory,
+            hasMoreHistory: _hasMoreHistory,
+            onLoadOlderTap: () {
+              if (_useFirstPaintSnapshot ||
+                  _freezeFirstPaintDataSource ||
+                  !_firstPaintSnapshotReady) {
+                return;
+              }
+              _loadHistoryPage(page: _currentPage + 1);
+            },
+            itemBuilder: (BuildContext context, int index) {
+              final MessageDTO row = effectiveThreadMessages[index];
+              return ChatThreadMessageItem(
+                key: ValueKey<String>(chatMessageListItemValueKey(row)),
+                message: row,
+                index: index,
+                messages: effectiveThreadMessages,
+                currentUserId: currentUserId,
+                historyBoundaryIndex: _historyBoundaryIndex,
+                selectionMode: _selectionMode,
+                selectedMessageIds: _selectedMessageIds,
+                highlightedMessageId: _highlightedMessageId,
+                scene: chatScene,
+                onShowMessageActions: _showMessageActions,
+                onToggleSelection: _toggleMessageSelection,
+                onOpenMediaPreview: _openMediaPreview,
+                onOpenMediaDetails: _openMediaDetails,
+                audioDurationLabel: _audioDurationLabel,
+                onRetryOutgoingFailed: _retryOutgoingFailed,
+                onSelectMessagesForDate: _selectMessagesForDate,
+              );
+            },
+          ),
+          if (awaitingFirstPaintSnapshot)
+            ColoredBox(
+              color: ChatUiTokens.pageBackground,
+              child: const SizedBox.expand(),
+            ),
+        ],
       ),
       inputBar: !_selectionMode
           ? ChatComposerColumn(

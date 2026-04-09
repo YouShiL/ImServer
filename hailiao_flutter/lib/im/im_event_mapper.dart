@@ -1,14 +1,45 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
 import 'package:hailiao_flutter/models/message_dto.dart';
 import 'package:hailiao_flutter/theme/chat_date_format.dart';
 import 'package:wukongimfluttersdk/entity/msg.dart';
 import 'package:wukongimfluttersdk/model/wk_text_content.dart';
 import 'package:wukongimfluttersdk/type/const.dart';
+import 'package:wukongimfluttersdk/wkim.dart';
 
 /// Maps raw IM SDK events into the minimal parameters expected by
-/// MessageProvider. This file intentionally avoids any Provider, UI, or SDK
-/// runtime dependency and only defines conversion skeletons.
+/// MessageProvider. 不依赖 Flutter Provider；私聊收件人 id 需与 REST 一致，
+/// 故在业务 [currentUserId] 缺失时用 [WKIM.shared.options.uid] 作为后备。
 class ImEventMapper {
   const ImEventMapper();
+
+  /// 私聊、本人发送，且消息扩展已标记 [WKMsgExtra.readed]（服务端同步后 [WKMessageManager.saveRemoteExtraMsg] → [setRefreshMsg]）。
+  bool isOutgoingPrivateReadReceipt(WKMsg msg) {
+    if (msg.channelType != WKChannelType.personal) {
+      return false;
+    }
+    final WKMsgExtra? extra = msg.wkMsgExtra;
+    if (extra == null || extra.readed <= 0) {
+      return false;
+    }
+    final String? self = WKIM.shared.options.uid;
+    if (self == null || self.isEmpty) {
+      return false;
+    }
+    return msg.fromUID == self;
+  }
+
+  int? _selfUserId(int? currentUserId) {
+    if (currentUserId != null) {
+      return currentUserId;
+    }
+    final String? uid = WKIM.shared.options.uid;
+    if (uid == null || uid.isEmpty) {
+      return null;
+    }
+    return int.tryParse(uid);
+  }
 
   MessageDTO? mapIncomingMessage(
     Object? rawEvent, {
@@ -23,22 +54,34 @@ class ImEventMapper {
     final isGroup = channelType != WKChannelType.personal;
     final content = _resolveContent(rawEvent);
     final int? fromUid = _parseInt(rawEvent.fromUID);
+    final String wkClientNo = rawEvent.clientMsgNO.trim();
+    final _WkBizFields biz = _parseBusinessFieldsFromWkMsg(rawEvent, content);
+    final String? mergedClientNo = (wkClientNo.isNotEmpty
+            ? wkClientNo
+            : biz.clientMsgNo?.trim())
+        ?.trim();
+    final String? effectiveClientNo =
+        mergedClientNo != null && mergedClientNo.isNotEmpty ? mergedClientNo : null;
+    final wkNumericId = _parseInt(rawEvent.messageID) ??
+        _parseInt(rawEvent.clientSeq) ??
+        _parseInt(rawEvent.messageSeq);
+    final int? resolvedId = biz.messageId ?? wkNumericId;
 
     /// 私聊 channelID 一般为会话对方；对方发来的行 [toUserId] 应对齐 REST（收件人为当前用户）。
+    final int? self = _selfUserId(currentUserId);
     int? privateToUserId;
     if (!isGroup) {
-      if (currentUserId != null && fromUid != null) {
-        privateToUserId =
-            fromUid == currentUserId ? targetId : currentUserId;
+      if (self != null && fromUid != null) {
+        privateToUserId = fromUid == self ? targetId : self;
       } else {
-        privateToUserId = targetId;
+        /// 无 self 时无法区分收发方，避免出现 from=peer、to=peer（会被会话归属判定丢弃）。
+        privateToUserId = null;
       }
     }
 
-    return MessageDTO(
-      id: _parseInt(rawEvent.messageID) ??
-          _parseInt(rawEvent.clientSeq) ??
-          rawEvent.messageSeq,
+    final dto = MessageDTO(
+      id: resolvedId,
+      clientMsgNo: effectiveClientNo,
       fromUserId: fromUid,
       toUserId: isGroup ? null : privateToUserId,
       groupId: isGroup ? targetId : null,
@@ -48,6 +91,79 @@ class ImEventMapper {
       status: _mapSdkStatus(rawEvent.status),
       createdAt: _formatTimestamp(rawEvent.timestamp),
     );
+
+    if (kDebugMode) {
+      debugPrint(
+        '[im.map] rawChannelID=${rawEvent.channelID} rawFromUID=${rawEvent.fromUID} '
+        'selfId=$self mapped from=${dto.fromUserId} to=${dto.toUserId} g=${dto.groupId} '
+        'clientMsgNo=${dto.clientMsgNo} bizMsgId=${biz.messageId} wkMsgId=$wkNumericId '
+        'msgType=${dto.msgType} createdAt=${dto.createdAt}',
+      );
+    }
+
+    return dto;
+  }
+
+  /// 服务端经 WuKong 下发的 inner JSON 可能含 {@code messageId}（DB）、{@code clientMsgNo}（与 REST 一致）。
+  _WkBizFields _parseBusinessFieldsFromWkMsg(WKMsg msg, String resolvedContent) {
+    for (final String? raw in <String?>[
+      _wkMsgRawPayloadString(msg),
+      if (resolvedContent.trim().startsWith('{')) resolvedContent.trim(),
+    ]) {
+      if (raw == null || raw.isEmpty) {
+        continue;
+      }
+      final m = _tryDecodeJsonObject(raw);
+      if (m == null) {
+        continue;
+      }
+      final mid = m['messageId'] ?? m['message_id'];
+      final cmRaw = m['clientMsgNo'] ?? m['client_msg_no'];
+      int? midInt;
+      if (mid is int) {
+        midInt = mid;
+      } else if (mid != null) {
+        midInt = int.tryParse(mid.toString());
+      }
+      String? cm;
+      if (cmRaw != null) {
+        cm = cmRaw.toString().trim();
+        if (cm.isEmpty) {
+          cm = null;
+        }
+      }
+      if (midInt != null || cm != null) {
+        return _WkBizFields(messageId: midInt, clientMsgNo: cm);
+      }
+    }
+    return const _WkBizFields();
+  }
+
+  String? _wkMsgRawPayloadString(WKMsg msg) {
+    try {
+      final dynamic r = msg.content;
+      if (r is String) {
+        return r;
+      }
+      return r?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Map<String, dynamic>? _tryDecodeJsonObject(String raw) {
+    try {
+      final dynamic d = jsonDecode(raw);
+      if (d is Map<String, dynamic>) {
+        return d;
+      }
+      if (d is Map) {
+        return Map<String, dynamic>.from(d);
+      }
+    } catch (_) {
+      // ignore
+    }
+    return null;
   }
 
   List<MessageDTO> mapIncomingMessages(
@@ -229,4 +345,11 @@ class ImEventMapper {
     final millis = value > 9999999999 ? value : value * 1000;
     return ChatDateFormat.fromMillis(millis);
   }
+}
+
+class _WkBizFields {
+  const _WkBizFields({this.messageId, this.clientMsgNo});
+
+  final int? messageId;
+  final String? clientMsgNo;
 }

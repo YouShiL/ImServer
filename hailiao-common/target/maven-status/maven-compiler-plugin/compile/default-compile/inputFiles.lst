@@ -73,6 +73,7 @@ E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\repository\UserRe
 E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\service\GroupJoinRequestService.java
 E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\entity\UserSession.java
 E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\repository\GroupChatRepository.java
+E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\im\WukongOutboundBridge.java
 E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\service\UserSessionService.java
 E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\repository\PrettyNumberRepository.java
 E:\IM\ImServer\hailiao-common\src\main\java\com\hailiao\common\repository\GroupMemberRepository.java

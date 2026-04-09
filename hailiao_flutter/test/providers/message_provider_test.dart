@@ -764,6 +764,95 @@ void main() {
       expect(provider.messages.single.id, localId);
     });
 
+    test('addOptimisticTextMessage 生成非空 clientMsgNo', () {
+      final provider = _providerForPreviewTests();
+      final id = provider.addOptimisticTextMessage(
+        targetId: 2,
+        type: 1,
+        content: 'hello',
+        fromUserId: 1,
+      );
+      expect(id, lessThan(0));
+      final m = provider.messages.firstWhere((e) => e.id == id);
+      expect(m.clientMsgNo, isNotNull);
+      expect(m.clientMsgNo!.isNotEmpty, isTrue);
+    });
+
+    test('sendPrivateTextMessage 失败重试时复用同一 clientMsgNo', () async {
+      String? firstCm;
+      String? secondCm;
+      var call = 0;
+      final api = FakeMessageApi()
+        ..getConversationsHandler = () async {
+          return ResponseDTO<List<ConversationDTO>>(
+            code: 200,
+            message: 'ok',
+            data: <ConversationDTO>[],
+          );
+        }
+        ..sendPrivateMessageHandler =
+            (int toUserId, String content, int msgType, {String? clientMsgNo}) async {
+          call++;
+          if (call == 1) {
+            firstCm = clientMsgNo;
+            return ResponseDTO<MessageDTO>(
+              code: 500,
+              message: 'fail',
+              data: null,
+            );
+          }
+          secondCm = clientMsgNo;
+          return ResponseDTO<MessageDTO>(
+            code: 200,
+            message: 'ok',
+            data: MessageDTO(
+              id: 501,
+              fromUserId: 1,
+              toUserId: toUserId,
+              content: content,
+              msgType: 1,
+              clientMsgNo: clientMsgNo,
+              status: 1,
+              createdAt: '2026-04-06T12:00:00',
+            ),
+          );
+        };
+      final provider = MessageProvider(api: api);
+      await provider.loadConversations();
+
+      final localId = provider.addOptimisticTextMessage(
+        targetId: 2,
+        type: 1,
+        content: 'hey',
+        fromUserId: 1,
+      );
+      final optimisticCm = provider.messages.single.clientMsgNo;
+
+      await provider.sendPrivateTextMessage(
+        2,
+        'hey',
+        1,
+        optimisticLocalId: localId,
+      );
+      expect(call, 1);
+      expect(firstCm, optimisticCm);
+
+      provider.prepareRetryFailedTextMessage(
+        messageId: localId,
+        targetId: 2,
+        type: 1,
+        fromUserId: 1,
+      );
+      await provider.sendPrivateTextMessage(
+        2,
+        'hey',
+        1,
+        optimisticLocalId: localId,
+      );
+      expect(call, 2);
+      expect(secondCm, optimisticCm);
+    });
+
     test('replyMessage 失败后重试成功仍携带 replyToMsgId 并原地替换为服务端 id', () async {
       var n = 0;
       final api = FakeMessageApi()

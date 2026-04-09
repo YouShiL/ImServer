@@ -2,11 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:hailiao_flutter/models/conversation_dto.dart';
 import 'package:hailiao_flutter/models/file_upload_result_dto.dart';
 import 'package:hailiao_flutter/models/message_dto.dart';
+import 'package:hailiao_flutter/models/message_outgoing_status.dart';
 import 'package:hailiao_flutter/models/user_dto.dart';
 import 'package:hailiao_flutter/models/response_dto.dart';
+import 'package:hailiao_flutter/config/im_feature_flags.dart';
 import 'package:hailiao_flutter/services/api_service.dart';
 import 'package:hailiao_flutter/theme/chat_date_format.dart';
 import 'package:hailiao_flutter/widgets/profile/profile_display_utils.dart';
+import 'package:uuid/uuid.dart';
 
 abstract class MessageApi {
   Future<ResponseDTO<List<ConversationDTO>>> getConversations();
@@ -23,13 +26,15 @@ abstract class MessageApi {
   Future<ResponseDTO<MessageDTO>> sendPrivateMessage(
     int toUserId,
     String content,
-    int msgType,
-  );
+    int msgType, {
+    String? clientMsgNo,
+  });
   Future<ResponseDTO<MessageDTO>> sendGroupMessage(
     int groupId,
     String content,
-    int msgType,
-  );
+    int msgType, {
+    String? clientMsgNo,
+  });
   Future<ResponseDTO<String>> recallMessage(int messageId);
   Future<ResponseDTO<MessageDTO>> replyMessage({
     required int replyToMsgId,
@@ -104,18 +109,30 @@ class ApiMessageApi implements MessageApi {
   Future<ResponseDTO<MessageDTO>> sendPrivateMessage(
     int toUserId,
     String content,
-    int msgType,
-  ) {
-    return ApiService.sendPrivateMessage(toUserId, content, msgType);
+    int msgType, {
+    String? clientMsgNo,
+  }) {
+    return ApiService.sendPrivateMessage(
+      toUserId,
+      content,
+      msgType,
+      clientMsgNo: clientMsgNo,
+    );
   }
 
   @override
   Future<ResponseDTO<MessageDTO>> sendGroupMessage(
     int groupId,
     String content,
-    int msgType,
-  ) {
-    return ApiService.sendGroupMessage(groupId, content, msgType);
+    int msgType, {
+    String? clientMsgNo,
+  }) {
+    return ApiService.sendGroupMessage(
+      groupId,
+      content,
+      msgType,
+      clientMsgNo: clientMsgNo,
+    );
   }
 
   @override
@@ -259,13 +276,147 @@ class MessageProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  /// 每条私聊会话最近一次由 IM 已读事件更新的时间（用于轻量轮询跳过）。
+  final Map<int, DateTime> _lastOutgoingReadEventAtByPeer = {};
+
+  /// 聊天页当前打开的会话：`type_targetId`，与 [_findConversationIndex] 一致。
+  String? _activeConversationKey;
+
   List<ConversationDTO> get conversations => _conversations;
+
+  static String conversationActivityKey(int targetId, int type) =>
+      '${type}_$targetId';
+
+  void setActiveConversation(int targetId, int type) {
+    _activeConversationKey = conversationActivityKey(targetId, type);
+  }
+
+  void clearActiveConversation() {
+    _activeConversationKey = null;
+  }
+
+  bool _isActiveConversation(int targetId, int type) =>
+      _activeConversationKey == conversationActivityKey(targetId, type);
+
+  /// 供聊天页判断是否与当前打开的会话一致（已读上报等）。
+  bool isActiveConversation(int targetId, int type) =>
+      _isActiveConversation(targetId, type);
+
   List<MessageDTO> get messages => _messages;
+
+  /// 当前聊天页应展示的行（与 [retainEphemeralMessagesForChat] / 历史合并的归属判定一致）。
+  List<MessageDTO> messagesForChat({
+    required int targetId,
+    required int type,
+    int? currentUserId,
+  }) {
+    final out = _messages
+        .where(
+          (m) => _messageBelongsToConversation(
+                m,
+                targetId,
+                type,
+                currentUserId: currentUserId,
+              ),
+        )
+        .toList(growable: false);
+
+    if (kDebugMode) {
+      final tailStart = _messages.length <= 5 ? 0 : _messages.length - 5;
+      for (var i = tailStart; i < _messages.length; i++) {
+        final MessageDTO m = _messages[i];
+        final bool belongs = _messageBelongsToConversation(
+          m,
+          targetId,
+          type,
+          currentUserId: currentUserId,
+        );
+        debugPrint(
+          '[im.chat.filter] store#$i id=${m.id} clientMsgNo=${m.clientMsgNo} '
+          'from=${m.fromUserId} to=${m.toUserId} g=${m.groupId} belongs=$belongs '
+          '(openTarget=$targetId openType=$type viewer=$currentUserId threadLen=${out.length})',
+        );
+      }
+    }
+
+    return out;
+  }
+
   bool get isLoading => _isLoading;
   String? get error => _error;
 
   /// Monotonic negative ids for local optimistic rows (not persisted).
   int _optimisticLocalIdSeq = 0;
+
+  String _newClientMsgNoV4() => const Uuid().v4();
+
+  /// 文本 REST：优先用乐观行已有键（重试必须一致）；无乐观行则现生成。
+  String? _resolveClientMsgNoForTextApi(int msgType, int? optimisticLocalId) {
+    if (msgType != 1) return null;
+    if (optimisticLocalId != null && optimisticLocalId != 0) {
+      final idx = _findMessageIndexById(optimisticLocalId);
+      if (idx != null) {
+        final c = _messages[idx].clientMsgNo?.trim();
+        if (c != null && c.isNotEmpty) return c;
+      }
+    }
+    return _newClientMsgNoV4();
+  }
+
+  /// 乐观合并 / IM 回显：clientMsgNo — id — 正文（旧逻辑兜底）。
+  bool _outgoingTextMatchesForMerge(
+    MessageDTO local,
+    MessageDTO incoming,
+    String incomingContentTrimmed,
+  ) {
+    final ic = incoming.clientMsgNo?.trim();
+    final lc = local.clientMsgNo?.trim();
+    if (ic != null &&
+        ic.isNotEmpty &&
+        lc != null &&
+        lc.isNotEmpty &&
+        ic != lc) {
+      return false;
+    }
+    if (ic != null &&
+        ic.isNotEmpty &&
+        lc != null &&
+        lc.isNotEmpty &&
+        ic == lc) {
+      return true;
+    }
+    final ii = incoming.id;
+    final li = local.id;
+    if (ii != null && li != null && ii == li) {
+      return true;
+    }
+    return (local.content ?? '').trim() == incomingContentTrimmed;
+  }
+
+  bool _confirmedTextRowDuplicate(MessageDTO incoming, MessageDTO row) {
+    final ic = incoming.clientMsgNo?.trim();
+    final rc = row.clientMsgNo?.trim();
+    if (ic != null &&
+        ic.isNotEmpty &&
+        rc != null &&
+        rc.isNotEmpty &&
+        ic != rc) {
+      return false;
+    }
+    if (ic != null &&
+        ic.isNotEmpty &&
+        rc != null &&
+        rc.isNotEmpty &&
+        ic == rc) {
+      return true;
+    }
+    final ii = incoming.id;
+    final ri = row.id;
+    if (ii != null && ri != null && ii == ri) {
+      return true;
+    }
+    return (incoming.content ?? '').trim() == (row.content ?? '').trim();
+  }
 
   int addOptimisticTextMessage({
     required int targetId,
@@ -287,9 +438,14 @@ class MessageProvider extends ChangeNotifier {
     );
     if (failedIdx != null) {
       final current = _messages[failedIdx];
+      final String cm = (current.clientMsgNo != null &&
+              current.clientMsgNo!.trim().isNotEmpty)
+          ? current.clientMsgNo!.trim()
+          : _newClientMsgNoV4();
       final reused = MessageDTO(
         id: current.id,
         msgId: current.msgId,
+        clientMsgNo: cm,
         fromUserId: current.fromUserId,
         toUserId: current.toUserId,
         groupId: current.groupId,
@@ -304,7 +460,7 @@ class MessageProvider extends ChangeNotifier {
         forwardFromMsgId: current.forwardFromMsgId,
         forwardFromUserId: current.forwardFromUserId,
         isEdited: current.isEdited,
-        status: 0,
+        status: MessageOutgoingStatus.sending,
         createdAt: current.createdAt ??
             ChatDateFormat.fromMillis(
               DateTime.now().millisecondsSinceEpoch,
@@ -325,13 +481,14 @@ class MessageProvider extends ChangeNotifier {
     final localId = --_optimisticLocalIdSeq;
     final message = MessageDTO(
       id: localId,
+      clientMsgNo: _newClientMsgNoV4(),
       fromUserId: fromUserId,
       toUserId: type == 1 ? targetId : null,
       groupId: type == 2 ? targetId : null,
       content: trimmed,
       msgType: 1,
       replyToMsgId: replyToMsgId,
-      status: 0,
+      status: MessageOutgoingStatus.sending,
       createdAt:
           ChatDateFormat.fromMillis(DateTime.now().millisecondsSinceEpoch),
     );
@@ -393,7 +550,7 @@ class MessageProvider extends ChangeNotifier {
         forwardFromMsgId: current.forwardFromMsgId,
         forwardFromUserId: current.forwardFromUserId,
         isEdited: current.isEdited,
-        status: 0,
+        status: MessageOutgoingStatus.sending,
         createdAt: current.createdAt ??
             ChatDateFormat.fromMillis(
               DateTime.now().millisecondsSinceEpoch,
@@ -420,7 +577,7 @@ class MessageProvider extends ChangeNotifier {
       content: trimmed,
       msgType: msgType,
       extra: extraDur,
-      status: 0,
+      status: MessageOutgoingStatus.sending,
       createdAt:
           ChatDateFormat.fromMillis(DateTime.now().millisecondsSinceEpoch),
     );
@@ -444,6 +601,7 @@ class MessageProvider extends ChangeNotifier {
       (current) => MessageDTO(
         id: current.id,
         msgId: current.msgId,
+        clientMsgNo: current.clientMsgNo,
         fromUserId: current.fromUserId,
         toUserId: current.toUserId,
         groupId: current.groupId,
@@ -458,7 +616,7 @@ class MessageProvider extends ChangeNotifier {
         forwardFromMsgId: current.forwardFromMsgId,
         forwardFromUserId: current.forwardFromUserId,
         isEdited: current.isEdited,
-        status: 2,
+        status: MessageOutgoingStatus.failed,
         createdAt: current.createdAt,
         fromUserInfo: current.fromUserInfo,
       ),
@@ -497,7 +655,7 @@ class MessageProvider extends ChangeNotifier {
     if ((m.msgType ?? 1) != 1) {
       return null;
     }
-    if (m.status != 2) {
+    if (m.status != MessageOutgoingStatus.failed) {
       return null;
     }
     if (!_messageBelongsToConversation(
@@ -516,6 +674,7 @@ class MessageProvider extends ChangeNotifier {
     _messages[idx] = MessageDTO(
       id: m.id,
       msgId: m.msgId,
+      clientMsgNo: m.clientMsgNo,
       fromUserId: m.fromUserId,
       toUserId: m.toUserId,
       groupId: m.groupId,
@@ -530,7 +689,7 @@ class MessageProvider extends ChangeNotifier {
       forwardFromMsgId: m.forwardFromMsgId,
       forwardFromUserId: m.forwardFromUserId,
       isEdited: m.isEdited,
-      status: 0,
+      status: MessageOutgoingStatus.sending,
       createdAt: m.createdAt,
       fromUserInfo: m.fromUserInfo,
     );
@@ -556,7 +715,7 @@ class MessageProvider extends ChangeNotifier {
     if (mt < 2 || mt > 4) {
       return null;
     }
-    if (m.status != 2) {
+    if (m.status != MessageOutgoingStatus.failed) {
       return null;
     }
     if (!_messageBelongsToConversation(
@@ -580,6 +739,7 @@ class MessageProvider extends ChangeNotifier {
     _messages[idx] = MessageDTO(
       id: m.id,
       msgId: m.msgId,
+      clientMsgNo: m.clientMsgNo,
       fromUserId: m.fromUserId,
       toUserId: m.toUserId,
       groupId: m.groupId,
@@ -594,7 +754,7 @@ class MessageProvider extends ChangeNotifier {
       forwardFromMsgId: m.forwardFromMsgId,
       forwardFromUserId: m.forwardFromUserId,
       isEdited: m.isEdited,
-      status: 0,
+      status: MessageOutgoingStatus.sending,
       createdAt: m.createdAt,
       fromUserInfo: m.fromUserInfo,
     );
@@ -612,9 +772,25 @@ class MessageProvider extends ChangeNotifier {
     int? currentUserId,
     bool notify = true,
   }) {
+    if (kDebugMode) {
+      debugPrint(
+        '[im.insert] recv pre-insert id=${message.id} clientMsgNo=${message.clientMsgNo} '
+        'from=${message.fromUserId} to=${message.toUserId} g=${message.groupId} '
+        'content=${_debugImSnippet(message.content)}',
+      );
+    }
     final preview = _insertMessage(message, currentUserId: currentUserId);
     if (preview == null) {
+      if (kDebugMode) {
+        debugPrint('[im.insert] recv dropped (insert returned null)');
+      }
       return;
+    }
+    if (kDebugMode) {
+      debugPrint(
+        '[im.chain] receiveIncomingMessage storeOk id=${preview.id} '
+        'notify=$notify _messagesLen=${_messages.length}',
+      );
     }
     upsertConversationFromMessage(
       preview,
@@ -634,6 +810,12 @@ class MessageProvider extends ChangeNotifier {
   }) {
     if (messages.isEmpty) {
       return;
+    }
+
+    if (kDebugMode) {
+      debugPrint(
+        '[im.insert] recv batch count=${messages.length} currentUserId=$currentUserId',
+      );
     }
 
     final previews = _mergeMessages(messages, currentUserId: currentUserId);
@@ -670,6 +852,7 @@ class MessageProvider extends ChangeNotifier {
       (current) => MessageDTO(
         id: current.id,
         msgId: current.msgId,
+        clientMsgNo: current.clientMsgNo,
         fromUserId: current.fromUserId,
         toUserId: current.toUserId,
         groupId: current.groupId,
@@ -719,9 +902,10 @@ class MessageProvider extends ChangeNotifier {
           ((current.id != null && current.id! > 0)
               ? current.id
               : (localMessageId ?? current.id));
-      return MessageDTO(
+      final MessageDTO built = MessageDTO(
         id: nextId,
         msgId: current.msgId,
+        clientMsgNo: current.clientMsgNo,
         fromUserId: current.fromUserId,
         toUserId: current.toUserId,
         groupId: current.groupId,
@@ -740,6 +924,11 @@ class MessageProvider extends ChangeNotifier {
         createdAt: current.createdAt,
         fromUserInfo: current.fromUserInfo,
       );
+      // SDK 可能先回 ACK 且仍为 sendLoading(0)，不可提前标为已送达。
+      if (status == MessageOutgoingStatus.sending) {
+        return built;
+      }
+      return _outgoingAfterSendSuccess(built);
     }
 
     var updated = false;
@@ -764,7 +953,7 @@ class MessageProvider extends ChangeNotifier {
           }
           return true;
         }
-        if (status == 1 &&
+        if (status == MessageOutgoingStatus.sent &&
             _isAppMediaMsgType(hintMsgType) &&
             _swallowNearDuplicateMediaSendAck(
               content: content,
@@ -1034,6 +1223,7 @@ class MessageProvider extends ChangeNotifier {
     return MessageDTO(
       id: raw.id,
       msgId: raw.msgId,
+      clientMsgNo: raw.clientMsgNo,
       fromUserId: raw.fromUserId,
       toUserId: raw.toUserId,
       groupId: gid == null || gid == 0 ? null : gid,
@@ -1064,18 +1254,199 @@ class MessageProvider extends ChangeNotifier {
     return fb.isNotEmpty ? fb : null;
   }
 
+  /// REST/业务发送成功：保证不为「发送中」占位（避免服务端未填 status 时 UI 卡在 sending）。
+  MessageDTO _outgoingAfterSendSuccess(MessageDTO merged) {
+    if ((merged.status ?? MessageOutgoingStatus.sent) ==
+        MessageOutgoingStatus.failed) {
+      return merged;
+    }
+    return MessageDTO(
+      id: merged.id,
+      msgId: merged.msgId,
+      clientMsgNo: merged.clientMsgNo,
+      fromUserId: merged.fromUserId,
+      toUserId: merged.toUserId,
+      groupId: merged.groupId,
+      content: merged.content,
+      msgType: merged.msgType,
+      subType: merged.subType,
+      extra: merged.extra,
+      isRead: merged.isRead,
+      isRecalled: merged.isRecalled,
+      isDeleted: merged.isDeleted,
+      replyToMsgId: merged.replyToMsgId,
+      forwardFromMsgId: merged.forwardFromMsgId,
+      forwardFromUserId: merged.forwardFromUserId,
+      isEdited: merged.isEdited,
+      status: MessageOutgoingStatus.sent,
+      createdAt: merged.createdAt,
+      fromUserInfo: merged.fromUserInfo,
+    );
+  }
+
   void _applySentMessage(
     MessageDTO merged, {
     int? optimisticLocalId,
   }) {
+    final MessageDTO row = _outgoingAfterSendSuccess(merged);
     if (optimisticLocalId != null && optimisticLocalId != 0) {
       final replaced =
-          _updateMessageById(optimisticLocalId, (_) => merged);
+          _updateMessageById(optimisticLocalId, (_) => row);
       if (!replaced) {
-        _messages = [..._messages, merged];
+        _messages = [..._messages, row];
       }
     } else {
-      _messages = [..._messages, merged];
+      _messages = [..._messages, row];
+    }
+  }
+
+  /// IM / 服务端已读扩展：**只更新**已有「我→对方」且已送达（[MessageOutgoingStatus.sent]）的行的 [MessageDTO.isRead]。
+  ///
+  /// - [uptoMessageId]：所有本地 `id` 在 `(0, uptoMessageId]` 的出站消息标已读。
+  /// - [uptoClientMsgNo]：`clientMsgNo` 精确匹配（兼容尚无服务端 id 的乐观行）；与 id 条件并集。
+  void applyOutgoingReadEvent({
+    required int peerUserId,
+    required int viewerUserId,
+    String? uptoClientMsgNo,
+    int? uptoMessageId,
+  }) {
+    final String? ucm =
+        uptoClientMsgNo != null && uptoClientMsgNo.trim().isNotEmpty
+            ? uptoClientMsgNo.trim()
+            : null;
+    final int? umid =
+        uptoMessageId != null && uptoMessageId > 0 ? uptoMessageId : null;
+    if (ucm == null && umid == null) {
+      return;
+    }
+
+    bool isSentForRead(MessageDTO m) {
+      final int s = m.status ?? MessageOutgoingStatus.sent;
+      return s == MessageOutgoingStatus.sent;
+    }
+
+    var any = false;
+    for (final MessageDTO m in _messages) {
+      if (m.groupId != null) {
+        continue;
+      }
+      if (m.fromUserId != viewerUserId || m.toUserId != peerUserId) {
+        continue;
+      }
+      if (!isSentForRead(m)) {
+        continue;
+      }
+      if (m.isRead == true) {
+        continue;
+      }
+
+      var mark = false;
+      if (umid != null) {
+        final int? id = m.id;
+        if (id != null && id > 0 && id <= umid) {
+          mark = true;
+        }
+      }
+      if (!mark && ucm != null) {
+        final String? c = m.clientMsgNo?.trim();
+        if (c != null && c == ucm) {
+          mark = true;
+        }
+      }
+      if (!mark) {
+        continue;
+      }
+
+      final int? mid = m.id;
+      if (mid == null) {
+        continue;
+      }
+      applyMessageStatusUpdate(
+        messageId: mid,
+        isRead: true,
+        notify: false,
+      );
+      any = true;
+    }
+
+    if (any) {
+      _lastOutgoingReadEventAtByPeer[peerUserId] = DateTime.now();
+      notifyListeners();
+    }
+  }
+
+  /// 私聊：对方已读后服务端会把「我→对方」消息的 [MessageDTO.isRead] 置 true。
+  /// 无推送时拉最新一页对齐内存中的出站已读；轮询侧可 [skipIfRecentReadEvent] 与 IM 事件协同。
+  Future<void> syncPrivateOutgoingReadFlags(
+    int peerId, {
+    required int viewerUserId,
+    Duration skipIfRecentReadEvent = const Duration(seconds: 10),
+  }) async {
+    final DateTime? last = _lastOutgoingReadEventAtByPeer[peerId];
+    if (last != null &&
+        DateTime.now().difference(last) < skipIfRecentReadEvent) {
+      return;
+    }
+    try {
+      final response = await _api.getPrivateMessages(peerId, 1, 60);
+      if (!response.isSuccess || response.data == null) {
+        return;
+      }
+      final List<MessageDTO> slice =
+          response.data!.map(_normalizeServerMessage).toList();
+      final Set<int> readIds = <int>{};
+      final Set<String> readCm = <String>{};
+      for (final MessageDTO s in slice) {
+        if (s.fromUserId != viewerUserId || s.toUserId != peerId) {
+          continue;
+        }
+        if (s.isRead != true) {
+          continue;
+        }
+        final int? id = s.id;
+        if (id != null && id > 0) {
+          readIds.add(id);
+        }
+        final String? cm = s.clientMsgNo?.trim();
+        if (cm != null && cm.isNotEmpty) {
+          readCm.add(cm);
+        }
+      }
+      if (readIds.isEmpty && readCm.isEmpty) {
+        return;
+      }
+      var any = false;
+      for (final MessageDTO m in _messages) {
+        if (m.fromUserId != viewerUserId || m.toUserId != peerId) {
+          continue;
+        }
+        if (m.isRead == true) {
+          continue;
+        }
+        final int? mid = m.id;
+        bool shouldRead = false;
+        if (mid != null && mid > 0 && readIds.contains(mid)) {
+          shouldRead = true;
+        } else {
+          final String? c = m.clientMsgNo?.trim();
+          if (c != null && c.isNotEmpty && readCm.contains(c)) {
+            shouldRead = true;
+          }
+        }
+        if (shouldRead && mid != null) {
+          applyMessageStatusUpdate(
+            messageId: mid,
+            isRead: true,
+            notify: false,
+          );
+          any = true;
+        }
+      }
+      if (any) {
+        notifyListeners();
+      }
+    } catch (_) {
+      // 静默：不影响聊天主流程
     }
   }
 
@@ -1088,11 +1459,23 @@ class MessageProvider extends ChangeNotifier {
   }) async {
     _startLoading();
     try {
-      final response = await _api.sendPrivateMessage(toUserId, content, msgType);
+      final String? clientMsgNo = _resolveClientMsgNoForTextApi(
+        msgType,
+        optimisticLocalId,
+      );
+      final response = await _api.sendPrivateMessage(
+        toUserId,
+        content,
+        msgType,
+        clientMsgNo: clientMsgNo,
+      );
       if (response.isSuccess && response.data != null) {
         final merged = _normalizeServerMessage(response.data as MessageDTO);
         _applySentMessage(merged, optimisticLocalId: optimisticLocalId);
         await loadConversations();
+        if (kDebugMode && ImFeatureFlags.omitClientDirectImAfterRest) {
+          debugPrint('[im.send] text via server only');
+        }
         return true;
       }
       _error = response.message;
@@ -1131,12 +1514,23 @@ class MessageProvider extends ChangeNotifier {
   }) async {
     _startLoading();
     try {
-      final response =
-          await _api.sendGroupMessage(groupId, content, msgType);
+      final String? clientMsgNo = _resolveClientMsgNoForTextApi(
+        msgType,
+        optimisticLocalId,
+      );
+      final response = await _api.sendGroupMessage(
+        groupId,
+        content,
+        msgType,
+        clientMsgNo: clientMsgNo,
+      );
       if (response.isSuccess && response.data != null) {
         final merged = _normalizeServerMessage(response.data as MessageDTO);
         _applySentMessage(merged, optimisticLocalId: optimisticLocalId);
         await loadConversations();
+        if (kDebugMode && ImFeatureFlags.omitClientDirectImAfterRest) {
+          debugPrint('[im.send] text via server only');
+        }
         return true;
       }
       _error = response.message;
@@ -1377,7 +1771,8 @@ class MessageProvider extends ChangeNotifier {
         msgType: msgType,
       );
       if (response.isSuccess && response.data != null) {
-        final merged = mergeReplyResult(response.data as MessageDTO);
+        final merged =
+            _outgoingAfterSendSuccess(mergeReplyResult(response.data as MessageDTO));
         if (optimisticLocalId != null) {
           final replaced =
               _updateMessageById(optimisticLocalId, (_) => merged);
@@ -1464,16 +1859,38 @@ class MessageProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> markAsRead(int fromUserId) async {
+  /// [type]==1 时走 REST；群聊仅本地未读清零（与接口现状一致）。
+  Future<bool> markAsRead(int targetId, {int type = 1}) async {
+    if (kDebugMode) {
+      debugPrint('[im.chat.audit] markAsRead enter targetId=$targetId type=$type');
+    }
     try {
-      final response = await _api.markAsRead(fromUserId);
-      if (response.isSuccess) {
-        _setConversationUnread(fromUserId, 1, 0);
-        _sortConversationsInternal();
-        notifyListeners();
+      if (type == 1) {
+        final response = await _api.markAsRead(targetId);
+        final bool ok = response.isSuccess;
+        if (kDebugMode) {
+          debugPrint(
+            '[im.chat.audit] markAsRead ${ok ? 'success' : 'fail'} msg=${response.message}',
+          );
+        }
+        if (ok) {
+          _setConversationUnread(targetId, 1, 0);
+          _sortConversationsInternal();
+          notifyListeners();
+        }
+        return ok;
       }
-      return response.isSuccess;
-    } catch (_) {
+      _setConversationUnread(targetId, type, 0);
+      _sortConversationsInternal();
+      notifyListeners();
+      if (kDebugMode) {
+        debugPrint('[im.chat.audit] markAsRead success (local group clear)');
+      }
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[im.chat.audit] markAsRead fail exception=$e\n$st');
+      }
       return false;
     }
   }
@@ -1627,6 +2044,13 @@ class MessageProvider extends ChangeNotifier {
               ) &&
               !serverIds.contains(m.id),
         )
+        .where(
+          (m) => !_preservedDupOfServerPage1(
+                serverNorm,
+                m,
+                viewerUserId,
+              ),
+        )
         .toList();
 
     final combined = [
@@ -1715,7 +2139,9 @@ class MessageProvider extends ChangeNotifier {
 
     final incomingType = incoming.msgType ?? 1;
     final incomingContent = (incoming.content ?? '').trim();
-    if (incomingContent.isEmpty) {
+    final incomingKey = incoming.clientMsgNo?.trim();
+    if (incomingContent.isEmpty &&
+        (incomingKey == null || incomingKey.isEmpty)) {
       return null;
     }
 
@@ -1741,7 +2167,7 @@ class MessageProvider extends ChangeNotifier {
         continue;
       }
       if (incomingType == 1) {
-        if ((m.content ?? '').trim() != incomingContent) {
+        if (!_outgoingTextMatchesForMerge(m, incoming, incomingContent)) {
           continue;
         }
       } else {
@@ -1775,7 +2201,7 @@ class MessageProvider extends ChangeNotifier {
       if (m.id == null || m.id! >= 0) {
         continue;
       }
-      if (m.status != 2) {
+      if (m.status != MessageOutgoingStatus.failed) {
         continue;
       }
       if ((m.msgType ?? 1) != 1) {
@@ -1813,7 +2239,7 @@ class MessageProvider extends ChangeNotifier {
       if (m.id == null || m.id! >= 0) {
         continue;
       }
-      if (m.status != 2) {
+      if (m.status != MessageOutgoingStatus.failed) {
         continue;
       }
       if ((m.msgType ?? 1) != msgType) {
@@ -2025,7 +2451,7 @@ class MessageProvider extends ChangeNotifier {
         if ((m.msgType ?? 1) != 1) {
           continue;
         }
-        if ((m.content ?? '').trim() != inc) {
+        if (!_outgoingTextMatchesForMerge(m, incoming, inc)) {
           continue;
         }
         final st = m.status;
@@ -2058,7 +2484,7 @@ class MessageProvider extends ChangeNotifier {
       if ((m.msgType ?? 1) != 1) {
         continue;
       }
-      if ((m.content ?? '').trim() != inc) {
+      if (!_outgoingTextMatchesForMerge(m, incoming, inc)) {
         continue;
       }
       final st = m.status;
@@ -2080,6 +2506,7 @@ class MessageProvider extends ChangeNotifier {
     return MessageDTO(
       id: im.id ?? local.id,
       msgId: im.msgId ?? local.msgId,
+      clientMsgNo: local.clientMsgNo ?? im.clientMsgNo,
       fromUserId: local.fromUserId,
       toUserId: local.toUserId,
       groupId: local.groupId,
@@ -2109,7 +2536,8 @@ class MessageProvider extends ChangeNotifier {
       return false;
     }
     final inc = (incoming.content ?? '').trim();
-    if (inc.isEmpty) {
+    final incKey = incoming.clientMsgNo?.trim();
+    if (inc.isEmpty && (incKey == null || incKey.isEmpty)) {
       return false;
     }
     final tIn = ChatDateFormat.parseToMillis(incoming.createdAt);
@@ -2129,7 +2557,7 @@ class MessageProvider extends ChangeNotifier {
         if ((m.msgType ?? 1) != 1) {
           continue;
         }
-        if ((m.content ?? '').trim() != inc) {
+        if (!_confirmedTextRowDuplicate(incoming, m)) {
           continue;
         }
         if (m.id == null || m.id! <= 0) {
@@ -2166,7 +2594,7 @@ class MessageProvider extends ChangeNotifier {
       if ((m.msgType ?? 1) != 1) {
         continue;
       }
-      if ((m.content ?? '').trim() != inc) {
+      if (!_confirmedTextRowDuplicate(incoming, m)) {
         continue;
       }
       if (m.id == null || m.id! <= 0) {
@@ -2192,6 +2620,10 @@ class MessageProvider extends ChangeNotifier {
     int? currentUserId,
   ) {
     if (currentUserId == null) {
+      return false;
+    }
+    // 与当前 viewer 一致的私聊会话行（含己方 outgoing）不得仅靠「同文案 echo」吞掉。
+    if (_privateThreadLineMatchesViewerThread(incoming, currentUserId)) {
       return false;
     }
     if (_isAppMediaMsgType(incoming.msgType)) {
@@ -2311,15 +2743,245 @@ class MessageProvider extends ChangeNotifier {
     return false;
   }
 
+  String _debugImSnippet(String? content) {
+    final String s = (content ?? '').trim();
+    if (s.length <= 48) {
+      return s;
+    }
+    return '${s.substring(0, 48)}…';
+  }
+
+  /// 与 [_messageBelongsToConversation] 私聊口径一致：存在 peer [targetId]，
+  /// 使 (m, peer, 1, viewer) 归属成立。包含「己方→对方」与「对方→己方」及单边 to/f 为 null 的行。
+  bool _privateThreadLineMatchesViewerThread(MessageDTO m, int viewer) {
+    if (!_looksLikePrivatePayload(m)) {
+      return false;
+    }
+    final int? f = m.fromUserId;
+    final int? t = m.toUserId;
+
+    final int? peer;
+    if (f != null && f == viewer && t != null && t != viewer) {
+      peer = t;
+    } else if (t != null && t == viewer && f != null && f != viewer) {
+      peer = f;
+    } else if (t == null && f != null && f != viewer) {
+      peer = f;
+    } else if (f == null && t != null && t != viewer) {
+      peer = t;
+    } else {
+      return false;
+    }
+
+    return _messageBelongsToConversation(m, peer, 1, currentUserId: viewer);
+  }
+
+  int? _findMessageIndexByClientMsgNo(String? clientMsgNo) {
+    final String? k = clientMsgNo?.trim();
+    if (k == null || k.isEmpty) {
+      return null;
+    }
+    final int i = _messages.indexWhere((MessageDTO m) => m.clientMsgNo?.trim() == k);
+    return i == -1 ? null : i;
+  }
+
+  /// IM 与 REST 均非空且相等时视为同一条。
+  bool _clientMsgNoBothNonEmptyMatch(MessageDTO a, MessageDTO b) {
+    final x = a.clientMsgNo?.trim();
+    final y = b.clientMsgNo?.trim();
+    if (x == null || x.isEmpty || y == null || y.isEmpty) {
+      return false;
+    }
+    return x == y;
+  }
+
+  /// 无稳定 clientMsgNo 时的兜底：同会话、同发送方、同类型、同正文、时间接近。
+  bool _softDuplicateForImRest(MessageDTO a, MessageDTO b) {
+    if (!_sameConversationForMerge(a, b)) {
+      return false;
+    }
+    if (a.fromUserId == null || b.fromUserId == null) {
+      return false;
+    }
+    if (a.fromUserId != b.fromUserId) {
+      return false;
+    }
+    if ((a.msgType ?? 1) != (b.msgType ?? 1)) {
+      return false;
+    }
+    final String? ca = a.clientMsgNo?.trim();
+    final String? cb = b.clientMsgNo?.trim();
+    if (ca != null &&
+        ca.isNotEmpty &&
+        cb != null &&
+        cb.isNotEmpty &&
+        ca != cb) {
+      return false;
+    }
+    final ac = (a.content ?? '').trim();
+    final bc = (b.content ?? '').trim();
+    if (ac.isEmpty || ac != bc) {
+      return false;
+    }
+    final int windowMs = 180000;
+    final ta = ChatDateFormat.parseToMillis(a.createdAt);
+    final tb = ChatDateFormat.parseToMillis(b.createdAt);
+    if (ta != null && tb != null) {
+      if ((ta - tb).abs() > windowMs) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// 仅与「非负 id」行做软匹配，避免吞掉发送中乐观行（负 id）误合并。
+  int? _findMessageIndexByImRestSoftDuplicate(MessageDTO message) {
+    for (var i = _messages.length - 1; i >= 0; i--) {
+      final m = _messages[i];
+      if (m.id != null && m.id! < 0) {
+        continue;
+      }
+      if (_softDuplicateForImRest(m, message)) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  /// 合并优先级：clientMsgNo → 同 id → 软重复（同文+时间窗）。
+  int? _findImRestMergeIndex(MessageDTO message, int? currentUserId) {
+    final byNo = _findMessageIndexByClientMsgNo(message.clientMsgNo);
+    if (byNo != null) {
+      return byNo;
+    }
+    if (message.id != null) {
+      final byId = _findMessageIndexById(message.id);
+      if (byId != null) {
+        return byId;
+      }
+    }
+    return _findMessageIndexByImRestSoftDuplicate(message);
+  }
+
+  /// 合并 IM 行与 REST 行：优先带业务 [clientMsgNo] 的 id；正文/已读等取更完整的一侧。
+  MessageDTO _mergeImRestPair(MessageDTO existing, MessageDTO incoming) {
+    int? mergedId;
+    for (final x in <MessageDTO>[existing, incoming]) {
+      final id = x.id;
+      if (id != null &&
+          id > 0 &&
+          (x.clientMsgNo != null && x.clientMsgNo!.trim().isNotEmpty)) {
+        mergedId = id;
+        break;
+      }
+    }
+    mergedId ??= existing.id ?? incoming.id;
+    if (mergedId != null && mergedId <= 0) {
+      mergedId = incoming.id ?? existing.id;
+    }
+
+    final mergedCm = (existing.clientMsgNo?.trim().isNotEmpty ?? false)
+        ? existing.clientMsgNo
+        : incoming.clientMsgNo;
+    final bool mergedRead =
+        (existing.isRead == true) || (incoming.isRead == true);
+    final fromInfo = existing.fromUserInfo ?? incoming.fromUserInfo;
+    return MessageDTO(
+      id: mergedId,
+      msgId: existing.msgId ?? incoming.msgId,
+      clientMsgNo: mergedCm,
+      fromUserId: existing.fromUserId ?? incoming.fromUserId,
+      toUserId: existing.toUserId ?? incoming.toUserId,
+      groupId: existing.groupId ?? incoming.groupId,
+      content: existing.content ?? incoming.content,
+      msgType: existing.msgType ?? incoming.msgType,
+      subType: existing.subType ?? incoming.subType,
+      extra: existing.extra ?? incoming.extra,
+      isRead: mergedRead,
+      isRecalled: existing.isRecalled ?? incoming.isRecalled,
+      isDeleted: existing.isDeleted ?? incoming.isDeleted,
+      replyToMsgId: existing.replyToMsgId ?? incoming.replyToMsgId,
+      forwardFromMsgId: existing.forwardFromMsgId ?? incoming.forwardFromMsgId,
+      forwardFromUserId:
+          existing.forwardFromUserId ?? incoming.forwardFromUserId,
+      isEdited: existing.isEdited ?? incoming.isEdited,
+      status: existing.status ?? incoming.status,
+      createdAt: existing.createdAt ?? incoming.createdAt,
+      fromUserInfo: fromInfo,
+    );
+  }
+
+  bool _preservedDupOfServerPage1(
+    List<MessageDTO> serverNorm,
+    MessageDTO preserved,
+    int? viewerUserId,
+  ) {
+    for (final s in serverNorm) {
+      if (_clientMsgNoBothNonEmptyMatch(s, preserved)) {
+        return true;
+      }
+      if (_softDuplicateForImRest(s, preserved)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   MessageDTO? _insertMessage(MessageDTO message, {int? currentUserId}) {
-    final mergeIndex = _tryMergeOptimisticOutgoing(message, currentUserId);
+    if (kDebugMode) {
+      debugPrint(
+        '[im.insert] _insertMessage enter id=${message.id} clientMsgNo=${message.clientMsgNo} '
+        'from=${message.fromUserId} to=${message.toUserId} g=${message.groupId} '
+        'self=$currentUserId content=${_debugImSnippet(message.content)}',
+      );
+    }
+
+    final int? self = currentUserId;
+    final int? from = message.fromUserId;
+    // 仅「明确来自对方」的私聊行提前合并：己方 outgoing 不得进此分支（与日志语义一致）。
+    final bool skipEchoForPeerPrivateIncoming = self != null &&
+        from != null &&
+        from != self &&
+        _privateThreadLineMatchesViewerThread(message, self);
+
+    if (skipEchoForPeerPrivateIncoming) {
+      if (kDebugMode) {
+        debugPrint(
+          '[im.insert] branch=confirmed_peer_private_incoming skip echo swallow',
+        );
+      }
+      final int? unifyPeer = _findImRestMergeIndex(message, currentUserId);
+      if (unifyPeer != null) {
+        if (kDebugMode) {
+          debugPrint('[im.insert] im_rest_merge idx=$unifyPeer (peer incoming)');
+        }
+        _messages[unifyPeer] =
+            _mergeImRestPair(_messages[unifyPeer], message);
+        return _messages[unifyPeer];
+      }
+      if (kDebugMode) {
+        debugPrint('[im.insert] final append');
+      }
+      _messages = [..._messages, message];
+      return message;
+    }
+
+    final int? mergeIndex = _tryMergeOptimisticOutgoing(message, currentUserId);
     if (mergeIndex != null) {
+      if (kDebugMode) {
+        debugPrint('[im.insert] hit _tryMergeOptimisticOutgoing idx=$mergeIndex');
+      }
       _messages[mergeIndex] = message;
       return message;
     }
 
-    final misIdx = _tryMergeMisattributedOutgoingEcho(message, currentUserId);
+    final int? misIdx = _tryMergeMisattributedOutgoingEcho(message, currentUserId);
     if (misIdx != null) {
+      if (kDebugMode) {
+        debugPrint(
+          '[im.insert] hit _tryMergeMisattributedOutgoingEcho idx=$misIdx',
+        );
+      }
       _messages[misIdx] = _mergeImEchoKeepingLocalSender(
         im: message,
         local: _messages[misIdx],
@@ -2328,15 +2990,24 @@ class MessageProvider extends ChangeNotifier {
     }
 
     if (_isEchoDuplicateOfConfirmedOutgoing(message, currentUserId)) {
+      if (kDebugMode) {
+        debugPrint('[im.insert] hit _isEchoDuplicateOfConfirmedOutgoing (swallowed)');
+      }
       return null;
     }
 
-    final existingIndex = _findMessageIndexById(message.id);
-    if (existingIndex != null) {
-      _messages[existingIndex] = message;
-      return message;
+    final int? unifyIdx = _findImRestMergeIndex(message, currentUserId);
+    if (unifyIdx != null) {
+      if (kDebugMode) {
+        debugPrint('[im.insert] im_rest_merge idx=$unifyIdx');
+      }
+      _messages[unifyIdx] = _mergeImRestPair(_messages[unifyIdx], message);
+      return _messages[unifyIdx];
     }
 
+    if (kDebugMode) {
+      debugPrint('[im.insert] final append');
+    }
     _messages = [..._messages, message];
     return message;
   }
@@ -2425,6 +3096,9 @@ class MessageProvider extends ChangeNotifier {
     final index = _findConversationIndex(targetId, type);
     final previewText = _messagePreviewText(message);
 
+    final bool active = _isActiveConversation(targetId, type);
+    final bool countThisUnread = increaseUnread && !active;
+
     if (index == null) {
       _conversations = [
         ..._conversations,
@@ -2441,7 +3115,7 @@ class MessageProvider extends ChangeNotifier {
           ),
           lastMessage: previewText,
           lastMessageTime: message.createdAt,
-          unreadCount: increaseUnread ? 1 : 0,
+          unreadCount: countThisUnread ? 1 : 0,
           draft: null,
         ),
       ];
@@ -2449,6 +3123,15 @@ class MessageProvider extends ChangeNotifier {
     }
 
     final current = _conversations[index];
+    var nextUnread = current.unreadCount ?? 0;
+    if (countThisUnread) {
+      nextUnread += 1;
+    }
+    if (active &&
+        _shouldIncreaseUnread(message, currentUserId: currentUserId)) {
+      nextUnread = 0;
+    }
+
     _conversations[index] = ConversationDTO(
       id: current.id,
       userId: current.userId,
@@ -2470,16 +3153,12 @@ class MessageProvider extends ChangeNotifier {
       lastMessageTime: (message.createdAt?.isNotEmpty == true)
           ? message.createdAt
           : current.lastMessageTime,
-      unreadCount: current.unreadCount,
+      unreadCount: nextUnread,
       isTop: current.isTop,
       isMute: current.isMute,
       draft: current.draft,
       isDeleted: current.isDeleted,
     );
-
-    if (increaseUnread) {
-      _incrementConversationUnread(targetId, type);
-    }
   }
 
   void _setConversationUnread(int targetId, int type, int unreadCount) {
@@ -2503,24 +3182,6 @@ class MessageProvider extends ChangeNotifier {
       isMute: current.isMute,
       draft: current.draft,
       isDeleted: current.isDeleted,
-    );
-  }
-
-  void _incrementConversationUnread(
-    int targetId,
-    int type, {
-    int delta = 1,
-  }) {
-    final index = _findConversationIndex(targetId, type);
-    if (index == null) {
-      return;
-    }
-
-    final current = _conversations[index];
-    _setConversationUnread(
-      targetId,
-      type,
-      (current.unreadCount ?? 0) + delta,
     );
   }
 
@@ -2596,15 +3257,24 @@ class MessageProvider extends ChangeNotifier {
     MessageDTO message, {
     int? currentUserId,
   }) {
-    if (_resolveConversationType(message) != 1) {
-      return false;
-    }
     if (currentUserId == null) {
       return false;
     }
-    return message.fromUserId != null &&
-        message.fromUserId != currentUserId &&
-        message.toUserId == currentUserId;
+    final int ctype = _resolveConversationType(message);
+    if (ctype == 1) {
+      return message.fromUserId != null &&
+          message.fromUserId != currentUserId &&
+          message.toUserId == currentUserId;
+    }
+    if (ctype == 2) {
+      final int? g = message.groupId;
+      if (g == null || g == 0) {
+        return false;
+      }
+      return message.fromUserId != null &&
+          message.fromUserId != currentUserId;
+    }
+    return false;
   }
 
   /// [currentUserId] 为会话所属用户（通常为当前登录用户）时，私聊采用双方参与判定，避免仅按单边 peer 误判。
@@ -2741,6 +3411,10 @@ class MessageProvider extends ChangeNotifier {
   }
 
   void _sortConversations() {
+    int timeMillis(ConversationDTO c) {
+      return ChatDateFormat.parseToMillis(c.lastMessageTime) ?? 0;
+    }
+
     _conversations.sort((a, b) {
       final aTop = a.isTop == true ? 1 : 0;
       final bTop = b.isTop == true ? 1 : 0;
@@ -2749,29 +3423,16 @@ class MessageProvider extends ChangeNotifier {
         return topCompare;
       }
 
-      final aHasDraft = ((_drafts[_draftKey(a.targetId, a.type)] ?? a.draft ?? '')
-              .trim()
-              .isNotEmpty)
-          ? 1
-          : 0;
-      final bHasDraft = ((_drafts[_draftKey(b.targetId, b.type)] ?? b.draft ?? '')
-              .trim()
-              .isNotEmpty)
-          ? 1
-          : 0;
-      final draftCompare = bHasDraft.compareTo(aHasDraft);
-      if (draftCompare != 0) {
-        return draftCompare;
+      final timeCompare = timeMillis(b).compareTo(timeMillis(a));
+      if (timeCompare != 0) {
+        return timeCompare;
       }
 
-      final aUnread = a.unreadCount ?? 0;
-      final bUnread = b.unreadCount ?? 0;
-      final unreadCompare = bUnread.compareTo(aUnread);
-      if (unreadCompare != 0) {
-        return unreadCompare;
+      final typeCompare = (b.type ?? 0).compareTo(a.type ?? 0);
+      if (typeCompare != 0) {
+        return typeCompare;
       }
-
-      return (b.lastMessageTime ?? '').compareTo(a.lastMessageTime ?? '');
+      return (b.targetId ?? 0).compareTo(a.targetId ?? 0);
     });
   }
 

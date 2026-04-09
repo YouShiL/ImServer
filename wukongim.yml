@@ -1,0 +1,17 @@
+# =============================================================================
+# WuKongIM：Webhook 片段（Phase 1 联调用）
+# =============================================================================
+# 请勿用本文件整体替换官方 wk.yaml。请将下方 webhook 段合并进你已有的 wk.yaml，
+# 并视需要调整 ip/端口。datasource 请勿在此开启。
+#
+# 目标：将业务 API（hailiao-api）的 Webhook 端点对外暴露给 WuKongIM。
+# hailiao-api 默认路径：POST http://<api-host>:8082/api/im/webhook
+# =============================================================================
+
+webhook:
+  httpAddr: "http://192.168.2.3:8082/api/im/webhook"
+  msgNotifyEventPushInterval: 500ms
+  msgNotifyEventRetryMaxCount: 5
+  msgNotifyEventCountPerPush: 100
+  focusEvents:
+    - "msg.notify"

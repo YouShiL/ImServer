@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.hailiao.api.controller.AuthControllerTest
 -------------------------------------------------------------------------------
-Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.957 s - in com.hailiao.api.controller.AuthControllerTest
+Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.725 s - in com.hailiao.api.controller.AuthControllerTest

@@ -12,7 +12,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.stubbing.Answer;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -26,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -81,6 +84,46 @@ class MessageServiceTest {
         verify(contentAuditService).createAudit(captor.capture());
         assertEquals(Integer.valueOf(1), captor.getValue().getContentType());
         assertEquals(Long.valueOf(1L), captor.getValue().getUserId());
+    }
+
+    @Test
+    void shouldReturnExistingWhenClientMsgNoDuplicate() {
+        final String cm = "client-dedup-1";
+        final Message stored = new Message();
+        when(messageRepository.findByClientMsgNo(cm)).thenAnswer(new Answer<Optional<Message>>() {
+            @Override
+            public Optional<Message> answer(InvocationOnMock invocation) {
+                if (stored.getId() == null) {
+                    return Optional.empty();
+                }
+                return Optional.of(stored);
+            }
+        });
+        when(messageRepository.save(any(Message.class))).thenAnswer(new Answer<Message>() {
+            @Override
+            public Message answer(InvocationOnMock invocation) {
+                Message m = invocation.getArgument(0);
+                if (stored.getId() == null) {
+                    stored.setId(1L);
+                    stored.setFromUserId(m.getFromUserId());
+                    stored.setToUserId(m.getToUserId());
+                    stored.setContent(m.getContent());
+                    stored.setClientMsgNo(m.getClientMsgNo());
+                    stored.setMsgType(m.getMsgType());
+                }
+                return stored;
+            }
+        });
+        when(conversationRepository.findByUserIdAndTargetIdAndType(1L, 2L, 1))
+                .thenReturn(Optional.<Conversation>empty());
+        when(conversationRepository.findByUserIdAndTargetIdAndType(2L, 1L, 1))
+                .thenReturn(Optional.<Conversation>empty());
+
+        Message first = messageService.sendPrivateMessage(1L, 2L, "hi", 1, "{}", cm);
+        Message second = messageService.sendPrivateMessage(1L, 2L, "hi", 1, "{}", cm);
+
+        assertEquals(first.getId(), second.getId());
+        verify(messageRepository, times(1)).save(any(Message.class));
     }
 
     @Test

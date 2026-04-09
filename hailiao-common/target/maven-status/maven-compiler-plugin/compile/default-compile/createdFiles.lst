@@ -62,6 +62,7 @@ com\hailiao\common\config\RestTemplateConfig.class
 com\hailiao\common\entity\SystemConfig.class
 com\hailiao\common\service\MessageService$1.class
 com\hailiao\common\entity\PrettyNumber.class
+com\hailiao\common\im\WukongOutboundBridge.class
 com\hailiao\common\repository\VipMemberRepository.class
 com\hailiao\common\repository\MessageReadStatusRepository.class
 com\hailiao\common\repository\GroupMemberRepository.class

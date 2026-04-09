@@ -4,6 +4,7 @@ import com.hailiao.api.dto.LoginRequestDTO;
 import com.hailiao.api.dto.RegisterRequestDTO;
 import com.hailiao.api.dto.ResponseDTO;
 import com.hailiao.api.dto.UserSessionDTO;
+import com.hailiao.api.wukong.WukongUserTokenSyncService;
 import com.hailiao.common.entity.User;
 import com.hailiao.common.entity.UserSession;
 import com.hailiao.common.service.UserService;
@@ -41,6 +42,9 @@ public class AuthController {
     @Autowired
     private UserSessionService userSessionService;
 
+    @Autowired
+    private WukongUserTokenSyncService wukongUserTokenSyncService;
+
     @Operation(summary = "用户注册", description = "创建新用户账号并返回 JWT 令牌")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "注册成功", content = @Content(schema = @Schema(implementation = ResponseDTO.class))),
@@ -72,6 +76,8 @@ public class AuthController {
                     httpRequest.getHeader("User-Agent"));
             User loginUser = userService.markLoginSuccess(registeredUser.getId(), loginIp);
             String token = jwtUtil.generateToken(loginUser.getId(), loginUser.getPhone(), 1, session.getSessionId());
+            wukongUserTokenSyncService.syncUserTokenIfConfigured(
+                    String.valueOf(loginUser.getId()), token, WukongUserTokenSyncService.imClientDeviceFlag());
 
             return ResponseEntity.ok(ResponseDTO.success(buildAuthResponse(loginUser, token, session, null)));
         } catch (Exception e) {
@@ -118,6 +124,10 @@ public class AuthController {
                     httpRequest.getHeader("User-Agent"));
             User updatedUser = userService.markLoginSuccess(user.getId(), loginIp);
             String token = jwtUtil.generateToken(updatedUser.getId(), updatedUser.getPhone(), 1, session.getSessionId());
+            wukongUserTokenSyncService.syncUserTokenIfConfigured(
+                    String.valueOf(updatedUser.getId()),
+                    token,
+                    WukongUserTokenSyncService.imClientDeviceFlag());
 
             return ResponseEntity.ok(ResponseDTO.success(buildAuthResponse(updatedUser, token, session, loginNotice)));
         } catch (RuntimeException e) {
@@ -146,6 +156,8 @@ public class AuthController {
                                                             @RequestAttribute(value = "sessionId", required = false) String sessionId) {
         try {
             String newToken = jwtUtil.generateToken(userId, username, 1, sessionId);
+            wukongUserTokenSyncService.syncUserTokenIfConfigured(
+                    String.valueOf(userId), newToken, WukongUserTokenSyncService.imClientDeviceFlag());
             return ResponseEntity.ok(ResponseDTO.success(newToken));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(ResponseDTO.badRequest(e.getMessage()));

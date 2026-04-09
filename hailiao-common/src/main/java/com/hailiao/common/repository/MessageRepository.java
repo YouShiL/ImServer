@@ -16,6 +16,8 @@ import java.util.Optional;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long>, JpaSpecificationExecutor<Message> {
     Optional<Message> findByMsgId(String msgId);
+
+    Optional<Message> findByClientMsgNo(String clientMsgNo);
     Page<Message> findByFromUserIdAndToUserIdOrderByCreatedAtDesc(Long fromUserId, Long toUserId, Pageable pageable);
 
     /**
