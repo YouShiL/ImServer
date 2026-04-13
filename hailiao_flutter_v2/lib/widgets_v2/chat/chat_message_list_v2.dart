@@ -18,6 +18,7 @@ class ChatMessageListV2 extends StatefulWidget {
     this.hasMoreOlder = true,
     this.isLoadingOlder = false,
     this.firstPaintSnapshotHandoff = false,
+    this.onFirstPaintExtentStableForSnapshotHandoff,
   });
 
   final List<ChatV2MessageViewModel> messages;
@@ -27,6 +28,10 @@ class ChatMessageListV2 extends StatefulWidget {
 
   /// 首屏极薄快照：禁止用户滚动，避免首帧与远端 merge 叠加的手感冲突；切换后恢复默认 physics。
   final bool firstPaintSnapshotHandoff;
+
+  /// 首屏 `extentStable` 释放锁**之前**（仍在 snapshot 模式）通知一次：页面应在此后关闭 snapshot，
+  /// 避免锁未释放就切 live 导致在 live 上继续 pinToBottom 产生可见跳动。
+  final VoidCallback? onFirstPaintExtentStableForSnapshotHandoff;
 
   @override
   State<ChatMessageListV2> createState() => _ChatMessageListV2State();
@@ -88,6 +93,7 @@ class _ChatMessageListV2State extends State<ChatMessageListV2> {
   bool _lockBottomDuringFirstPaint = false;
   double? _firstPaintLastMaxSample;
   int _firstPaintStableFrameCount = 0;
+  bool _didNotifySnapshotHandoffExtentStable = false;
 
   @override
   void initState() {
@@ -273,6 +279,15 @@ class _ChatMessageListV2State extends State<ChatMessageListV2> {
     }
 
     if (_firstPaintStableFrameCount >= _firstPaintStableFramesRequired) {
+      final bool snapshotHandoffActive = widget.firstPaintSnapshotHandoff;
+      final VoidCallback? onStable = widget.onFirstPaintExtentStableForSnapshotHandoff;
+      if (snapshotHandoffActive &&
+          onStable != null &&
+          !_didNotifySnapshotHandoffExtentStable) {
+        _didNotifySnapshotHandoffExtentStable = true;
+        // 同步通知页面：避免 postFrame 晚到或未执行时，fallback 与 extentStable 双路径竞态。
+        onStable();
+      }
       _lockBottomDuringFirstPaint = false;
       _firstPaintLastMaxSample = null;
       _firstPaintStableFrameCount = 0;

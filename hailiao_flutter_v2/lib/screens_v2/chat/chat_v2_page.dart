@@ -49,6 +49,7 @@ class _ChatV2PageState extends State<ChatV2Page> {
   /// 首屏极薄快照：首帧稳定后切回可滚动 live 列表，避免与远端 merge 叠加跳动。
   bool _firstPaintSnapshotActive = false;
   bool _snapshotHandoffCompleted = false;
+  Timer? _snapshotHandoffFallbackTimer;
 
   double _lastViewportKeyboardInsetLogged = -1;
   double _lastListVisibleHeightLogged = -1;
@@ -139,25 +140,44 @@ class _ChatV2PageState extends State<ChatV2Page> {
     }
     _snapshotHandoffCompleted = true;
     _firstPaintSnapshotActive = true;
+    _snapshotHandoffFallbackTimer?.cancel();
+    // 仅异常兜底：首屏正常必在 extentStable 主路径关闭；长间隔避免与主路径竞态抢日志。
+    _snapshotHandoffFallbackTimer = Timer(const Duration(seconds: 12), () {
+      if (!mounted) {
+        return;
+      }
+      _closeFirstPaintSnapshot(reason: 'fallback timer');
+    });
     if (kDebugMode) {
       debugPrint(
         '[chat.snapshot] start firstPaintSnapshot count=${coordinator.messages.length}',
       );
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) {
-          return;
-        }
-        setState(() {
-          _firstPaintSnapshotActive = false;
-        });
-        if (kDebugMode) {
-          debugPrint('[chat.snapshot] finish firstPaintSnapshot');
-          debugPrint('[chat.snapshot] switchToLive preserveBottom=true');
-        }
-      });
+  }
+
+  /// 唯一收口：extentStable 与 fallback 都经此关闭 snapshot；先 cancel timer 再 setState，防双路径日志。
+  void _closeFirstPaintSnapshot({required String reason}) {
+    _snapshotHandoffFallbackTimer?.cancel();
+    _snapshotHandoffFallbackTimer = null;
+    if (!_firstPaintSnapshotActive) {
+      return;
+    }
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _firstPaintSnapshotActive = false;
     });
+    if (kDebugMode) {
+      debugPrint('[chat.snapshot] finish firstPaintSnapshot ($reason)');
+      debugPrint('[chat.snapshot] switchToLive preserveBottom=true');
+    }
+  }
+
+  /// 由 [ChatMessageListV2] 在首屏 extentStable、即将释放锁**之前**通知（仍在 snapshot 模式），
+  /// 此时再关 snapshot，避免锁带到 live 上继续 pinToBottom 造成可见「再滑一小段」。
+  void _onFirstPaintExtentStableForSnapshotHandoff() {
+    _closeFirstPaintSnapshot(reason: 'extentStable');
   }
 
   /// 单一入口：keyboard（idle + 焦点）与 emoji 面板互斥；串行先关 IME 再出面板。
@@ -258,6 +278,7 @@ class _ChatV2PageState extends State<ChatV2Page> {
 
   @override
   void dispose() {
+    _snapshotHandoffFallbackTimer?.cancel();
     _inputFocusNode.dispose();
     _inputController.dispose();
     _coordinator
@@ -333,6 +354,10 @@ class _ChatV2PageState extends State<ChatV2Page> {
                   messages: vmList,
                   firstPaintSnapshotHandoff:
                       _firstPaintSnapshotActive && vmList.isNotEmpty,
+                  onFirstPaintExtentStableForSnapshotHandoff:
+                      _firstPaintSnapshotActive && vmList.isNotEmpty
+                          ? _onFirstPaintExtentStableForSnapshotHandoff
+                          : null,
                   onLoadOlder: coordinator?.loadOlderMessages,
                   hasMoreOlder: coordinator?.hasMoreHistory ?? false,
                   isLoadingOlder: coordinator?.isLoadingHistory ?? false,
